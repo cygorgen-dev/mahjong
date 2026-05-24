@@ -102,8 +102,9 @@ function saveGameState() {
   try {
     const state = {
       wall: game.wall,
-      wallIdx: game.wallIdx,
-      tailIdx: game.tailIdx,
+      wallIdx:   game.wallIdx,
+      tailCol:   game.tailCol,
+      tailPhase: game.tailPhase,
       players: game.players.map(p => ({
         seat: p.seat, name: p.name, isHuman: p.isHuman,
         score: p.score, hand: p.hand, melds: p.melds, bonus: p.bonus,
@@ -146,8 +147,9 @@ function restoreGameState() {
     if (Date.now() - s.ts > 4 * 60 * 60 * 1000) return false;
     // Apply saved state to game object
     game.wall = s.wall;
-    game.wallIdx = s.wallIdx;
-    game.tailIdx = s.tailIdx ?? (game.wall.length - 1);
+    game.wallIdx   = s.wallIdx;
+    game.tailCol   = s.tailCol   ?? 71;
+    game.tailPhase = s.tailPhase ?? 0;
     game.players = s.players;
     game.roundWind = s.roundWind;
     game.dealerSeat = s.dealerSeat;
@@ -404,11 +406,11 @@ document.addEventListener('DOMContentLoaded', () => {
       makeTile(SUIT.CIRCLE,9),
     ];
     hp.melds = [];
-    // Drain the wall to 1 tile remaining — head advances to just before tail
-    // Drain to 1 tile: head = tail = last index
-    game.tailIdx = game.wall.length - 1;
-    game.wallIdx = game.tailIdx;
-    game.wall[game.wallIdx] = makeTile(SUIT.CIRCLE,9);
+    // Drain the wall to 1 tile remaining: remaining = 2*(tailCol+1) - wallIdx - tailPhase = 1
+    game.tailCol   = 71;
+    game.tailPhase = 0;
+    game.wallIdx   = 143;          // remaining = 2*72 - 143 - 0 = 1
+    game.wall[143] = makeTile(SUIT.CIRCLE,9);
     game.currentSeat = 0;
     game.phase = PHASE.DRAW;
     game.handActionCount = 1; // not first draw
@@ -774,6 +776,68 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextVariant = _robVariants[_robVariantIdx];
     const nextLabel = { A:'Human 搶槓', B:'AI 搶槓', C:'Both 搶槓', D:'Nobody 搶槓' };
     document.getElementById('demo-rob-btn').textContent = `Demo Rob: ${nextLabel[nextVariant]}`;
+  });
+
+  // ---- Demo Overflow 溢: extreme side-player layouts to verify claim-column capping ----
+  document.getElementById('demo-overflow-btn')?.addEventListener('click', (e) => { e.stopPropagation();
+    let _ovId = 6000;
+    const T = (suit, value) => ({ id: _ovId++, suit, value, _justDrawn: false });
+
+    for (let i = 0; i < 4; i++) {
+      game.players[i].hand  = [];
+      game.players[i].melds = [];
+      game.players[i].bonus = [];
+    }
+    game.discardPile = []; game.discard = null; game.discardSeat = null;
+    game.lastResult = null; game.dealerSeat = 1; game.currentSeat = 1;
+    game.phase = PHASE.DISCARD;
+
+    // Human (seat 0): simple hand so the board isn't empty
+    const human = game.players[0];
+    for (let j = 0; j < 10; j++) human.hand.push(T(SUIT.CHAR, (j % 9) + 1));
+
+    // TOP (seat 2): placeholder
+    const top = game.players[2];
+    for (let j = 0; j < 7; j++) top.hand.push(T(SUIT.BAMBOO, (j % 9) + 1));
+    top.melds.push({ type:'pung', claimed:true,
+      tiles:[T(SUIT.CIRCLE,5),T(SUIT.CIRCLE,5),T(SUIT.CIRCLE,5)] });
+
+    // RIGHT (seat 1): 4 kongs (16 tiles) + 8 bonus tiles → only 3 kongs fit (12) in claim
+    // 4th kong and all 8 bonus overflow into hand column
+    const right = game.players[1];
+    right.melds = [
+      { type:'kong', claimed:true, tiles:[T(SUIT.BAMBOO,1),T(SUIT.BAMBOO,1),T(SUIT.BAMBOO,1),T(SUIT.BAMBOO,1)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.BAMBOO,2),T(SUIT.BAMBOO,2),T(SUIT.BAMBOO,2),T(SUIT.BAMBOO,2)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.BAMBOO,3),T(SUIT.BAMBOO,3),T(SUIT.BAMBOO,3),T(SUIT.BAMBOO,3)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.BAMBOO,4),T(SUIT.BAMBOO,4),T(SUIT.BAMBOO,4),T(SUIT.BAMBOO,4)] },
+    ];
+    right.bonus = [
+      T(SUIT.FLOWER,0), T(SUIT.FLOWER,1), T(SUIT.FLOWER,2), T(SUIT.FLOWER,3),
+      T(SUIT.SEASON,0), T(SUIT.SEASON,1), T(SUIT.SEASON,2), T(SUIT.SEASON,3),
+    ];
+    const winTileR = T(SUIT.WIND,'East'); winTileR._justDrawn = true;
+    right.hand = [ winTileR ];
+
+    // LEFT (seat 3): 2 kongs + 3 pungs + 4 bonus → kongs(8) + pung1(3)=11, pung2→overflow, pung3→overflow
+    // bonus: 1 fits (12-11=1), remaining 3 overflow
+    const left = game.players[3];
+    left.melds = [
+      { type:'kong', claimed:true, tiles:[T(SUIT.CIRCLE,1),T(SUIT.CIRCLE,1),T(SUIT.CIRCLE,1),T(SUIT.CIRCLE,1)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.CIRCLE,2),T(SUIT.CIRCLE,2),T(SUIT.CIRCLE,2),T(SUIT.CIRCLE,2)] },
+      { type:'pung', claimed:true, tiles:[T(SUIT.CIRCLE,3),T(SUIT.CIRCLE,3),T(SUIT.CIRCLE,3)] },
+      { type:'pung', claimed:true, tiles:[T(SUIT.CIRCLE,4),T(SUIT.CIRCLE,4),T(SUIT.CIRCLE,4)] },
+      { type:'pung', claimed:true, tiles:[T(SUIT.CIRCLE,5),T(SUIT.CIRCLE,5),T(SUIT.CIRCLE,5)] },
+    ];
+    left.bonus = [
+      T(SUIT.FLOWER,0), T(SUIT.FLOWER,1), T(SUIT.FLOWER,2), T(SUIT.FLOWER,3),
+    ];
+    for (let j = 0; j < 2; j++) left.hand.push(T(SUIT.WIND, 'West'));
+
+    renderAll();
+    window.addMsg && window.addMsg(
+      '<strong>Demo Overflow 溢</strong>: Right=4 kongs+8 bonus (4th kong+all bonus → hand col). ' +
+      'Left=2 kongs+3 pungs+4 bonus (2 pungs+3 bonus → hand col). Open Hands to see full detail.'
+    );
   });
 
   // ---- Rotate Seats button ----

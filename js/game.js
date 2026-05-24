@@ -28,8 +28,9 @@ class Game {
     // Clear stale score deltas from previous game
     try { localStorage.removeItem('mahjongPrevScores'); } catch(e) {}
     this.wall = buildWall();
-    this.wallIdx = 0;     // head: normal draws advance forward
-    this.tailIdx = 143;   // tail: bonus/kong replacement draws advance backward
+    this.wallIdx  = 0;   // head: normal draws advance forward
+    this.tailCol  = 71;  // tail column (0-71): replacement draws retreat left
+    this.tailPhase = 0;  // 0 = top tile next, 1 = bottom tile next
 
     const startPts = (typeof START_POINTS !== 'undefined') ? START_POINTS : 2000;
 
@@ -143,18 +144,38 @@ class Game {
   }
 
   drawFromWall() {
-    if (this.wallIdx > this.tailIdx) return null;
+    if (this.wallRemaining() <= 0) return null;
+    // If the tail already took the top tile of our current column, take the bottom instead
+    if (this.wallIdx % 2 === 0 &&
+        Math.floor(this.wallIdx / 2) === this.tailCol &&
+        this.tailPhase === 1) {
+      this.wallIdx++;
+    }
     return this.wall[this.wallIdx++];
   }
 
-  // Kong and bonus replacement tiles come from the TAIL of the wall (correct Cantonese rules)
+  // Replacement tiles come from the TAIL — column by column right-to-left, top (even) first
+  // Order: 142,143, 140,141, 138,139 … 2,3, 0,1
   drawFromTail() {
-    if (this.tailIdx < this.wallIdx) return null;
-    return this.wall[this.tailIdx--];
+    if (this.wallRemaining() <= 0) return null;
+    // If the head already took the top tile of our current column, use the bottom instead
+    if (this.tailPhase === 0 && this.tailCol * 2 < this.wallIdx) {
+      this.tailPhase = 1;
+    }
+    const idx = this.tailCol * 2 + this.tailPhase;
+    if (idx < this.wallIdx) return null; // safety: truly exhausted
+    if (this.tailPhase === 0) {
+      this.tailPhase = 1;
+    } else {
+      this.tailPhase = 0;
+      this.tailCol--;
+    }
+    return this.wall[idx];
   }
 
-  wallRemaining() { return Math.max(0, this.tailIdx - this.wallIdx + 1); }
-  tailTilesUsed() { return this.wall.length - 1 - this.tailIdx; }
+  // remaining = tiles not yet consumed from either end
+  wallRemaining() { return Math.max(0, 2 * (this.tailCol + 1) - this.wallIdx - this.tailPhase); }
+  tailTilesUsed() { return (71 - this.tailCol) * 2 + this.tailPhase; }
 
   replaceBonus(player) {
     let found = true;
@@ -991,7 +1012,8 @@ class Game {
     this.roundWind  = 'East';
     this.wall       = buildWall();
     this.wallIdx    = 0;
-    this.tailIdx    = 143;
+    this.tailCol    = 71;
+    this.tailPhase  = 0;
     this.discard    = null; this.discardSeat = null; this.discardPile = [];
     this.claimOptions = null; this.claimSeat = null; this.pendingClaims = [];
     this.firstDraw  = true; this.dealerFirstDiscard = false; this.handActionCount = 0; this.lastResult = null;
@@ -1018,7 +1040,9 @@ class Game {
     // Preserve scores and names across deals
     const savedPlayers = this.players.map(p => ({ score: p.score, name: p.name, isHuman: p.isHuman }));
     this.wall = buildWall();
-    this.wallIdx = 0;
+    this.wallIdx   = 0;
+    this.tailCol   = 71;
+    this.tailPhase = 0;
     this.players = WINDS.map((wind, i) => ({
       seat: i, wind, hand: [], melds: [], bonus: [],
       score: savedPlayers[i].score,

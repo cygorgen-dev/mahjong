@@ -11,9 +11,10 @@ let _wallBC = null;
 function _broadcastWallState() {
   if (!_game) return;
   const data = {
-    wall:     _game.wall.map(t => ({ id: t.id, suit: t.suit, value: t.value })),
-    wallIdx:  _game.wallIdx  ?? 0,
-    tailIdx:  _game.tailIdx  ?? (_game.wall.length - 1),
+    wall:      _game.wall.map(t => ({ id: t.id, suit: t.suit, value: t.value })),
+    wallIdx:   _game.wallIdx   ?? 0,
+    tailCol:   _game.tailCol   ?? 71,
+    tailPhase: _game.tailPhase ?? 0,
   };
   try { localStorage.setItem('mahjong-wall-state', JSON.stringify(data)); } catch(e) {}
   if (!_wallBC) _wallBC = new BroadcastChannel('mahjong-wall');
@@ -487,7 +488,22 @@ function renderSeats() {
     // Top player (seat 2) also needs rotation so tiles face toward the player
     const needsRotation = isSidePlayer || seat === 2;
 
-    for (const meld of p.melds) {
+    // Side players: cap claim column at 12 tiles; overflow spills into hand column
+    let claimMelds = p.melds, claimBonus = p.bonus;
+    let overflowMelds = [], overflowBonus = [];
+    if (isSidePlayer) {
+      let n = 0;
+      claimMelds = [];
+      for (const meld of p.melds) {
+        if (n + meld.tiles.length <= 12) { claimMelds.push(meld); n += meld.tiles.length; }
+        else overflowMelds.push(meld);
+      }
+      const room = Math.max(0, 12 - n);
+      claimBonus = p.bonus.slice(0, room);
+      overflowBonus = p.bonus.slice(room);
+    }
+
+    for (const meld of claimMelds) {
       const meldDiv = document.createElement('div');
       meldDiv.className = 'meld';
 
@@ -529,10 +545,10 @@ function renderSeats() {
       meldsEl.appendChild(meldDiv);
     }
 
-    if (p.bonus.length > 0) {
+    if (claimBonus.length > 0) {
       const bonusDiv = document.createElement('div');
       bonusDiv.className = 'bonus-tiles';
-      for (const b of p.bonus) {
+      for (const b of claimBonus) {
         const bOpts = needsRotation ? { small: true, seatRotation: seat } : { small: true };
         bonusDiv.appendChild(makeTileEl(b, bOpts));
       }
@@ -687,6 +703,38 @@ function renderSeats() {
       }
     } else {
       // CPU players: render tiles face-down normally, or face-up if Open Hands enabled
+
+      // Side players: render overflow melds/bonus (beyond claim-column cap) into hand column
+      if (isSidePlayer && (overflowMelds.length > 0 || overflowBonus.length > 0)) {
+        for (const meld of overflowMelds) {
+          const meldDiv = document.createElement('div');
+          meldDiv.className = 'meld';
+          if (meld.type === 'kong' && meld.concealed) {
+            for (let i = 0; i < 3; i++) {
+              const bt = Object.assign({}, meld.tiles[0], { _forceBack: true });
+              meldDiv.appendChild(makeTileEl(bt, { small: true, back: true, seatRotation: seat }));
+            }
+            meldDiv.appendChild(makeTileEl(meld.tiles[0], { small: true, seatRotation: seat }));
+          } else {
+            const dTiles = meld.type === 'chow'
+              ? [...meld.tiles].sort((a, b) => a.value - b.value)
+              : meld.tiles;
+            for (const t of dTiles) {
+              meldDiv.appendChild(makeTileEl(t, { small: true, seatRotation: seat }));
+            }
+          }
+          handEl.appendChild(meldDiv);
+        }
+        if (overflowBonus.length > 0) {
+          const bonusDiv = document.createElement('div');
+          bonusDiv.className = 'bonus-tiles';
+          for (const b of overflowBonus) {
+            bonusDiv.appendChild(makeTileEl(b, { small: true, seatRotation: seat }));
+          }
+          handEl.appendChild(bonusDiv);
+        }
+      }
+
       const openHands = !!window.OPEN_HANDS;
       const cpuTiles = sortHand(p.hand);
 
@@ -1251,79 +1299,82 @@ function populateWallPeek() {
   if (!el || !_game) return;
   el.innerHTML = '';
 
-  const wall    = _game.wall;
-  const head    = _game.wallIdx ?? 0;
-  const tailIdx = _game.tailIdx ?? (wall.length - 1);
-  const remain  = Math.max(0, tailIdx - head + 1);
+  const wall      = _game.wall;
+  const head      = _game.wallIdx   ?? 0;
+  const tailCol   = _game.tailCol   ?? 71;
+  const tailPhase = _game.tailPhase ?? 0;
+  const remain    = _game.wallRemaining();
+  const nextTail  = tailCol * 2 + tailPhase; // index of next replacement tile
 
   if (!wall || wall.length === 0) {
     el.innerHTML = '<p style="color:#aaa;padding:10px;">No game in progress.</p>'; return;
   }
 
+  const tailUsed = (71 - tailCol) * 2 + tailPhase;
+
   // ── Stats bar ────────────────────────────────────────────────
   const stats = document.createElement('div');
   stats.style.cssText = 'display:flex;gap:16px;padding:6px 10px;background:rgba(0,0,0,.3);border-radius:6px;margin-bottom:8px;font-size:11px;flex-wrap:wrap;';
   stats.innerHTML = `
-    <span style="color:#aaa;">${head} used · <strong style="color:#7dffff">${remain}</strong> live · ${wall.length - 1 - tailIdx} replaced</span>
-    <span style="color:#ffd34d;">▼ next draw</span>
-    <span style="color:#ff9800;">▲ next replacement</span>
+    <span style="color:#aaa;">${head} drawn · <strong style="color:#7dffff">${remain}</strong> live · ${tailUsed} replaced</span>
+    <span style="color:#ffd34d;">▼ next draw (top row)</span>
+    <span style="color:#ff9800;">▲ next replacement (top row)</span>
     <span style="color:#555;">dim = consumed</span>
   `;
   el.appendChild(stats);
 
-  // ── Full wall — all 144 tiles, markers move as game progresses ──
-  // head-drawn (i < head): dimmed — already in hands/discard
-  // live (head ≤ i ≤ tailIdx): full brightness
-  // tail-consumed (i > tailIdx): dimmed with orange tint — used as replacements
-  // head marker (i === head): yellow outline + label
-  // tail marker (i === tailIdx): orange outline + label
-  const seqDiv = document.createElement('div');
-  seqDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:2px;align-items:flex-start;';
-
-  for (let i = 0; i < wall.length; i++) {
-    const isHead     = i === head;
-    const isTail     = i === tailIdx;
-    const isLive     = i >= head && i <= tailIdx;
-    const isHeadUsed = i < head;
-    const isTailUsed = i > tailIdx;
-
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;flex-shrink:0;';
-
-    const te = makeTileEl(wall[i], { small: true });
-    te.style.cssText += 'width:30px!important;height:42px!important;font-size:11px;cursor:default;';
-
-    if (isHeadUsed) {
-      te.style.opacity = '0.25';
-    } else if (isTailUsed) {
-      te.style.opacity = '0.3';
-      te.style.outline = '1px solid rgba(255,152,0,0.35)';
-    }
-
-    if (isHead) {
-      te.style.opacity = '1';
-      te.style.outline = '3px solid #ffd34d';
-      te.style.boxShadow = '0 0 6px 2px rgba(255,211,77,0.5)';
-    }
-    if (isTail) {
-      te.style.opacity = '1';
-      te.style.outline = '3px solid #ff9800';
-      te.style.boxShadow = '0 0 6px 2px rgba(255,152,0,0.5)';
-    }
-
-    wrap.appendChild(te);
-
-    if (isHead || isTail) {
-      const lbl = document.createElement('div');
-      lbl.style.cssText = `font-size:7px;font-weight:700;line-height:1;margin-top:1px;color:${isHead ? '#ffd34d' : '#ff9800'};`;
-      lbl.textContent = isHead ? '▼' : '▲';
-      wrap.appendChild(lbl);
-    }
-
-    seqDiv.appendChild(wrap);
+  // ── 72 columns × 2 rows — top tile (even index) above bottom tile (odd index) ──
+  // Columns wrap left-to-right. HEAD marker on next draw, TAIL marker on next replacement.
+  function isTailConsumed(i) {
+    const c = Math.floor(i / 2);
+    const isTop = (i % 2 === 0);
+    if (c > tailCol) return true;
+    if (c === tailCol && isTop && tailPhase === 1) return true;
+    return false;
   }
 
-  el.appendChild(seqDiv);
+  const colsDiv = document.createElement('div');
+  colsDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;align-items:flex-start;';
+
+  for (let c = 0; c < 72; c++) {
+    const topIdx = c * 2;      // even — top tile
+    const botIdx = c * 2 + 1; // odd  — bottom tile
+
+    const colDiv = document.createElement('div');
+    colDiv.style.cssText = 'display:flex;flex-direction:column;gap:1px;flex-shrink:0;';
+
+    for (const i of [topIdx, botIdx]) {
+      const isHead     = i === head;
+      const isTail     = i === nextTail;
+      const isHeadUsed = i < head;
+      const isTailUsed = isTailConsumed(i);
+
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;';
+
+      const te = makeTileEl(wall[i], { small: true });
+      te.style.cssText += 'width:30px!important;height:42px!important;font-size:11px;cursor:default;';
+
+      if      (isHeadUsed) { te.style.opacity = '0.22'; }
+      else if (isTailUsed) { te.style.opacity = '0.28'; te.style.outline = '1px solid rgba(255,152,0,0.3)'; }
+
+      if (isHead) { te.style.opacity='1'; te.style.outline='3px solid #ffd34d'; te.style.boxShadow='0 0 6px 2px rgba(255,211,77,0.5)'; }
+      if (isTail) { te.style.opacity='1'; te.style.outline='3px solid #ff9800'; te.style.boxShadow='0 0 6px 2px rgba(255,152,0,0.5)'; }
+
+      wrap.appendChild(te);
+      if (isHead || isTail) {
+        const lbl = document.createElement('div');
+        lbl.style.cssText = `font-size:7px;font-weight:700;line-height:1;margin-top:1px;color:${isHead?'#ffd34d':'#ff9800'};`;
+        lbl.textContent = isHead ? '▼' : '▲';
+        wrap.appendChild(lbl);
+      }
+      colDiv.appendChild(wrap);
+    }
+
+    colsDiv.appendChild(colDiv);
+  }
+
+  el.appendChild(colsDiv);
 
   if (remain === 0) {
     const e = document.createElement('p');

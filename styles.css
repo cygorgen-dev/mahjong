@@ -278,6 +278,12 @@ main#table {
   width: 70px;
   gap: 2px;
 }
+/* Overflow melds/bonus rendered inside the 66px hand column for side players */
+.seat-left  .hand .meld,
+.seat-right .hand .meld { width: 66px; }
+.seat-left  .hand .bonus-tiles,
+.seat-right .hand .bonus-tiles { width: 66px; }
+
 .hand, .melds { display:flex; flex-wrap:wrap; gap:3px; justify-content:center; }
 
 #center {

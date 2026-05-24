@@ -4,34 +4,50 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wall Peek 👁</title>
-  <link rel="stylesheet" href="styles.css">
   <script src="js/tiles.js"></script>
   <style>
     * { box-sizing: border-box; }
-    body { background:#07301a; color:#ccc; padding:8px; margin:0; font-family:system-ui,sans-serif; }
-
-    /* Force small tile size — !important beats the linked stylesheet's var(--tw)/var(--th) */
-    .tile, .tile.small {
-      width:  30px !important;
-      height: 43px !important;
-      min-width: 0 !important;
-      overflow: hidden;
-    }
-    .tile .tile-main { font-size:13px !important; line-height:1 !important; margin-top:2px !important; }
-    .tile .tile-num  { font-size:8px  !important; line-height:1 !important; margin-top:1px !important; }
-    .tile .tile-en   { font-size:5px  !important; margin-bottom:1px !important; }
-    .tile.dragon-white .tile-main { width:13px !important; height:16px !important; margin-top:3px !important; }
+    body { background: #07301a; color: #ccc; padding: 8px; margin: 0; font-family: system-ui, sans-serif; }
 
     #stats {
-      display:flex; gap:14px; flex-wrap:wrap;
-      padding:5px 8px; margin-bottom:8px;
-      background:rgba(0,0,0,.4); border-radius:6px;
-      font-size:12px; font-weight:600;
+      display: flex; gap: 14px; flex-wrap: wrap;
+      padding: 5px 8px; margin-bottom: 8px;
+      background: rgba(0,0,0,.4); border-radius: 6px;
+      font-size: 12px; font-weight: 600;
     }
-    #seq { display:flex; flex-wrap:wrap; gap:2px; align-items:flex-start; }
-    .pw-wrap { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
-    .pw-lbl  { font-size:8px; font-weight:700; line-height:1; margin-top:2px; }
-    #no-signal { color:#555; padding:30px; text-align:center; width:100%; font-size:13px; }
+
+    /* 72 column-pair units, wrapped with a visible row gap */
+    #seq {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 4px;
+      row-gap: 12px;
+      align-items: flex-start;
+    }
+
+    .pw-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      gap: 1px;
+    }
+
+    .pw-tile {
+      display: block;
+      width: 30px;
+      height: 42px;
+      object-fit: cover;
+    }
+
+    .pw-lbl {
+      font-size: 8px;
+      font-weight: 700;
+      line-height: 1;
+      margin-top: 2px;
+    }
+
+    #no-signal { color: #555; padding: 30px; text-align: center; width: 100%; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -39,67 +55,107 @@
   <div id="seq"><div id="no-signal">Waiting for game… click Peek Wall in the main window.</div></div>
 
   <script>
+    function tileSrc(t) {
+      return `img/tiles/${t.suit}_${t.value}.png`;
+    }
+
     function makePeekTile(t) {
-      const div = document.createElement('div');
-      const classes = ['tile', 'small'];
-      if (t.suit === SUIT.BAMBOO) classes.push('suit-bamboo');
-      if (t.suit === SUIT.CIRCLE) classes.push('suit-circle');
-      if (t.suit === SUIT.CHAR)   classes.push('suit-char');
-      if (t.suit === SUIT.WIND)   classes.push('suit-wind');
-      if (t.suit === SUIT.DRAGON) { classes.push('suit-dragon'); classes.push('dragon-' + t.value); }
-      if (t.suit === SUIT.FLOWER) classes.push('flower');
-      if (t.suit === SUIT.SEASON) classes.push('season');
-      div.className = classes.join(' ');
-      const main = document.createElement('span'); main.className = 'tile-main'; main.textContent = tileMain(t);  div.appendChild(main);
-      const num  = document.createElement('span'); num.className  = 'tile-num';  num.textContent  = tileNum(t);   div.appendChild(num);
-      const en   = document.createElement('span'); en.className   = 'tile-en';   en.textContent   = tileEnglish(t); div.appendChild(en);
-      return div;
+      const img = document.createElement('img');
+      img.className = 'pw-tile';
+      img.src = tileSrc(t);
+      return img;
     }
 
     function render(data) {
-      const wall    = data.wall;
-      const head    = data.wallIdx;
-      const tailIdx = data.tailIdx;
-      const remain  = Math.max(0, tailIdx - head + 1);
+      const wall      = data.wall;
+      const wallIdx   = data.wallIdx;
+      const tailCol   = data.tailCol;
+      const tailPhase = data.tailPhase;
+      const remain    = Math.max(0, 2 * (tailCol + 1) - wallIdx - tailPhase);
+      const tailUsed  = (71 - tailCol) * 2 + tailPhase;
 
       document.getElementById('stats').innerHTML = `
         <span style="color:#7dffff">${remain} live</span>
-        <span style="color:#aaa">${head} drawn</span>
-        <span style="color:#aaa">${wall.length - 1 - tailIdx} replaced</span>
+        <span style="color:#aaa">${wallIdx} drawn</span>
+        <span style="color:#aaa">${tailUsed} replaced</span>
         <span style="color:#ffd34d">▼ next draw</span>
         <span style="color:#ff9800">▲ next replacement</span>
         <span style="color:#555">dim = used</span>
       `;
 
+      function isTailConsumed(i) {
+        const c = Math.floor(i / 2);
+        const isTop = (i % 2 === 0);
+        if (c > tailCol) return true;
+        if (c === tailCol && isTop && tailPhase === 1) return true;
+        return false;
+      }
+
+      const nextHeadIdx = wallIdx;
+      const nextTailIdx = tailCol * 2 + tailPhase;
+
       const seq = document.getElementById('seq');
       seq.innerHTML = '';
 
-      for (let i = 0; i < wall.length; i++) {
-        const isHead = i === head;
-        const isTail = i === tailIdx;
+      for (let c = 0; c < 72; c++) {
+        const topIdx = c * 2;
+        const botIdx = c * 2 + 1;
 
-        const wrap = document.createElement('div');
-        wrap.className = 'pw-wrap';
+        const colWrap = document.createElement('div');
+        colWrap.className = 'pw-col';
 
-        const te = makePeekTile(wall[i]);
+        // top tile (even index)
+        const topImg = makePeekTile(wall[topIdx]);
+        if (topIdx === nextHeadIdx) {
+          topImg.style.outline = '3px solid #ffd34d';
+          topImg.style.boxShadow = '0 0 7px 2px rgba(255,211,77,0.6)';
+        } else if (topIdx === nextTailIdx) {
+          topImg.style.outline = '3px solid #ff9800';
+          topImg.style.boxShadow = '0 0 7px 2px rgba(255,152,0,0.6)';
+        } else if (topIdx < wallIdx) {
+          topImg.style.opacity = '0.18';
+        } else if (isTailConsumed(topIdx)) {
+          topImg.style.opacity = '0.22';
+          topImg.style.outline = '1px solid rgba(255,152,0,0.35)';
+        }
+        colWrap.appendChild(topImg);
 
-        if      (i < head)    { te.style.opacity = '0.22'; }
-        else if (i > tailIdx) { te.style.opacity = '0.28'; te.style.outline = '1px solid rgba(255,152,0,0.3)'; }
+        // bottom tile (odd index)
+        const botImg = makePeekTile(wall[botIdx]);
+        if (botIdx === nextHeadIdx) {
+          botImg.style.outline = '3px solid #ffd34d';
+          botImg.style.boxShadow = '0 0 7px 2px rgba(255,211,77,0.6)';
+        } else if (botIdx === nextTailIdx) {
+          botImg.style.outline = '3px solid #ff9800';
+          botImg.style.boxShadow = '0 0 7px 2px rgba(255,152,0,0.6)';
+        } else if (botIdx < wallIdx) {
+          botImg.style.opacity = '0.18';
+        } else if (isTailConsumed(botIdx)) {
+          botImg.style.opacity = '0.22';
+          botImg.style.outline = '1px solid rgba(255,152,0,0.35)';
+        }
+        colWrap.appendChild(botImg);
 
-        if (isHead) { te.style.opacity = '1'; te.style.outline = '3px solid #ffd34d'; te.style.boxShadow = '0 0 7px 2px rgba(255,211,77,0.55)'; }
-        if (isTail) { te.style.opacity = '1'; te.style.outline = '3px solid #ff9800'; te.style.boxShadow = '0 0 7px 2px rgba(255,152,0,0.55)'; }
-
-        wrap.appendChild(te);
-
-        if (isHead || isTail) {
+        // ▼ / ▲ label below column at the head or tail pointer
+        const isHeadCol = c === Math.floor(nextHeadIdx / 2);
+        const isTailColHere = c === tailCol;
+        if (isHeadCol || isTailColHere) {
           const lbl = document.createElement('div');
           lbl.className = 'pw-lbl';
-          lbl.style.color = isHead ? '#ffd34d' : '#ff9800';
-          lbl.textContent = isHead ? '▼' : '▲';
-          wrap.appendChild(lbl);
+          if (isHeadCol && isTailColHere) {
+            lbl.style.color = '#fff';
+            lbl.textContent = '▼▲';
+          } else if (isHeadCol) {
+            lbl.style.color = '#ffd34d';
+            lbl.textContent = '▼';
+          } else {
+            lbl.style.color = '#ff9800';
+            lbl.textContent = '▲';
+          }
+          colWrap.appendChild(lbl);
         }
 
-        seq.appendChild(wrap);
+        seq.appendChild(colWrap);
       }
     }
 
