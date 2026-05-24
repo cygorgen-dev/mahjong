@@ -5,6 +5,20 @@
 let _game = null;
 let _selectedTileId = null;
 let _chowChoices = []; // tiles the player picks for chow
+let _peekWin = null;
+let _wallBC = null;
+
+function _broadcastWallState() {
+  if (!_game) return;
+  const data = {
+    wall:     _game.wall.map(t => ({ id: t.id, suit: t.suit, value: t.value })),
+    wallIdx:  _game.wallIdx  ?? 0,
+    tailIdx:  _game.tailIdx  ?? (_game.wall.length - 1),
+  };
+  try { localStorage.setItem('mahjong-wall-state', JSON.stringify(data)); } catch(e) {}
+  if (!_wallBC) _wallBC = new BroadcastChannel('mahjong-wall');
+  _wallBC.postMessage(data);
+}
 let _windIndicatorChinese = true;
 let _showSeatParens = false;
 let _alwaysHint = false;
@@ -117,12 +131,16 @@ function initUI(game) {
 
   document.getElementById('peek-wall-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    populateWallPeek();
-    document.getElementById('peek-modal').classList.remove('hidden');
+    _broadcastWallState();
+    if (!_peekWin || _peekWin.closed) {
+      _peekWin = window.open('peek.html', 'mahjong-peek', 'width=860,height=480,resizable=yes,scrollbars=yes');
+    } else {
+      _peekWin.focus();
+    }
   });
   document.getElementById('close-peek')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    document.getElementById('peek-modal').classList.add('hidden');
+    if (_peekWin && !_peekWin.closed) _peekWin.close();
   });
 
   // Draggable peek panel
@@ -374,9 +392,7 @@ function renderAll() {
   renderMessage();
   renderSidebar();
   renderWallRing();
-  if (!document.getElementById('peek-modal')?.classList.contains('hidden')) {
-    populateWallPeek();
-  }
+  _broadcastWallState();
 }
 
 function renderInfoBar() {

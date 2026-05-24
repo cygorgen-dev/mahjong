@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wall Peek 👁</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="js/tiles.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { background:#07301a; color:#ccc; padding:8px; margin:0; font-family:system-ui,sans-serif; }
+
+    /* Force small tile size — !important beats the linked stylesheet's var(--tw)/var(--th) */
+    .tile, .tile.small {
+      width:  30px !important;
+      height: 43px !important;
+      min-width: 0 !important;
+      overflow: hidden;
+    }
+    .tile .tile-main { font-size:13px !important; line-height:1 !important; margin-top:2px !important; }
+    .tile .tile-num  { font-size:8px  !important; line-height:1 !important; margin-top:1px !important; }
+    .tile .tile-en   { font-size:5px  !important; margin-bottom:1px !important; }
+    .tile.dragon-white .tile-main { width:13px !important; height:16px !important; margin-top:3px !important; }
+
+    #stats {
+      display:flex; gap:14px; flex-wrap:wrap;
+      padding:5px 8px; margin-bottom:8px;
+      background:rgba(0,0,0,.4); border-radius:6px;
+      font-size:12px; font-weight:600;
+    }
+    #seq { display:flex; flex-wrap:wrap; gap:2px; align-items:flex-start; }
+    .pw-wrap { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+    .pw-lbl  { font-size:8px; font-weight:700; line-height:1; margin-top:2px; }
+    #no-signal { color:#555; padding:30px; text-align:center; width:100%; font-size:13px; }
+  </style>
+</head>
+<body>
+  <div id="stats"></div>
+  <div id="seq"><div id="no-signal">Waiting for game… click Peek Wall in the main window.</div></div>
+
+  <script>
+    function makePeekTile(t) {
+      const div = document.createElement('div');
+      const classes = ['tile', 'small'];
+      if (t.suit === SUIT.BAMBOO) classes.push('suit-bamboo');
+      if (t.suit === SUIT.CIRCLE) classes.push('suit-circle');
+      if (t.suit === SUIT.CHAR)   classes.push('suit-char');
+      if (t.suit === SUIT.WIND)   classes.push('suit-wind');
+      if (t.suit === SUIT.DRAGON) { classes.push('suit-dragon'); classes.push('dragon-' + t.value); }
+      if (t.suit === SUIT.FLOWER) classes.push('flower');
+      if (t.suit === SUIT.SEASON) classes.push('season');
+      div.className = classes.join(' ');
+      const main = document.createElement('span'); main.className = 'tile-main'; main.textContent = tileMain(t);  div.appendChild(main);
+      const num  = document.createElement('span'); num.className  = 'tile-num';  num.textContent  = tileNum(t);   div.appendChild(num);
+      const en   = document.createElement('span'); en.className   = 'tile-en';   en.textContent   = tileEnglish(t); div.appendChild(en);
+      return div;
+    }
+
+    function render(data) {
+      const wall    = data.wall;
+      const head    = data.wallIdx;
+      const tailIdx = data.tailIdx;
+      const remain  = Math.max(0, tailIdx - head + 1);
+
+      document.getElementById('stats').innerHTML = `
+        <span style="color:#7dffff">${remain} live</span>
+        <span style="color:#aaa">${head} drawn</span>
+        <span style="color:#aaa">${wall.length - 1 - tailIdx} replaced</span>
+        <span style="color:#ffd34d">▼ next draw</span>
+        <span style="color:#ff9800">▲ next replacement</span>
+        <span style="color:#555">dim = used</span>
+      `;
+
+      const seq = document.getElementById('seq');
+      seq.innerHTML = '';
+
+      for (let i = 0; i < wall.length; i++) {
+        const isHead = i === head;
+        const isTail = i === tailIdx;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'pw-wrap';
+
+        const te = makePeekTile(wall[i]);
+
+        if      (i < head)    { te.style.opacity = '0.22'; }
+        else if (i > tailIdx) { te.style.opacity = '0.28'; te.style.outline = '1px solid rgba(255,152,0,0.3)'; }
+
+        if (isHead) { te.style.opacity = '1'; te.style.outline = '3px solid #ffd34d'; te.style.boxShadow = '0 0 7px 2px rgba(255,211,77,0.55)'; }
+        if (isTail) { te.style.opacity = '1'; te.style.outline = '3px solid #ff9800'; te.style.boxShadow = '0 0 7px 2px rgba(255,152,0,0.55)'; }
+
+        wrap.appendChild(te);
+
+        if (isHead || isTail) {
+          const lbl = document.createElement('div');
+          lbl.className = 'pw-lbl';
+          lbl.style.color = isHead ? '#ffd34d' : '#ff9800';
+          lbl.textContent = isHead ? '▼' : '▲';
+          wrap.appendChild(lbl);
+        }
+
+        seq.appendChild(wrap);
+      }
+    }
+
+    const bc = new BroadcastChannel('mahjong-wall');
+    bc.onmessage = e => render(e.data);
+
+    try {
+      const saved = localStorage.getItem('mahjong-wall-state');
+      if (saved) render(JSON.parse(saved));
+    } catch(e) {}
+  </script>
+</body>
+</html>
