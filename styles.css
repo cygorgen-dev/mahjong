@@ -414,7 +414,10 @@ main#table { position: relative; }
 /* tile-rot-wrap for rotated CPU tiles */
 .tile-rot-wrap { display:inline-block; flex-shrink:0; }
 
-.meld { display:flex; gap:2px; padding:2px; background:rgba(0,0,0,0.2); border-radius:4px; }
+.meld { display:flex; gap:3px; padding:2px; background:rgba(0,0,0,0.2); border-radius:4px; }
+
+/* Invisible ghost slots — hold fixed space in CPU seat columns */
+.tile-ghost-rot { width:66px; height:46px; flex-shrink:0; visibility:hidden; }
 
 /* WALL RING — SVG behind discard, drawing tile backs in the margins */
 #wall-ring-wrap { position:relative; width:720px; height:608px; flex-shrink:0; }

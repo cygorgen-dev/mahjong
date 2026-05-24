@@ -555,6 +555,18 @@ function renderSeats() {
       meldsEl.appendChild(bonusDiv);
     }
 
+    // Fill melds column to 12 tile slots with invisible ghost placeholders so the
+    // column never shrinks and the board never shifts when melds are claimed.
+    {
+      const filled = claimMelds.reduce((s, m) => s + m.tiles.length, 0) + claimBonus.length;
+      const ghostCls = isSidePlayer ? 'tile-ghost-rot' : 'tile-ghost';
+      for (let i = filled; i < 12; i++) {
+        const g = document.createElement('div');
+        g.className = ghostCls;
+        meldsEl.appendChild(g);
+      }
+    }
+
     // Hand
     const handEl = el.querySelector('.hand');
     handEl.innerHTML = '';
@@ -771,13 +783,16 @@ function renderSeats() {
         }
         handEl.appendChild(tileEl);
       }
-      // Top CPU (seat 2): pad to 13 slots
-      if (seat === 2) {
-        for (let i = cpuTiles.length; i < 13; i++) {
-          const ghost = document.createElement('div');
-          ghost.className = 'tile-ghost';
-          handEl.appendChild(ghost);
-        }
+      // Pad all CPU hand columns to 14 real tile slots with invisible ghost tiles
+      // so the column is always full and the board never shifts.
+      const overflowTileCount = isSidePlayer
+        ? overflowMelds.reduce((s, m) => s + m.tiles.length, 0) + overflowBonus.length
+        : 0;
+      const handGhostCls = isSidePlayer ? 'tile-ghost-rot' : 'tile-ghost';
+      for (let i = cpuTiles.length + overflowTileCount; i < 14; i++) {
+        const ghost = document.createElement('div');
+        ghost.className = handGhostCls;
+        handEl.appendChild(ghost);
       }
     }
   }
