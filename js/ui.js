@@ -279,7 +279,7 @@ function initUI(game) {
       _game.stepAuto(); return;
     }
     if (_game.phase === PHASE.END) {
-      _game.nextDeal(); renderAll(); return;
+      _tileElCache.clear(); _game.nextDeal(); renderAll(); return;
     }
     // Auto mode: hand this turn over to CPU-You
     if (window.AUTO_MODE && _game.currentSeat === 0) {
@@ -667,17 +667,15 @@ function renderSeats() {
             seatRotation: 0,
           };
           const el2 = makeTileEl(t, opts);
-          if (opts.clickable || _game.phase === PHASE.CLAIM) {
-            el2.addEventListener('click', () => {
-              if (_game.phase === PHASE.DISCARD) {
-                dismissHint(); _game.humanDiscard(t.id); _selectedTileId = null; renderAll();
-              } else if (_game.phase === PHASE.CLAIM) {
-                if (_game.claimOptions && _game.claimOptions.chow) { toggleChowTile(t.id); }
-                else { _game.humanPass(); }
-                renderAll();
-              }
-            });
-          }
+          el2.onclick = (opts.clickable || _game.phase === PHASE.CLAIM) ? () => {
+            if (_game.phase === PHASE.DISCARD) {
+              dismissHint(); _game.humanDiscard(t.id); _selectedTileId = null; renderAll();
+            } else if (_game.phase === PHASE.CLAIM) {
+              if (_game.claimOptions && _game.claimOptions.chow) { toggleChowTile(t.id); }
+              else { _game.humanPass(); }
+              renderAll();
+            }
+          } : null;
           handEl.appendChild(el2);
         } else {
           const ghost = document.createElement('div');
@@ -696,17 +694,15 @@ function renderSeats() {
           seatRotation: 0,
         };
         const el2 = makeTileEl(justDrawnTile, opts);
-        if (opts.clickable || _game.phase === PHASE.CLAIM) {
-          el2.addEventListener('click', () => {
-            if (_game.phase === PHASE.DISCARD) {
-              dismissHint(); _game.humanDiscard(justDrawnTile.id); _selectedTileId = null; renderAll();
-            } else if (_game.phase === PHASE.CLAIM) {
-              if (_game.claimOptions && _game.claimOptions.chow) { toggleChowTile(justDrawnTile.id); }
-              else { _game.humanPass(); }
-              renderAll();
-            }
-          });
-        }
+        el2.onclick = (opts.clickable || _game.phase === PHASE.CLAIM) ? () => {
+          if (_game.phase === PHASE.DISCARD) {
+            dismissHint(); _game.humanDiscard(justDrawnTile.id); _selectedTileId = null; renderAll();
+          } else if (_game.phase === PHASE.CLAIM) {
+            if (_game.claimOptions && _game.claimOptions.chow) { toggleChowTile(justDrawnTile.id); }
+            else { _game.humanPass(); }
+            renderAll();
+          }
+        } : null;
         handEl.appendChild(el2);
       } else {
         const ghost = document.createElement('div');
@@ -1120,6 +1116,25 @@ function tileImagePath(t) {
 
 const _imgCache = window._imgCache || (window._imgCache = {});
 
+// Tile element cache — keeps <img> elements alive between renders so the browser
+// never has to re-decode a PNG that was already on screen.  Keyed by `${tileId}:${rot}`.
+// Back tiles (concealed kongs) are excluded because 3 backs share one tile ID.
+const _tileElCache = new Map();
+
+function _resetTileEl(el) {
+  // el is the value stored in _tileElCache: wrapper div (rotated) or tile div (non-rotated)
+  const inner = el.classList.contains('tile') ? el : (el.querySelector('.tile') || el);
+  inner.classList.remove('selected', 'clickable', 'win-tile', 'just-drawn');
+  // Clear any inline styles set by Open Hands colour hints or robbing-kong highlight
+  inner.style.outline = '';
+  inner.style.opacity = '';
+  inner.style.boxShadow = '';
+  el.style.outline = '';
+  el.style.opacity = '';
+  el.style.boxShadow = '';
+  el.onclick = null;
+}
+
 function renderTileFace(t, div) {
   const path = tileImagePath(t);
   // If we already confirmed this PNG is missing, use SVG fallback immediately
@@ -1200,6 +1215,25 @@ function makeDieSVG(n) {
 
 // ---- Tile element factory ----------------------------------
 function makeTileEl(t, opts = {}) {
+  const rot = opts.seatRotation || 0;
+
+  // Return a cached element when possible so the <img> inside is never destroyed
+  // between renders — the browser keeps its decoded pixel data alive.
+  // Back tiles are excluded: a concealed kong has three backs sharing one tile ID.
+  if (!opts.back) {
+    const key = `${t.id}:${rot}`;
+    if (_tileElCache.has(key)) {
+      const cached = _tileElCache.get(key);
+      _resetTileEl(cached);
+      const inner = rot ? cached.querySelector('.tile') : cached;
+      if (opts.clickable)  inner.classList.add('clickable');
+      if (opts.justDrawn)  inner.classList.add('just-drawn');
+      if (opts.selected)   inner.classList.add('selected');
+      if (opts.winTile)    inner.classList.add('win-tile');
+      return cached;
+    }
+  }
+
   const div = document.createElement('div');
   const classes = ['tile'];
   if (opts.small)     classes.push('small');
@@ -1220,7 +1254,6 @@ function makeTileEl(t, opts = {}) {
   if (!opts.back) renderTileFace(t, div);
 
   // Rotate tiles for side players — applies to both hidden hand tiles AND face-up meld tiles
-  const rot = opts.seatRotation || 0;
   if (rot) {
     const TW = 46, TH = 66;
     const wrapper = document.createElement('div');
@@ -1245,9 +1278,11 @@ function makeTileEl(t, opts = {}) {
       div.style.flexShrink = '0';
     }
     wrapper.appendChild(div);
+    if (!opts.back) _tileElCache.set(`${t.id}:${rot}`, wrapper);
     return wrapper;
   }
 
+  if (!opts.back) _tileElCache.set(`${t.id}:0`, div);
   return div;
 }
 
