@@ -1107,28 +1107,31 @@ const _imgCache = window._imgCache || (window._imgCache = {});
 
 function renderTileFace(t, div) {
   const path = tileImagePath(t);
-  if (_imgCache[path] === true) { _applyImage(t, div, path); return; }
+  // If we already confirmed this PNG is missing, use SVG fallback immediately
   if (_imgCache[path] === false) { _applyFallback(t, div); return; }
-  const probe = new Image();
-  probe.onload = () => { _imgCache[path] = true; div.innerHTML = ''; _applyImage(t, div, path); };
-  probe.onerror = () => { _imgCache[path] = false; };
-  _applyFallback(t, div);
-  probe.src = path;
-}
-
-function _applyImage(t, div, path) {
+  // Otherwise render the <img> directly — no SVG-first, no DOM swap, no white flash.
+  // The browser shares the in-flight preload request so the image fills in without
+  // replacing any existing content.
   div.classList.add('tile-img');
   div.classList.remove('graphical');
   const img = document.createElement('img');
   img.src = path;
   img.alt = tileEnglish(t);
   img.draggable = false;
+  img.onload  = () => { _imgCache[path] = true; };
+  img.onerror = () => {
+    _imgCache[path] = false;
+    div.classList.remove('tile-img');
+    div.innerHTML = '';
+    _applyFallback(t, div);
+  };
   div.appendChild(img);
   const en = document.createElement('span');
   en.className = 'tile-en';
   en.textContent = tileEnglish(t);
   div.appendChild(en);
 }
+
 
 function _applyFallback(t, div) {
   const isGraphical = t.suit === SUIT.BAMBOO || t.suit === SUIT.CIRCLE;
