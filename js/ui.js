@@ -1103,7 +1103,7 @@ function tileImagePath(t) {
   return `img/tiles/${t.suit}_${t.value}.png`;
 }
 
-const _imgCache = {};
+const _imgCache = window._imgCache || (window._imgCache = {});
 
 function renderTileFace(t, div) {
   const path = tileImagePath(t);
