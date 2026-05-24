@@ -555,9 +555,10 @@ function renderSeats() {
       meldsEl.appendChild(bonusDiv);
     }
 
-    // Fill melds column to 12 tile slots with invisible ghost placeholders so the
-    // column never shrinks and the board never shifts when melds are claimed.
-    {
+    // Fill melds column to 12 tile slots with invisible ghost placeholders (CPU only).
+    // Human melds row is intentionally left at natural size — it lives between the
+    // board and the hand row and must be empty/invisible when no melds are present.
+    if (!isHuman) {
       const filled = claimMelds.reduce((s, m) => s + m.tiles.length, 0) + claimBonus.length;
       const ghostCls = isSidePlayer ? 'tile-ghost-rot' : 'tile-ghost';
       for (let i = filled; i < 12; i++) {
@@ -1124,7 +1125,7 @@ const _tileElCache = new Map();
 function _resetTileEl(el) {
   // el is the value stored in _tileElCache: wrapper div (rotated) or tile div (non-rotated)
   const inner = el.classList.contains('tile') ? el : (el.querySelector('.tile') || el);
-  inner.classList.remove('selected', 'clickable', 'win-tile', 'just-drawn');
+  inner.classList.remove('selected', 'clickable', 'win-tile', 'just-drawn', 'last-discard');
   // Clear any inline styles set by Open Hands colour hints or robbing-kong highlight
   inner.style.outline = '';
   inner.style.opacity = '';
