@@ -1,0 +1,940 @@
+/* Cantonese Mahjong - styles */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #0b3d1f;
+  color: #f5f5f5;
+  min-height: 100vh;
+}
+#app {
+  display: grid;
+  grid-template-columns: 1fr 0px;
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "header sidebar" "table sidebar";
+  min-height: 100vh;
+  transform-origin: top left;
+  transition: grid-template-columns 0.2s ease;
+}
+#app.sidebar-open { grid-template-columns: 1fr 185px; }
+header {
+  grid-area: header;
+  background: #07301a;
+  padding: 6px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #1a6b3a;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+header h1 { margin:0; font-size:18px; white-space:nowrap; }
+header .zh { color:#ffd34d; margin-left:6px; font-size:15px; }
+#info-bar { display:flex; gap:8px; align-items:center; font-size:12px; flex-wrap:wrap; }
+#info-bar button {
+  background:#ffd34d; color:#07301a; border:0;
+  padding:4px 10px; border-radius:4px; font-weight:600; cursor:pointer; font-size:12px;
+}
+#info-bar button:hover { background:#ffc620; }
+
+/* ONE tile size used everywhere */
+:root {
+  --tw: 46px;
+  --th: 66px;
+}
+
+main#table {
+  grid-area: table;
+  background: radial-gradient(ellipse at center, #14572b 0%, #0b3d1f 80%);
+  display: grid;
+  grid-template-columns: 200px minmax(0,1fr) 200px;
+  grid-template-rows: auto auto auto;
+  grid-template-areas: ". top ." "left center right" ". bottom .";
+  gap: 2px;
+  padding: 4px;
+  overflow: visible;
+}
+.seat { display:flex; flex-direction:column; align-items:center; gap:4px; position:relative; }
+
+/* ── Top seat ──────────────────────────────────────────────────────────────
+   Hand row has fixed width so indicators stay pinned at left end always.
+   Melds row also fixed width, left-anchored. Seat centers both in the grid column. */
+.seat-top {
+  grid-area: top;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.seat-top .h-indicators { display: none !important; }
+.seat-top .h-tile-area  { display: contents; }
+.seat-top .hand {
+  order: 1;
+  display: flex; flex-wrap: nowrap; gap: 3px;
+  justify-content: flex-start;   /* indicators always at left, tiles follow */
+  width: 880px; min-width: 880px; /* fixed — never recenters as tile count changes */
+  min-height: calc(var(--th) + 4px);
+  flex-shrink: 0;
+}
+.seat-top .melds {
+  order: 2;
+  display: flex; flex-wrap: nowrap; gap: 3px;
+  justify-content: flex-start; align-items: center;
+  width: 880px; min-width: 880px;
+  min-height: 0;
+  flex-shrink: 0;
+}
+.seat-top .claim-row { display: none !important; }
+
+/* ── Bottom seat ───────────────────────────────────────────────────────────
+   Same: fixed-width hand row keeps indicators pinned at left end always. */
+.seat-bottom {
+  grid-area: bottom;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.seat-bottom .h-indicators { display: none !important; }
+.seat-bottom .h-tile-area  { display: contents; }
+.seat-bottom .melds {
+  order: 1;
+  display: flex; flex-wrap: nowrap; gap: 3px;
+  justify-content: flex-start; align-items: center;
+  width: 880px; min-width: 880px;
+  min-height: 0;
+  flex-shrink: 0;
+}
+.seat-bottom .hand {
+  order: 2;
+  display: flex; flex-wrap: nowrap; gap: 3px;
+  justify-content: flex-start;   /* indicators always at left, tiles follow */
+  width: 880px; min-width: 880px; /* fixed — never recenters */
+  flex-shrink: 0;
+}
+.seat-bottom .claim-row { display: none !important; }
+
+/* Left/right seats: fixed 2-column layout.
+   Column A = hand (face-down, rotated tiles)
+   Column B = claim-row + melds (rotated 90deg into a column)
+   Width is fixed regardless of meld count — melds stack vertically in column B. */
+.seat-left {
+  grid-area: left;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
+  box-sizing: border-box;
+}
+.seat-right {
+  grid-area: right;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 10px;
+  padding-top: 4px;
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
+  box-sizing: border-box;
+}
+
+/* Hand column: single column of face-down rotated tiles for side players.
+   Each rotated wrapper = 66px wide x 46px tall. Column flex, tiles stack top-to-bottom. */
+.seat-left  .hand {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 3px;
+  order: 1;
+  flex-shrink: 0;
+  width: 66px;
+  align-items: center;
+}
+.seat-right .hand {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 3px;
+  order: 2;
+  flex-shrink: 0;
+  width: 66px;
+  align-items: center;
+}
+
+/* Melds column: stacks vertically for side players.
+   Each meld renders tiles vertically (each rotated tile = 66w x 46h). */
+.seat-left  .melds { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 3px; order: 2;
+  align-items: flex-end; flex-shrink: 0; width: 70px; }
+.seat-right .melds { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 3px; order: 1;
+  align-items: flex-start; flex-shrink: 0; width: 70px; }
+
+/* Each meld for side players: stack tiles vertically */
+.seat-left  .meld,
+.seat-right .meld {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 70px;
+  align-items: center;
+}
+
+
+
+/* claim-row for side players: vertical column — label flows vertically using
+   writing-mode so its layout box matches its visual size, no overlap. */
+.seat-left  .claim-row {
+  display: flex;
+  order: 3;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 4px 0;
+  width: var(--tw);
+  overflow: visible;
+}
+.seat-right .claim-row {
+  display: flex;
+  order: 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 4px 0;
+  width: var(--tw);
+  overflow: visible;
+}
+
+/* Seat label for side players: the label sits inside .seat-label-wrap which has
+   explicit height so the flex column has correct dimensions and nothing overlaps.
+   Left: text reads upward (bottom→top) facing right toward center.
+   Right: text reads downward (top→bottom) facing left toward center. */
+.seat-left  .claim-row .seat-label,
+.seat-right .claim-row .seat-label {
+  position: absolute;
+  top: 50%; left: 50%;
+  white-space: nowrap;
+}
+.seat-left  .claim-row .seat-label { transform: translate(-50%, -50%) rotate(90deg); }
+.seat-right .claim-row .seat-label { transform: translate(-50%, -50%) rotate(-90deg); }
+
+/* Wrapper: tall slot in the flex column — label rotates inside without affecting layout */
+.seat-label-wrap {
+  flex-shrink: 0;
+  width: var(--tw);
+  height: 130px;
+  position: relative;
+  overflow: visible;
+}
+/* Top seat: player faces DOWN → rotate(180deg) */
+.seat-top   .claim-row .seat-label { transform: rotate(180deg); white-space: nowrap; }
+
+/* Wind indicator circles: match same rotations */
+.seat-left  .seat-wind-indicator .seat-wind-tile { transform: rotate(90deg);  }
+.seat-right .seat-wind-indicator .seat-wind-tile { transform: rotate(-90deg); }
+.seat-top   .seat-wind-indicator .seat-wind-tile { transform: rotate(180deg); }
+
+.seat-label {
+  font-size:19px; background:rgba(0,0,0,0.5);
+  padding:4px 14px; border-radius:5px; font-weight:700; white-space:nowrap;
+}
+.seat-label.active { background:#ffd34d; color:#07301a; }
+
+/* claim-row base: label + wind + dice in one horizontal flex row */
+.claim-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.claim-row .wind-indicator-inline { margin-top: 0; }
+.claim-row .dice-display { margin-top: 0; }
+
+.bonus-tiles {
+  display:flex; flex-wrap:wrap; gap:2px; margin-top:3px;
+  padding:2px 5px; background:rgba(255,211,77,0.12);
+  border-radius:4px; border:1px solid rgba(255,211,77,0.3);
+}
+/* Bonus tiles for side players: rotated, stacked vertically in meld column */
+.seat-left  .bonus-tiles,
+.seat-right .bonus-tiles {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 0;
+  padding: 2px;
+  width: 70px;
+  gap: 2px;
+}
+.hand, .melds { display:flex; flex-wrap:wrap; gap:3px; justify-content:center; }
+
+#center {
+  grid-area:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  gap:6px; padding:4px;
+  overflow:visible;
+}
+
+/* DISCARD AREA — inset inside wall margin so wall tiles are always visible */
+#discard-pile {
+  position:absolute;
+  top:26px; left:26px;
+  width:668px; height:556px;
+  background:rgba(0,0,0,0.18);
+  border-radius:8px;
+  overflow:hidden;
+  z-index:2;
+}
+#discard-pile .tile {
+  position:absolute;
+  width:var(--tw) !important;
+  height:var(--th) !important;
+  margin:0 !important;
+  transform:none !important;
+}
+#discard-pile .tile.last-discard {
+  outline:3px solid #ff2020;
+  box-shadow:0 0 12px 5px rgba(255,40,40,0.9);
+  z-index:20;
+}
+
+/* 4.3+4.4: claim-row holds [seat-label] [wind?] [dice?] in one horizontal row */
+.claim-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.claim-row .wind-indicator-inline { margin-top: 0; }
+.claim-row .dice-display { margin-top: 0; }
+
+/* seat-info-group kept for cleanup only */
+.seat-info-group { display: none; }
+
+/* 4.1: Message — lives in the header bar between title and buttons */
+#message {
+  flex: 1;                  /* takes available center space */
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffd34d;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  line-height: 1.3;
+  padding: 0 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+main#table { position: relative; }
+#action-bar button {
+  padding:7px 13px; border:0; border-radius:6px;
+  background:#2a8b4e; color:white; font-weight:600; cursor:pointer; font-size:13px;
+}
+#action-bar button:disabled { background:#555; opacity:0.5; cursor:not-allowed; }
+#action-bar button:not(:disabled):hover { background:#38ad62; }
+/* #message duplicate removed */
+
+/* TILES — uniform size */
+.tile {
+  width:var(--tw);
+  height:var(--th);
+  background:linear-gradient(180deg,#fffdf3 0%,#f0e9d2 100%);
+  color:#111;
+  border:1.5px solid #2a1a0a;
+  border-radius:5px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-family:"Microsoft JhengHei","PingFang TC","Noto Sans CJK TC",serif;
+  box-shadow:2px 2px 0 #2a1a0a,inset 0 -3px 0 rgba(0,0,0,0.1);
+  user-select:none; position:relative; flex-shrink:0;
+}
+.tile .tile-main { font-size:23px; line-height:1; font-weight:700; margin-top:4px; }
+.tile .tile-num  { font-size:13px; line-height:1; margin-top:2px; font-weight:700; }
+.tile .tile-en   { font-size:8px; line-height:1; margin-top:auto; margin-bottom:3px; color:#555; }
+.tile.suit-bamboo .tile-main { color:#1a7a1a; }
+.tile.suit-circle .tile-main { color:#b22222; }
+.tile.suit-char   .tile-main { color:#111; }
+.tile.suit-wind   .tile-main { color:#0033aa; }
+.tile.dragon-red   .tile-main { color:#c80000; }
+.tile.dragon-green .tile-main { color:#1a7a1a; }
+.tile.dragon-white .tile-main { font-size:0; width:24px; height:28px; border:2.5px solid #0033aa; border-radius:3px; margin-top:6px; }
+.tile.flower .tile-main { color:#c8007a; }
+.tile.flower .tile-num  { color:#c8007a; }
+.tile.season .tile-main { color:#d68a00; }
+.tile.season .tile-num  { color:#d68a00; }
+
+.tile.graphical { padding:2px 2px 0 2px; justify-content:flex-start; align-items:stretch; }
+.tile-graphic { flex:1; width:100%; min-height:0; overflow:hidden; }
+.tile.graphical .tile-en { font-size:6px; text-align:center; color:#555; margin-bottom:2px; width:100%; }
+
+.tile.clickable { cursor:pointer; transition:transform 0.1s; }
+.tile.clickable:hover { transform:translateY(-6px); box-shadow:2px 6px 8px rgba(0,0,0,0.4); }
+.tile.just-drawn {
+  background:linear-gradient(180deg,#fff176 0%,#ffe033 100%);
+  outline:3px solid #ff9800;
+  box-shadow:0 0 10px 3px rgba(255,152,0,0.7),2px 2px 0 #2a1a0a;
+  margin-left: 8px; /* small gap to separate from sorted tiles */
+}
+.tile.selected { outline:3px solid #ffd34d; }
+.tile.back { background:linear-gradient(135deg,#1a6b3a 0%,#0b3d1f 100%); border-color:#042510; }
+.tile.back .tile-main,.tile.back .tile-num,.tile.back .tile-en { display:none; }
+.tile.back::after { content:""; position:absolute; inset:5px; border:1.5px solid #2a8b4e; border-radius:3px; }
+/* small class is now same size as normal — kept for compatibility */
+.tile.small { width:var(--tw); height:var(--th); }
+.tile.win-tile {
+  position:relative; z-index:20;
+  outline:3px solid #ffd34d;
+  box-shadow:0 0 18px 6px rgba(255,211,77,0.9);
+  background:linear-gradient(180deg,#fffde7 0%,#fff176 100%) !important;
+}
+.tile.last-discard { outline:3px solid #ff2020; box-shadow:0 0 12px 5px rgba(255,40,40,0.85); }
+
+.tile.tile-img { padding:2px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+.tile.tile-img img { width:100%; flex:1; object-fit:contain; display:block; min-height:0; }
+
+/* tile-rot-wrap for rotated CPU tiles */
+.tile-rot-wrap { display:inline-block; flex-shrink:0; }
+
+.meld { display:flex; gap:2px; padding:2px; background:rgba(0,0,0,0.2); border-radius:4px; }
+
+/* WALL RING — SVG behind discard, drawing tile backs in the margins */
+#wall-ring-wrap { position:relative; width:720px; height:608px; flex-shrink:0; }
+#wall-ring-svg {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  pointer-events:none; z-index:1; overflow:visible;
+}
+
+/* Sidebar — collapsible settings panel */
+#sidebar {
+  grid-area: sidebar;
+  display: flex; flex-direction: column;
+  background: #07301a; border-left: 2px solid #1a6b3a;
+  overflow: hidden; min-width: 0;
+}
+#app:not(.sidebar-open) #sidebar { pointer-events: none; visibility: hidden; }
+.sidebar-section { border-bottom: 1px solid #1a6b3a; padding: 8px 10px; min-width: 165px; }
+.sidebar-heading { color: #ffd34d; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; white-space: nowrap; }
+.sidebar-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 5px; }
+.sb-label { font-size: 11px; color: #ccc; white-space: nowrap; }
+.sb-select { background: #1a6b3a; color: #fff; border: 1px solid #ffd34d; border-radius: 4px; padding: 2px 3px; font-size: 11px; font-weight: 600; cursor: pointer; flex:1; max-width: 100px; }
+.sb-input { background: #1a6b3a; color: #fff; border: 1px solid #ffd34d; border-radius: 4px; padding: 2px 3px; font-size: 11px; font-weight: 600; width: 60px; }
+.sidebar-check { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; font-size: 11px; color: #ddd; }
+.sidebar-check label { cursor: pointer; }
+.sidebar-btngroup { display: flex; flex-direction: column; gap: 4px; }
+.sb-btn { background: #2a8b4e; color: #fff; border: 0; border-radius: 4px; padding: 5px 8px; font-size: 11px; font-weight: 600; cursor: pointer; text-align: left; width: 100%; white-space: nowrap; }
+.sb-btn:hover { filter: brightness(1.15); }
+
+/* Auto mode big buttons */
+.auto-mode-btn {
+  flex: 1; border: 2px solid transparent; border-radius: 6px;
+  padding: 8px 4px; font-size: 11px; font-weight: 800;
+  cursor: pointer; text-align: center; line-height: 1.3;
+  opacity: 0.45; transition: opacity .15s, filter .15s;
+  white-space: nowrap;
+}
+.auto-mode-btn:hover { opacity: 0.75; filter: brightness(1.15); }
+.auto-mode-btn.active-mode { opacity: 1; border-color: #fff; }
+.auto-btn-human { background: #1a6b3a; color: #7dff9a; }
+.auto-btn-human.active-mode { background: #0e4d28; border-color: #7dff9a; }
+.auto-btn-slow  { background: #0033aa; color: #8ad4ff; }
+.auto-btn-slow.active-mode  { background: #002280; border-color: #8ad4ff; }
+.auto-btn-fast  { background: #8b3a00; color: #ffd34d; }
+.auto-btn-fast.active-mode  { background: #6a2a00; border-color: #ffd34d; }
+
+/* Modal */
+.modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:100; }
+.modal.hidden { display:none; }
+.modal-content { background:#07301a; border:2px solid #ffd34d; border-radius:8px; padding:16px; max-width:560px; max-height:80vh; overflow-y:auto; }
+/* Peek modal: floating draggable panel — does not block the game board */
+#peek-modal { background:transparent; pointer-events:none; padding:0; }
+#peek-modal .modal-content { pointer-events:auto; position:fixed; bottom:10px; left:10px; max-height:55vh; }
+#peek-modal .peek-drag-handle { cursor:move; -webkit-user-select:none; user-select:none; }
+#peek-modal .modal-close { background:#333; color:#aaa; border:1px solid #555; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:14px; line-height:1; }
+.modal-content h2 { color:#ffd34d; margin-top:0; }
+.modal-content button { background:#ffd34d; color:#07301a; border:0; padding:6px 14px; border-radius:4px; font-weight:600; cursor:pointer; }
+.modal-wide { max-width:800px !important; }
+.gallery-section { margin-bottom:12px; }
+.gallery-section h3 { color:#ffd34d; margin:0 0 4px 0; font-size:13px; border-bottom:1px solid rgba(255,211,77,0.3); padding-bottom:3px; }
+.gallery-row { display:flex; flex-wrap:wrap; gap:5px; align-items:flex-end; }
+
+/* Winner */
+.seat-label.winner { background:#ffd34d; color:#07301a; animation:winner-pulse 0.8s ease-in-out infinite alternate; }
+@keyframes winner-pulse { from{box-shadow:0 0 6px 2px rgba(255,211,77,0.6);} to{box-shadow:0 0 18px 8px rgba(255,211,77,0.95);} }
+/* Side/top winners reuse the same keyframe — rotation is held by the static CSS transform */
+.seat-left  .seat-label.winner { animation:winner-pulse 0.8s ease-in-out infinite alternate; }
+.seat-right .seat-label.winner { animation:winner-pulse 0.8s ease-in-out infinite alternate; }
+.seat-top   .seat-label.winner { animation:winner-pulse 0.8s ease-in-out infinite alternate; }
+.seat.celebrating { animation:seat-glow 1s ease-in-out infinite alternate; }
+@keyframes seat-glow { from{filter:drop-shadow(0 0 4px rgba(255,211,77,0.4));} to{filter:drop-shadow(0 0 18px rgba(255,211,77,0.95));} }
+
+/* Chow picker floats in the empty bottom-left corner, away from the hand */
+#chow-picker {
+  position: fixed;
+  bottom: 120px;       /* above the hand row */
+  left: 216px;         /* clear the 200px left CPU column + 16px gap */
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  background: rgba(7, 48, 26, 0.95);
+  border: 2px solid #ffd34d;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  min-width: 160px;
+}
+#chow-picker.hidden { display:none; }
+#chow-picker .chow-label {
+  font-size: 11px; font-weight: 700;
+  color: #ffd34d; margin-bottom: 2px;
+}
+#chow-picker .chow-option {
+  display: flex; gap: 2px; align-items: center;
+  background: rgba(255,211,77,0.12);
+  border: 2px solid #ffd34d;
+  border-radius: 6px; padding: 4px 8px; cursor: pointer;
+  width: 100%;
+}
+#chow-picker .chow-option:hover { background: rgba(255,211,77,0.35); }
+
+/* TRANSLATION TOGGLE — hides both SVG text labels and image labels */
+body.hide-tile-labels .tile-en { display:none !important; }
+
+/* SEAT WIND TILE — permanent per-player wind indicator in claim-row */
+/* Wind indicator is sized to approximately one tile (46×66px) */
+.seat-wind-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tw);
+  height: var(--th);
+  flex-shrink: 0;
+}
+/* Side players: wind indicator container matches tile dimensions exactly */
+.seat-left  .seat-wind-indicator,
+.seat-right .seat-wind-indicator {
+  width: var(--tw);
+  height: var(--th);
+}
+.seat-wind-tile {
+  display: none; /* hidden for non-dealers — label already shows their wind */
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+.seat-wind-tile.dealer-wind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Tile-like appearance: gold circle the size of a tile */
+  background: radial-gradient(circle at 40% 35%, #e8c84a, #b8860b);
+  border: 2.5px solid #8b6914;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  width: var(--tw); height: var(--th);
+  border-radius: 8px;
+}
+.seat-wind-tile .wind-tile-inner {
+  width: 32px; height: 36px;
+  background: #fff;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Microsoft JhengHei","PingFang TC",serif;
+  font-size: 22px; font-weight: 700; color: #111;
+}
+.seat-wind-tile.dealer-wind .wind-tile-inner {
+  width: 34px; height: 38px;
+  font-size: 24px;
+}
+.seat-wind-tile .wind-tile-inner.en {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+}
+/* Non-dealer: wind character sits directly on the muted circle */
+.seat-wind-tile .wind-char {
+  font-family: "Microsoft JhengHei","PingFang TC",serif;
+  font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.9);
+  line-height: 1;
+}
+.seat-wind-tile .wind-char.en {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 16px; font-weight: 700;
+}
+/* dice-slot: always reserves space so claim-row never shifts */
+.dice-slot {
+  min-width: 80px;
+  height: 28px;        /* fixed height even when empty */
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+/* side players: dice wrap in a small grid to fit within var(--tw) = 46px */
+.seat-left  .dice-slot,
+.seat-right .dice-slot {
+  min-width: 0;
+  width: var(--tw);
+  min-height: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 0 10px 0;
+}
+
+/* WIND INDICATOR */
+.wind-indicator-inline {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#e8c84a,#b8860b);
+  box-shadow:0 2px 6px rgba(0,0,0,0.5); border:2px solid #8b6914;
+  cursor:pointer; user-select:none; margin-top:3px;
+}
+.wind-indicator-inline .wind-tile-inner {
+  width:22px; height:22px; background:#fff; border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:"Microsoft JhengHei","PingFang TC",serif;
+  font-size:14px; font-weight:700; color:#111;
+}
+.wind-indicator-inline .wind-tile-inner.en { font-family:"Segoe UI",system-ui,sans-serif; font-size:11px; }
+
+/* Win button — gold and prominent, always leftmost */
+#btn-win:not(:disabled) {
+  background: #ffd34d !important;
+  color: #07301a !important;
+  font-weight: 800;
+  box-shadow: 0 0 8px rgba(255,211,77,0.6);
+}
+
+/* DICE — SVG rendered */
+.dice-display {
+  display: flex; align-items: center; gap: 3px; margin-top: 2px;
+}
+.die-svg {
+  width: 22px; height: 22px; flex-shrink: 0;
+  filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5));
+  border-radius: 4px;
+}
+
+
+/* ===== TODAY'S CHANGES ===== */
+
+/* Hide claim-rows only for top/bottom - side players use theirs */
+.seat-top    .claim-row,
+.seat-bottom .claim-row { display: none !important; }
+
+/* Top/bottom seat labels and wind - positioned at outer edges */
+.seat-top    { position: relative; }
+.seat-bottom { position: relative; }
+
+/* Side player badge - overlaid on hand column, no flex interference */
+.side-player-badge {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  top: 0;
+  pointer-events: none;
+}
+.side-player-badge > * { pointer-events: auto; }
+
+/* Label uses vertical text */
+.side-player-badge .badge-label {
+  writing-mode: vertical-rl;
+  font-size: 18px;
+  font-weight: 700;
+  background: rgba(0,0,0,0.55);
+  color: #f5f5f5;
+  padding: 5px 3px;
+  border-radius: 4px;
+  white-space: nowrap;
+  user-select: none;
+}
+.seat-left  .side-player-badge .badge-label { transform: rotate(180deg); }
+.seat-right .side-player-badge .badge-label { transform: none; }
+.side-player-badge .badge-label.active { background: #ffd34d; color: #07301a; }
+.side-player-badge .badge-label.winner { background: #ffd34d; color: #07301a; animation: winner-pulse 0.8s ease-in-out infinite alternate; }
+
+/* Wind circle */
+.side-player-badge .badge-wind {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.side-player-badge .badge-wind.dealer {
+  background: radial-gradient(circle at 40% 35%, #e8c84a, #b8860b);
+  border: 2.5px solid #8b6914; box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+.side-player-badge .badge-wind .wind-inner {
+  width: 24px; height: 24px; background: #fff; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Microsoft JhengHei","PingFang TC",serif;
+  font-size: 14px; font-weight: 700; color: #111;
+}
+.side-player-badge .badge-wind .wind-char {
+  font-family: "Microsoft JhengHei","PingFang TC",serif;
+  font-size: 18px; font-weight: 700; color: rgba(255,255,255,0.95);
+}
+
+/* Top/bottom edge anchors */
+.seat-top-badge, .seat-bottom-badge {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 20;
+  pointer-events: none; /* let clicks pass through to tiles below */
+}
+.seat-top-badge > *, .seat-bottom-badge > * {
+  pointer-events: auto; /* restore clicks for label and wind circle */
+}
+.seat-top-badge    { top: 2px; }
+.seat-bottom-badge { bottom: 2px; }
+.seat-top-badge    .badge-label-h,
+.seat-bottom-badge .badge-label-h {
+  font-size: 18px; font-weight: 700;
+  background: rgba(0,0,0,0.55); color: #f5f5f5;
+  padding: 5px 12px; border-radius: 4px; white-space: nowrap;
+}
+.seat-top-badge .badge-label-h { transform: rotate(180deg); }
+.seat-top-badge    .badge-label-h.active,
+.seat-bottom-badge .badge-label-h.active { background: #ffd34d; color: #07301a; }
+.seat-top-badge    .badge-label-h.winner,
+.seat-bottom-badge .badge-label-h.winner { background: #ffd34d; color: #07301a; animation: winner-pulse 0.8s ease-in-out infinite alternate; }
+.seat-top-badge    { left: 4px; }
+.seat-bottom-badge { left: 4px; }
+.seat-top-badge    .badge-wind-right,
+.seat-bottom-badge .badge-wind-right { position: absolute; right: 4px; display: flex; align-items: center; gap: 4px; }
+.seat-top-badge    { width: calc(100% - 8px); }
+.seat-bottom-badge { width: calc(100% - 8px); }
+
+/* Suppress empty wind containers */
+.seat-wind-indicator:empty,
+.seat-wind-tile:empty { display: none !important; }
+
+/* Fix top/bottom badge wind positioning */
+.seat-top-badge .badge-wind-right,
+.seat-bottom-badge .badge-wind-right {
+  position: static;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.seat-top-badge,
+.seat-bottom-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+
+
+/* Wind circle in claim-row and badges */
+.badge-wind {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  background: radial-gradient(circle at 40% 35%, rgba(180,180,180,0.3), rgba(80,80,80,0.4));
+  border: 2px solid rgba(255,255,255,0.25);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.badge-wind.dealer {
+  background: radial-gradient(circle at 40% 35%, #e8c84a, #b8860b);
+  border: 2.5px solid #8b6914;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+.badge-wind .wind-inner {
+  width: 34px; height: 34px; background: #fff; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Microsoft JhengHei","PingFang TC",serif;
+  font-size: 18px; font-weight: 700; color: #111;
+}
+.badge-wind .wind-char {
+  font-family: "Microsoft JhengHei","PingFang TC",serif;
+  font-size: 24px; font-weight: 700; color: rgba(255,255,255,0.95);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+/* Side player label injected as first tile in hand column */
+.seat-label-tile.active { background: #ffd34d !important; color: #07301a !important; }
+.seat-label-tile.winner { background: #ffd34d !important; color: #07301a !important;
+  animation: winner-pulse 0.8s ease-in-out infinite alternate; }
+
+/* ===== Side player hand-column label ===== */
+
+/* Hide original claim-row for side seats — replaced by hand-column label */
+.seat-left  .claim-row,
+.seat-right .claim-row { display: none !important; }
+
+/* Label block: same width as a rotated tile (66px wide x 46px tall landscape) */
+.side-hand-label {
+  width: 66px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  border-radius: 5px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+.side-hand-label.active { background: #ffd34d; }
+.side-hand-label.active .side-hand-label-text { color: #07301a; }
+.side-hand-label.winner { background: #ffd34d;
+  animation: winner-pulse 0.8s ease-in-out infinite alternate; }
+.side-hand-label.winner .side-hand-label-text { color: #07301a; }
+
+/* Text: horizontal, then rotated to read vertically */
+.side-hand-label-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f5f5f5;
+  white-space: nowrap;
+  position: absolute;
+}
+/* Left seat: top-to-bottom when viewed from left edge */
+.side-hand-label.left  .side-hand-label-text { transform: rotate(90deg); }
+/* Right seat: bottom-to-top when viewed from right edge */
+.side-hand-label.right .side-hand-label-text { transform: rotate(-90deg); }
+
+/* Wind and dice inside label */
+.side-hand-label .badge-wind { width: 32px; height: 32px; }
+.side-hand-label .dice-display { transform: scale(0.65); transform-origin: center; }
+
+/* Start hand column from top, not centered vertically */
+.seat-left  .hand,
+.seat-right .hand { align-self: flex-start; }
+
+/* With claim-row hidden, re-pack tiles to outer edges */
+.seat-left  { justify-content: flex-start !important; }
+.seat-right { justify-content: flex-end   !important; }
+
+/* Fake tile blocks for wind and dice — same landscape size as rotated tiles */
+.side-hand-fake-tile {
+  width: 66px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: rgba(0,0,0,0.3);
+  border-radius: 5px;
+}
+.side-hand-fake-tile .badge-wind { width: 42px; height: 42px; }
+.side-hand-fake-tile .badge-wind .wind-char { font-size: 28px; font-weight: 900; }
+.side-hand-fake-tile .badge-wind .wind-inner { width: 30px; height: 30px; font-size: 22px; }
+.side-hand-fake-tile .dice-display { transform: none; flex-wrap: wrap; justify-content: center; gap: 3px; width: 100%; }
+.side-hand-fake-tile .die-svg { width: 28px; height: 28px; }
+
+/* Rotate wind character inside fake tile to face the edge player */
+.seat-left  .side-hand-fake-tile .wind-inner,
+.seat-left  .side-hand-fake-tile .wind-char { transform: rotate(90deg); display: block; }
+.seat-right .side-hand-fake-tile .wind-inner,
+.seat-right .side-hand-fake-tile .wind-char { transform: rotate(-90deg); display: block; }
+
+
+
+
+
+/* ===== Fake tiles for top and bottom hand rows ===== */
+/* Portrait orientation (46×66) to match hand tiles */
+.h-hand-fake-tile {
+  width: var(--tw);
+  height: var(--th);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: rgba(0,0,0,0.3);
+  border-radius: 5px;
+  gap: 3px;
+}
+
+/* Label fake tile */
+.h-hand-fake-tile.h-label-tile {
+  background: rgba(0,0,0,0.5);
+  font-size: 13px;
+  font-weight: 700;
+  color: #f5f5f5;
+  padding: 4px 2px;
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.2;
+}
+.h-hand-fake-tile.h-label-tile.active { background: #ffd34d; color: #07301a; }
+.h-hand-fake-tile.h-label-tile.winner {
+  background: #ffd34d; color: #07301a;
+  animation: winner-pulse 0.8s ease-in-out infinite alternate;
+}
+
+
+
+/* Top seat: rotate label text 180° so it reads upright from top edge */
+.seat-top .h-hand-fake-tile.h-label-tile { transform: rotate(180deg); }
+/* Top seat: also rotate wind character 180° */
+.seat-top .h-hand-fake-tile .badge-wind .wind-inner,
+.seat-top .h-hand-fake-tile .badge-wind .wind-char { transform: rotate(180deg); display: block; }
+
+/* Suppress old badge overlays — no longer used for top/bottom */
+.seat-top-badge, .seat-bottom-badge { display: none !important; }
+
+/* Top seat: rotate dice 180° inside fake tile so they face the top player */
+.seat-top .h-hand-fake-tile .dice-display { transform: rotate(180deg); }
+
+/* Draw-slot ghost: invisible placeholder same size as a tile — keeps hand width stable */
+.draw-slot-ghost {
+  width: var(--tw);
+  height: var(--th);
+  flex-shrink: 0;
+  visibility: hidden; /* takes space, invisible */
+  /* account for the margin-left: 8px that .tile.just-drawn adds */
+  margin-left: 8px;
+}
+
+/* Bigger wind badge and dice inside h-hand-fake-tiles (top/bottom) */
+.h-hand-fake-tile .badge-wind {
+  width: 42px; height: 42px;
+}
+.h-hand-fake-tile .badge-wind .wind-inner {
+  width: 30px; height: 30px; font-size: 20px;
+}
+.h-hand-fake-tile .badge-wind .wind-char {
+  font-size: 26px;
+}
+.h-hand-fake-tile .dice-display {
+  display: flex; flex-wrap: wrap;
+  justify-content: center; gap: 3px;
+  width: 100%;
+}
+.h-hand-fake-tile .die-svg { width: 28px; height: 28px; }
+
+/* Blank filler tile — holds space when hand has fewer than max tiles */
+.tile-ghost {
+  width: var(--tw);
+  height: var(--th);
+  flex-shrink: 0;
+  visibility: hidden;
+}
+/* The drawn-tile slot ghost needs the same left margin as .tile.just-drawn */
+.tile-ghost.draw-slot { margin-left: 8px; }

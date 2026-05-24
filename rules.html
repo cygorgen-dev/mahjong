@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cantonese Mahjong — Rules</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0b3d1f;
+      color: #f5f5f5;
+      min-height: 100vh;
+    }
+    header {
+      background: #07301a;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #1a6b3a;
+    }
+    header h1 { margin: 0; font-size: 22px; }
+    header .zh { color: #ffd34d; margin-left: 8px; font-size: 18px; }
+    a.back-btn {
+      background: #ffd34d;
+      color: #07301a;
+      border: 0;
+      padding: 7px 16px;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    a.back-btn:hover { background: #ffc620; }
+
+    .content {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+    h2 {
+      color: #ffd34d;
+      border-bottom: 1px solid rgba(255,211,77,0.3);
+      padding-bottom: 6px;
+      margin-top: 36px;
+    }
+    h2:first-child { margin-top: 0; }
+    h3 { color: #b8d4b8; margin-top: 20px; margin-bottom: 6px; font-size: 15px; }
+    p, li { line-height: 1.7; }
+    ul { padding-left: 20px; }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+    }
+    th {
+      background: #07301a;
+      color: #ffd34d;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td { padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    tr:hover td { background: rgba(255,255,255,0.04); }
+    td.faan { text-align: center; font-weight: 700; color: #ffd34d; }
+    td.zh { color: #aaa; font-size: 13px; }
+
+    .badge {
+      display: inline-block;
+      background: #1a6b3a;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 13px;
+      margin: 2px 2px;
+      color: #ffd34d;
+      font-weight: 600;
+    }
+    .note {
+      background: rgba(255,211,77,0.1);
+      border-left: 3px solid #ffd34d;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+    .highlight { color: #ffd34d; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> — Rules</h1>
+    <a href="#" class="back-btn" onclick="window.close(); return false;">◀ Close Rules</a>
+  </header>
+
+  <div class="content">
+
+    <h2>Overview</h2>
+    <p>
+      Hong Kong Cantonese Mahjong is played with <strong>144 tiles</strong> by 4 players.
+      Each player aims to build a winning hand of <strong>4 sets + 1 pair</strong> (or a special hand)
+      worth at least the <strong>Min Faan</strong> threshold (default: 2 faan).
+    </p>
+    <p>
+      Wins are paid in <strong>points</strong> calculated from faan. The discarder pays the winner for
+      everyone (discard win); or all three opponents pay equally (self-draw). Payouts are capped at
+      Max Faan (default: 7 faan).
+    </p>
+
+    <h2>The Tiles</h2>
+    <table>
+      <tr><th>Group</th><th>Tiles</th><th>Count</th></tr>
+      <tr><td>Bamboo 竹</td><td>1 – 9</td><td>36 (×4)</td></tr>
+      <tr><td>Dots 餅</td><td>1 – 9</td><td>36 (×4)</td></tr>
+      <tr><td>Characters 萬</td><td>1 – 9</td><td>36 (×4)</td></tr>
+      <tr><td>Winds 風</td><td>East 東 · South 南 · West 西 · North 北</td><td>16 (×4)</td></tr>
+      <tr><td>Dragons 箭</td><td>Red 中 · Green 發 · White 白</td><td>12 (×4)</td></tr>
+      <tr><td>Flowers 花</td><td>Plum 梅 · Orchid 蘭 · Chrysanthemum 菊 · Bamboo 竹</td><td>4 (×1 each)</td></tr>
+      <tr><td>Seasons 季</td><td>Spring 春 · Summer 夏 · Autumn 秋 · Winter 冬</td><td>4 (×1 each)</td></tr>
+    </table>
+    <p>Flower and Season tiles are <strong>bonus tiles</strong> — they are never part of a set.
+    When drawn, they are set aside automatically and a replacement tile is drawn from the wall.</p>
+
+    <h2>How to Play</h2>
+    <table>
+      <tr><th>Action</th><th>How</th></tr>
+      <tr><td><strong>Discard a tile</strong></td><td>Click any tile in your hand during your turn. Click the green table area to discard the newest (highlighted) tile.</td></tr>
+      <tr><td><strong>Claim a discard</strong></td><td>Use the <span class="badge">Win 糊</span> <span class="badge">Chow 上</span> <span class="badge">Pung 碰</span> <span class="badge">Kong 槓</span> buttons when they light up.</td></tr>
+      <tr><td><strong>Pass / Skip</strong></td><td>Click <span class="badge">Pass 過</span>, click the green table, or click your own hand tiles. You can always pass even when Win or Pung are available — waiting for a better win is a valid strategy.</td></tr>
+      <tr><td><strong>Next hand</strong></td><td><span class="badge">Pass</span> becomes <span class="badge">Next Hand ▶</span> after each round ends.</td></tr>
+      <tr><td><strong>New game</strong></td><td>Click <span class="badge">New Game</span> in the header (resets all scores to Start Pts).</td></tr>
+      <tr><td><strong>Rotate seats</strong></td><td>Click <span class="badge">Rotate Seats 換座</span> between rounds to reshuffle which CPU sits where.</td></tr>
+    </table>
+
+    <h2>Sets</h2>
+    <table>
+      <tr><th>Set</th><th>Chinese</th><th>Description</th></tr>
+      <tr><td><strong>Chow</strong></td><td>上</td><td>3 consecutive tiles of the same suit (e.g. 3–4–5 Bamboo). Can only be claimed from the player to your left.</td></tr>
+      <tr><td><strong>Pung</strong></td><td>碰</td><td>3 identical tiles. Can be claimed from any player.</td></tr>
+      <tr><td><strong>Kong</strong></td><td>槓</td><td>4 identical tiles. Draw a replacement tile from the wall after declaring. An existing Pung can be upgraded to Kong by drawing the 4th tile — opponents can then rob it (搶槓胡) to win.</td></tr>
+    </table>
+
+    <h2>Winning</h2>
+    <p>A winning hand requires <strong>4 sets + 1 pair</strong> worth at least <strong>Min Faan</strong>,
+    or a recognised special hand (Seven Pairs, Thirteen Orphans, or a 7/8 bonus-tile win).</p>
+    <div class="note">
+      <strong>Discard win 出銃:</strong> the discarder pays the winner the full amount (base × 4). Other players pay nothing.<br>
+      <strong>Self-draw 自摸:</strong> all three opponents each pay the winner (base × 2).
+    </div>
+
+    <h2>Faan Scoring</h2>
+
+    <h3>Standard bonuses</h3>
+    <table>
+      <tr><th>Hand / Bonus</th><th class="zh">Chinese</th><th>Faan</th></tr>
+      <tr><td>Common Hand (all chows, discard win only)</td><td class="zh">平胡</td><td class="faan">1</td></tr>
+      <tr><td>Self Draw</td><td class="zh">自摸</td><td class="faan">1</td></tr>
+      <tr><td>Fully Concealed (no claimed melds)</td><td class="zh">門清</td><td class="faan">1</td></tr>
+      <tr><td>No Flowers (zero bonus tiles)</td><td class="zh">無花</td><td class="faan">1</td></tr>
+      <tr><td>Own Flower (flower index matches seat)</td><td class="zh">正花</td><td class="faan">1</td></tr>
+      <tr><td>Own Season (season index matches seat)</td><td class="zh">正季</td><td class="faan">1</td></tr>
+      <tr><td>All 4 Flowers (extra set bonus)</td><td class="zh">百花齊放</td><td class="faan">+1</td></tr>
+      <tr><td>All 4 Seasons (extra set bonus)</td><td class="zh">四季如春</td><td class="faan">+1</td></tr>
+      <tr><td>Dragon Pung (each)</td><td class="zh">箭刻</td><td class="faan">1</td></tr>
+      <tr><td>Seat Wind Pung</td><td class="zh">門風刻</td><td class="faan">1</td></tr>
+      <tr><td>Round Wind Pung</td><td class="zh">圈風刻</td><td class="faan">1</td></tr>
+      <tr><td>Robbed Kong</td><td class="zh">搶槓胡</td><td class="faan">+1</td></tr>
+      <tr><td>Mixed One Suit</td><td class="zh">混一色</td><td class="faan">3</td></tr>
+      <tr><td>All Triplets</td><td class="zh">對對胡</td><td class="faan">3</td></tr>
+      <tr><td>Seven Pairs</td><td class="zh">七對子</td><td class="faan">4</td></tr>
+      <tr><td>Small Dragons</td><td class="zh">小三元</td><td class="faan">5</td></tr>
+      <tr><td>Small Four Winds</td><td class="zh">小四喜</td><td class="faan">6</td></tr>
+      <tr><td>Pure One Suit</td><td class="zh">清一色</td><td class="faan">7</td></tr>
+      <tr><td>Big Dragons</td><td class="zh">大三元</td><td class="faan">8</td></tr>
+      <tr><td>All Honors</td><td class="zh">字一色</td><td class="faan">10</td></tr>
+      <tr><td>Big Four Winds</td><td class="zh">大四喜</td><td class="faan">13</td></tr>
+      <tr><td>Thirteen Orphans</td><td class="zh">十三么</td><td class="faan">13</td></tr>
+    </table>
+
+    <h3>Bonus tile special wins</h3>
+    <table>
+      <tr><th>Condition</th><th class="zh">Chinese</th><th>Faan</th><th>Notes</th></tr>
+      <tr><td>Seven bonus tiles</td><td class="zh">七花齊放</td><td class="faan">3 faan</td><td>Hand bonuses (All Triplets, wind pungs, etc.) still stack. No per-tile seat-match bonus on top.</td></tr>
+      <tr><td>Eight bonus tiles</td><td class="zh">八仙過海</td><td class="faan">13 faan</td><td>Same stacking rule. Capped by Max Faan setting.</td></tr>
+    </table>
+    <div class="note">
+      A complete set of all 4 Flowers scores: 1f (own flower) + 1f (set bonus) = <strong>2f from flowers alone</strong>.<br>
+      Seven or eight bonus tiles trigger a win <em>regardless of the remaining hand structure</em>.
+      The hand's regular bonuses (All Triplets, seat/round wind pungs, self-draw, etc.) are still counted on top of the flat base.
+    </div>
+
+    <h2>Faan → Points Reference</h2>
+    <p>Rows below Min Faan cannot be declared. Rows above Max Faan pay at the Max Faan rate.
+    See <strong>score.html</strong> for a live chart that updates with your current settings.</p>
+    <table>
+      <tr><th>Faan</th><th>Base Points</th><th>Self-draw — each opponent pays (base × 2)</th><th>Discard win — discarder pays total (base × 4)</th></tr>
+      <tr><td>0</td><td>1</td><td>2</td><td>4</td></tr>
+      <tr><td>1</td><td>2</td><td>4</td><td>8</td></tr>
+      <tr><td>2</td><td>4</td><td>8</td><td>16</td></tr>
+      <tr><td>3</td><td>8</td><td>16</td><td>32</td></tr>
+      <tr><td>4</td><td>16</td><td>32</td><td>64</td></tr>
+      <tr><td>5</td><td>24</td><td>48</td><td>96</td></tr>
+      <tr><td>6</td><td>32</td><td>64</td><td>128</td></tr>
+      <tr><td>7</td><td>48</td><td>96</td><td>192</td></tr>
+      <tr><td>8</td><td>64</td><td>128</td><td>256</td></tr>
+      <tr><td>9</td><td>96</td><td>192</td><td>384</td></tr>
+      <tr><td>10+</td><td>128</td><td>256</td><td>512</td></tr>
+    </table>
+    <div class="note">
+      Self-draw payout cap: 96 points per opponent. Discard win cap: 192 points total.
+      These caps apply when Max Faan is set to 7 (default).
+    </div>
+
+    <h2>Flowers &amp; Seasons</h2>
+    <p>
+      Each of the 8 bonus tiles has an index 0–3 corresponding to seats East / South / West / North.
+      When a bonus tile's index matches your current seat wind, it is your <strong>own flower or season</strong> and scores 1 faan.
+      Having all 4 Flowers or all 4 Seasons scores an extra +1 faan (the set bonus stacks with the own-tile match).
+    </p>
+    <table>
+      <tr><th>AI Index</th><th>Human Index <br/>Matching markings on Tiles</th><th>Seat</th><th>Flower</th><th>Season</th></tr>
+      <tr><td>0</td><td>1</td><td>East 東</td><td>Plum 梅</td><td>Spring 春</td></tr>
+      <tr><td>1</td><td>2</td><td>South 南</td><td>Orchid 蘭</td><td>Summer 夏</td></tr>
+      <tr><td>2</td><td>3</td><td>West 西</td><td>Chrysanthemum 菊</td><td>Autumn 秋</td></tr>
+      <tr><td>3</td><td>4</td><td>North 北</td><td>Bamboo 竹</td><td>Winter 冬</td></tr>
+    </table>
+
+    <h2>Special Hands</h2>
+    <table>
+      <tr><th>Hand</th><th class="zh">Chinese</th><th>Description</th><th>Faan</th></tr>
+      <tr><td>Seven Pairs</td><td class="zh">七對子</td><td>7 pairs, all different tiles. Can be disabled in Settings.</td><td class="faan">4</td></tr>
+      <tr><td>Thirteen Orphans</td><td class="zh">十三么</td><td>One each of 1 and 9 of every suit + all 7 honors + one duplicate</td><td class="faan">13</td></tr>
+      <tr><td>All Triplets</td><td class="zh">對對胡</td><td>4 pungs/kongs + 1 pair</td><td class="faan">3</td></tr>
+      <tr><td>Pure One Suit</td><td class="zh">清一色</td><td>All tiles the same suit, no honor tiles</td><td class="faan">7</td></tr>
+      <tr><td>Mixed One Suit</td><td class="zh">混一色</td><td>One number suit + honor tiles only</td><td class="faan">3</td></tr>
+      <tr><td>Seven Bonus Tiles</td><td class="zh">七花齊放</td><td>Any seven bonus tiles (hand bonuses still count)</td><td class="faan">3 + hand</td></tr>
+      <tr><td>Eight Bonus Tiles</td><td class="zh">八仙過海</td><td>All eight bonus tiles (hand bonuses still count)</td><td class="faan">13 + hand</td></tr>
+    </table>
+
+    <h2>Settings</h2>
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr><td>Min Faan</td><td>Minimum faan required to declare a win. Hands below this threshold cannot win (but Win button still shows if it would qualify at higher settings).</td></tr>
+      <tr><td>Max Faan</td><td>Maximum faan that counts for payout. Hands scoring more than Max Faan pay at the Max Faan rate. Set to 0 for no cap.</td></tr>
+      <tr><td>7 Pairs</td><td>Enable or disable Seven Pairs 七對子 as a valid winning hand.</td></tr>
+      <tr><td>Show Labels</td><td>Toggle English tile labels on or off.</td></tr>
+      <tr><td>Start Pts</td><td>Starting score per player. The game ends when any player drops below 0.</td></tr>
+    </table>
+
+    <h2>Demo &amp; Scenario Testing</h2>
+    <p>
+      The header bar includes two developer tools for verifying game behaviour:
+    </p>
+    <ul>
+      <li><strong>Demo Left / Right / Top / You 💡</strong> — injects a pre-built winning hand for each seat in turn.
+          Also cycles through <em>dealer-is-winner</em> variants (shown with 莊 suffix) to check that the seat label,
+          wind tile, and dice display correctly when the dealer wins.</li>
+      <li><strong>Demo Rob 搶槓</strong> — cycles through four Robbing the Kong scenarios so you can verify
+          that the correct players are offered the Win button.</li>
+    </ul>
+    <p>
+      For more detailed testing, open <strong>scenario.html</strong> in a second tab.
+      It lets you inject an arbitrary hand, melds, bonus tiles, and discard tile into the live game
+      and verify which claim buttons (Win / Pung / Kong / Chow) are enabled — without having to play
+      through a full hand to reach the desired state.
+    </p>
+
+  </div>
+</body>
+</html>

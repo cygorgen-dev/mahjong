@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mahjong Score & Log</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; background:#0b3d1f; color:#f5f5f5; font-family:"Segoe UI",system-ui,sans-serif; padding:16px; }
+    h2 { color:#ffd34d; font-size:15px; margin:16px 0 8px; border-bottom:1px solid #1a6b3a; padding-bottom:4px; }
+    .card { background:#07301a; border:1px solid #1a6b3a; border-radius:8px; padding:14px; margin-bottom:14px; }
+    .top-bar { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+    .back-btn { background:#ffd34d; color:#07301a; border:0; padding:6px 14px; border-radius:4px; font-weight:700; cursor:pointer; font-size:13px; text-decoration:none; display:inline-block; }
+    .back-btn:hover { background:#ffc620; }
+    .refresh-btn { background:#1a6b3a; color:#fff; border:1px solid #ffd34d; padding:5px 12px; border-radius:4px; font-size:12px; cursor:pointer; }
+    #status { font-size:12px; color:#aaa; }
+    #status.live { color:#88cc88; }
+
+    /* Scoreboard */
+    table.score-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+    .score-tbl th,.score-tbl td { text-align:left; padding:5px 10px; border-bottom:1px solid #1a6b3a; }
+    .score-tbl th { color:#ffd34d; font-size:12px; }
+    .score-tbl tr.leader td { color:#ffd34d; font-weight:700; }
+    .score-tbl tr.busted td { color:#ff6666; }
+    .delta-pos { color:#88cc88; }
+    .delta-neg { color:#ff8888; }
+    .last-hand-info { font-size:12px; color:#aaa; margin-top:8px; }
+    .last-hand-info strong { color:#ffd34d; }
+
+    /* Points chart */
+    .chart-wrap { display:flex; gap:20px; flex-wrap:wrap; }
+    .chart-box { flex:1; min-width:260px; }
+    .chart-box h3 { color:#ffd34d; font-size:13px; margin:0 0 8px; }
+    .chart-box p { font-size:11px; color:#aaa; margin:0 0 6px; }
+    table.pt { width:100%; font-size:12px; border-collapse:collapse; }
+    .pt th { color:#ffd34d; padding:4px 8px; text-align:right; background:rgba(0,0,0,0.3); }
+    .pt th:first-child { text-align:center; }
+    .pt td { padding:4px 8px; text-align:right; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .pt td:first-child { text-align:center; }
+    .pt tr.below-min td { color:#555; text-decoration:line-through; }
+    .pt tr.capped td:first-child { color:#ff9922; }
+    .pt tr.active td { color:#eee; }
+    .pt tr.active td:first-child { color:#fff; font-weight:600; }
+    .pt td.hi { color:#88dd88; }
+    .pt td.lo { color:#dd8888; }
+    .pt tr.active td.hi { color:#aaffaa; }
+    .pt tr.active td.lo { color:#ffaaaa; }
+
+    /* Settings display */
+    .settings-bar { display:flex; gap:16px; font-size:12px; color:#aaa; margin-bottom:10px; flex-wrap:wrap; }
+    .settings-bar span { background:rgba(0,0,0,0.3); padding:3px 8px; border-radius:4px; }
+    .settings-bar strong { color:#ffd34d; }
+
+    /* Log */
+    #log-list { font-size:12px; line-height:1.7; }
+    #log-list .entry { border-bottom:1px dashed rgba(255,255,255,0.07); padding:2px 0; }
+    #log-list .win { color:#ffd34d; font-weight:600; }
+    #log-list .draw { color:#aaa; }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <a href="#" class="back-btn" onclick="window.close(); return false;">← Close Score</a>
+    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+    <span id="status">Loading…</span>
+  </div>
+
+  <div class="card">
+    <h2>Score</h2>
+    <div class="settings-bar" id="settings-bar"></div>
+    <table class="score-tbl">
+      <thead><tr><th>Player</th><th>Seat</th><th>Points</th><th>± Last Hand</th></tr></thead>
+      <tbody id="score-body"></tbody>
+    </table>
+    <div id="last-hand-info" class="last-hand-info"></div>
+  </div>
+
+  <div class="card">
+    <h2>Points Chart</h2>
+    <p style="font-size:12px;color:#aaa;margin:0 0 10px">
+      Based on current Min Faan / Max Faan settings. Struck-through rows are below minimum. Orange rows are capped.
+    </p>
+    <div class="chart-wrap">
+      <div class="chart-box">
+        <h3>Self Draw 自摸</h3>
+        <p>Each opponent pays · Winner receives 3×</p>
+        <table class="pt" id="tbl-self">
+          <thead><tr><th>Faan</th><th>Base Pts</th><th>Each Pays</th><th>Winner Gets ×3</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="chart-box">
+        <h3>Discard Win 出銃</h3>
+        <p>Discarder pays all · Winner receives full amount</p>
+        <table class="pt" id="tbl-disc">
+          <thead><tr><th>Faan</th><th>Base Pts</th><th>Discarder Pays</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <p style="font-size:11px;color:#aaa;margin:8px 0 0">* Faan above Max Faan cap — pays at Max Faan rate (base shown is capped base).</p>
+  </div>
+
+  <div class="card">
+    <h2>Game Log</h2>
+    <div id="log-list"><span style="color:#aaa">No log yet — play a hand first.</span></div>
+  </div>
+
+<script>
+// Must match scoring.js exactly
+const BASE_TABLE = [1,2,4,8,16,24,32,48,64,96,128];
+function faanToBase(f) {
+  if (f < 0) return 0;
+  if (f >= BASE_TABLE.length) return 128;
+  return BASE_TABLE[f];
+}
+function calcPayout(f, selfDraw, maxF) {
+  // Cap = base(maxFaan) * mult  (not a fixed number!)
+  const base = faanToBase(f);
+  const mult = selfDraw ? 2 : 4;
+  const raw = base * mult;
+  if (maxF > 0) {
+    const cap = faanToBase(maxF) * mult;
+    return Math.min(raw, cap);
+  }
+  return raw;
+}
+
+function loadData() {
+  const raw = localStorage.getItem('mahjongSharedState');
+  const status = document.getElementById('status');
+  if (!raw) {
+    status.textContent = 'No game data — open the game tab first.';
+    status.className = '';
+    return;
+  }
+  try {
+    const state = JSON.parse(raw);
+    const age = Date.now() - state.ts;
+    status.textContent = `Live · ${new Date(state.ts).toLocaleTimeString()}`;
+    status.className = age < 10000 ? 'live' : '';
+    renderSettings(state);
+    renderScore(state);
+    renderChart(state);
+    renderLog(state);
+  } catch(e) {
+    status.textContent = 'Error reading game data.';
+    status.className = '';
+  }
+}
+
+function renderSettings(state) {
+  const bar = document.getElementById('settings-bar');
+  const minF = state.minFaan ?? 3;
+  const maxF = state.maxFaan ?? 0;
+  bar.innerHTML =
+    `<span>Min Faan: <strong>${minF}</strong></span>` +
+    `<span>Max Faan: <strong>${maxF > 0 ? maxF : '∞'}</strong></span>` +
+    `<span>Start Pts: <strong>${state.startPts ?? 2000}</strong></span>`;
+}
+
+function renderScore(state) {
+  const tbody = document.getElementById('score-body');
+  tbody.innerHTML = '';
+  const scores = state.scores || [];
+  const maxScore = Math.max(...scores.map(s => s.score));
+  scores.forEach(p => {
+    const tr = document.createElement('tr');
+    const busted = p.score < 0;
+    tr.className = busted ? 'busted' : (p.score === maxScore ? 'leader' : '');
+    const d = p.lastDelta || 0;
+    const dStr = d > 0 ? `+${d}` : d < 0 ? `${d}` : '—';
+    const dCls = d > 0 ? 'delta-pos' : d < 0 ? 'delta-neg' : '';
+    tr.innerHTML = `<td>${p.name}</td><td>${p.seat}</td><td>${p.score}${busted?' 💀':''}</td><td class="${dCls}">${dStr}</td>`;
+    tbody.appendChild(tr);
+  });
+  const lh = document.getElementById('last-hand-info');
+  lh.innerHTML = state.lastHand && state.lastHand !== '—'
+    ? `<strong>Last hand:</strong> ${state.lastHand}` : '';
+}
+
+function renderChart(state) {
+  const minF = state.minFaan ?? 3;
+  const maxF = state.maxFaan ?? 0;
+
+  ['self','disc'].forEach(type => {
+    const tbody = document.querySelector(`#tbl-${type} tbody`);
+    tbody.innerHTML = '';
+    for (let f = 0; f <= 13; f++) {
+      const belowMin = f < minF;
+      const isCapped = maxF > 0 && f > maxF;
+      // For capped rows, show the effective (capped) base
+      const effectiveF = (isCapped) ? maxF : f;
+      const base = faanToBase(effectiveF);
+      const tr = document.createElement('tr');
+
+      // Label: show actual faan, note if capped
+      let fLabel = String(f);
+      if (isCapped) fLabel = `${f}*`;   // asterisk = capped at maxFaan
+
+      tr.className = belowMin ? 'below-min' : 'active';
+      if (isCapped) tr.classList.add('capped');
+
+      if (type === 'self') {
+        const each  = belowMin ? '—' : calcPayout(f, true, maxF);
+        const total = belowMin ? '—' : calcPayout(f, true, maxF) * 3;
+        tr.innerHTML = `<td>${fLabel}</td><td>${belowMin?'—':base}</td>` +
+          `<td class="lo">${each}</td><td class="hi">${total}</td>`;
+      } else {
+        const pays = belowMin ? '—' : calcPayout(f, false, maxF);
+        tr.innerHTML = `<td>${fLabel}</td><td>${belowMin?'—':base}</td>` +
+          `<td class="lo">${pays}</td>`;
+      }
+      tbody.appendChild(tr);
+    }
+  });
+}
+
+function renderLog(state) {
+  const el = document.getElementById('log-list');
+  const log = state.log || [];
+  if (!log.length) { el.innerHTML = '<span style="color:#aaa">No log yet.</span>'; return; }
+  el.innerHTML = log.map(e => {
+    const cls = e.includes('WINS') ? 'win' : e.includes('exhausted') ? 'draw' : '';
+    return `<div class="entry ${cls}">${e}</div>`;
+  }).join('');
+}
+
+loadData();
+setInterval(loadData, 2000);
+</script>
+</body>
+</html>

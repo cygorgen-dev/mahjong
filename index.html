@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cantonese Mahjong</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span style="font-size:11px;color:#aaa;font-weight:400;">v0524-104</span></h1>
+      <div id="message"></div>
+      <div id="info-bar">
+        <button id="new-game-btn">New Game</button>
+        <a href="score.html" target="_blank" id="score-btn" style="background:#1a6b3a;color:#ffd34d;border:1px solid #ffd34d;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;text-decoration:none;font-size:12px;">Score 📊</a>
+        <button id="rules-btn" style="background:#ffd34d;color:#07301a;border:0;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">Rules</button>
+        <button id="hint-btn" style="background:#1a1a6b;color:#ffd34d;border:2px solid #ffd34d;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">Hint 💡</button>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#ffd34d;cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="always-hint-toggle" style="cursor:pointer;accent-color:#ffd34d;width:14px;height:14px;" />Always Hint
+        </label>
+        <button id="settings-toggle-btn" style="background:#444;color:#ffd34d;border:1px solid #ffd34d;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">⚙️ Settings</button>
+      </div>
+    </header>
+
+    <main id="table">
+      <div class="seat seat-top" data-seat="2">
+        <div class="h-indicators"></div>
+        <div class="h-tile-area">
+          <div class="claim-row"><div class="seat-label"></div><div class="seat-wind-indicator"></div><div class="dice-slot"></div></div>
+          <div class="melds"></div>
+          <div class="hand concealed"></div>
+        </div>
+      </div>
+      <div class="seat seat-left" data-seat="3">
+        <div class="claim-row"><div class="seat-label-wrap"><div class="seat-label"></div></div><div class="seat-wind-indicator"></div><div class="dice-slot"></div></div>
+        <div class="melds"></div>
+        <div class="hand concealed"></div>
+      </div>
+      <div class="seat seat-right" data-seat="1">
+        <div class="claim-row"><div class="seat-label-wrap"><div class="seat-label"></div></div><div class="seat-wind-indicator"></div><div class="dice-slot"></div></div>
+        <div class="melds"></div>
+        <div class="hand concealed"></div>
+      </div>
+      <div class="seat seat-bottom" data-seat="0">
+        <div class="h-indicators"></div>
+        <div class="h-tile-area">
+          <div class="claim-row"><div class="seat-label"></div><div class="seat-wind-indicator"></div><div class="dice-slot"></div></div>
+          <div class="melds"></div>
+          <div class="hand"></div>
+        </div>
+      </div>
+
+      <div id="center">
+        <div id="wall-ring-wrap">
+          <svg id="wall-ring-svg" viewBox="0 0 720 608" xmlns="http://www.w3.org/2000/svg">
+          </svg>
+          <div id="discard-pile"></div>
+          <div id="wall-info" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:13px;font-weight:700;color:rgba(255,255,255,0.25);pointer-events:none;white-space:nowrap;"></div>
+        </div>
+        <div id="action-bar">
+          <button id="btn-win"  disabled>Win 糊</button>
+          <button id="btn-chow" disabled>Chow 上</button>
+          <button id="btn-pung" disabled>Pung 碰</button>
+          <button id="btn-kong" disabled>Kong 槓</button>
+          <button id="btn-pass" disabled>Pass 通</button>
+        </div>
+        <div id="chow-picker" class="hidden"></div>
+      </div>
+    </main>
+
+    <aside id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-heading">⚙️ Settings</div>
+        <div class="sidebar-row">
+          <label class="sb-label">Min Faan</label>
+          <select id="min-faan-select" class="sb-select">
+            <option value="0">0</option><option value="1">1</option>
+            <option value="2" selected>2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option>
+          </select>
+        </div>
+        <div class="sidebar-row">
+          <label class="sb-label">Max Faan</label>
+          <select id="max-faan-select" class="sb-select">
+            <option value="0">∞</option><option value="4">4</option>
+            <option value="5">5</option><option value="6">6</option>
+            <option value="7" selected>7</option><option value="8">8</option>
+            <option value="9">9</option><option value="10">10</option>
+            <option value="11">11</option><option value="12">12</option>
+            <option value="13">13</option>
+          </select>
+        </div>
+        <div class="sidebar-row">
+          <label class="sb-label">Start Pts</label>
+          <input type="number" id="start-points-input" value="2000" min="100" step="100" class="sb-input" />
+        </div>
+        <div class="sidebar-check">
+          <input type="checkbox" id="seven-pairs-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
+          <label for="seven-pairs-toggle">7 Pairs 七對子</label>
+        </div>
+        <div class="sidebar-check">
+          <input type="checkbox" id="show-translation-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
+          <label for="show-translation-toggle">Show Labels</label>
+        </div>
+        <div class="sidebar-check">
+          <input type="checkbox" id="show-seat-parens-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
+          <label for="show-seat-parens-toggle">Show (wind)</label>
+        </div>
+        <div class="sidebar-check">
+          <input type="checkbox" id="last-tile-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
+          <label for="last-tile-toggle">Last Tile 海底</label>
+        </div>
+        <div class="sidebar-check">
+          <input type="checkbox" id="open-hands-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
+          <label for="open-hands-toggle" title="Show all CPU hands face-up. With Level 4, also shows AI groupings.">Open Hands 明牌</label>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">🤖 CPU Skills</div>
+        <div class="sidebar-row">
+          <label class="sb-label">CPU 1</label>
+          <select id="cpu1-level" class="sb-select">
+            <option value="1" selected>🟢 Beginner</option>
+            <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
+          </select>
+        </div>
+        <div class="sidebar-row">
+          <label class="sb-label">CPU 2</label>
+          <select id="cpu2-level" class="sb-select">
+            <option value="1" selected>🟢 Beginner</option>
+            <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
+          </select>
+        </div>
+        <div class="sidebar-row">
+          <label class="sb-label">CPU 3</label>
+          <select id="cpu3-level" class="sb-select">
+            <option value="1" selected>🟢 Beginner</option>
+            <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
+          </select>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">🤖 Auto Mode</div>
+        <div style="display:flex;gap:4px;margin-bottom:6px;">
+          <button id="auto-btn-human" class="auto-mode-btn auto-btn-human active-mode" title="Manual Human play — you control all moves">🧑 HUMAN</button>
+          <button id="auto-btn-slow"  class="auto-mode-btn auto-btn-slow"  title="Slow step-by-step auto play">🐢 SLOW</button>
+          <button id="auto-btn-fast"  class="auto-mode-btn auto-btn-fast"  title="Fast fully automatic play">⚡ FAST</button>
+        </div>
+        <div class="sidebar-row" id="auto-level-row">
+          <label class="sb-label">CPU-You level:</label>
+          <select id="auto-user-level" class="sb-select" title="Skill level when CPU takes over your seat in auto mode">
+            <option value="1" selected title="Discard isolated tiles, claim freely">🟢 Beginner</option>
+            <option value="2" title="Pursues Seven Pairs and Pure Suit, selective claims">🟡 Inter</option>
+            <option value="3" title="Prizes concealed hands, safety-aware, only claims when near tenpai">🔴 Expert</option><option value="4" title="Opponent-aware: reads suit hoarding, defensive when anyone near tenpai">🔥 Master</option>
+          </select>
+        </div>
+        <div id="auto-status" style="font-size:10px;color:#aaa;margin-top:4px;"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">🛠️ Dev Tools</div>
+        <div class="sidebar-btngroup">
+          <button id="tiles-btn" class="sb-btn">Tiles 牌</button>
+          <button id="scenario-btn" class="sb-btn" style="background:#4a1a6a;">🧪 Scenario Tester</button>
+          <button id="capture-state-btn" class="sb-btn" style="background:#1a4a1a;border:1px solid #5dde7a;color:#5dde7a;">📸 Capture State</button>
+          <button id="rotate-seats-btn" class="sb-btn" style="background:#0033aa;">Rotate Seats 換座</button>
+          <button id="demo-win-btn" class="sb-btn" style="background:#c8007a;">Demo Win 💡</button>
+          <button id="demo-rob-btn" class="sb-btn" style="background:#b84800;">Demo Rob 搶槓</button>
+          <button id="demo-heavenly-btn" class="sb-btn" style="background:#6a0dad;">Demo 天胡</button>
+          <button id="demo-earthly-btn" class="sb-btn" style="background:#006a6a;">Demo 地胡</button>
+          <button id="demo-ckong-btn" class="sb-btn" style="background:#2d5a1b;">Demo 暗槓</button>
+          <button id="peek-wall-btn" class="sb-btn" style="background:#1a3a3a;border:1px solid #2a8b8b;color:#7dffff;">👁 Peek Wall</button>
+          <button id="demo-lasttile-btn" class="sb-btn" style="background:#1a3a6a;">Demo 海底</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Wall Peek Modal -->
+    <div id="peek-modal" class="modal hidden">
+      <div class="modal-content" style="max-width:900px;min-width:340px;max-height:85vh;display:flex;flex-direction:column;">
+        <div class="peek-drag-handle" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h2 style="color:#7dffff;margin:0;font-size:16px;">👁 Wall Peek <span style="font-size:11px;color:#aaa;font-weight:400;">— drag to move</span></h2>
+          <button id="close-peek" class="modal-close" style="background:#333;color:#aaa;border:1px solid #555;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+        </div>
+        <div id="peek-content" style="overflow-y:auto;flex:1;"></div>
+      </div>
+    </div>
+
+    <!-- Seat Rotation Modal -->
+    <div id="rotate-modal" class="modal hidden">
+      <div class="modal-content" style="max-width:420px;min-width:340px;">
+        <h2 style="color:#ffd34d;margin-top:0;margin-bottom:12px;">Rotate Seats 換座</h2>
+        <p style="font-size:13px;opacity:0.85;margin-bottom:14px;">
+          Who was the <strong>last dealer</strong> in the previous wind?<br>
+          Hit Shuffle to randomly reassign seats and the new dealer — keep shuffling until you like the result.
+        </p>
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Last Dealer:</label>
+          <select id="last-dealer-select" style="width:100%;background:#1a6b3a;color:#fff;border:1px solid #ffd34d;border-radius:4px;padding:6px 10px;font-size:14px;font-weight:600;cursor:pointer;">
+          </select>
+        </div>
+        <div id="rotate-preview" style="display:none;margin-bottom:14px;padding:10px;background:rgba(0,0,0,0.3);border-radius:6px;font-size:13px;">
+          <div style="color:#ffd34d;font-weight:700;margin-bottom:6px;">New arrangement:</div>
+          <div id="rotate-preview-seats"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+          <button id="rotate-shuffle-btn" style="background:#ffd34d;color:#07301a;border:0;padding:7px 18px;border-radius:4px;font-weight:700;cursor:pointer;font-size:13px;">🔀 Shuffle</button>
+          <button id="rotate-confirm-btn" style="background:#2a8b4e;color:#fff;border:0;padding:7px 18px;border-radius:4px;font-weight:700;cursor:pointer;font-size:13px;display:none;">✓ Apply & Deal</button>
+          <button id="rotate-cancel-btn" style="background:#555;color:#fff;border:0;padding:7px 14px;border-radius:4px;font-weight:600;cursor:pointer;font-size:13px;">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tiles-modal" class="modal hidden">
+      <div class="modal-content modal-wide">
+        <h2>Tile Gallery 牌型</h2>
+
+        <div class="gallery-section">
+          <h3>Bamboo 竹 (1–9)</h3>
+          <div class="gallery-row" id="gal-bamboo"></div>
+        </div>
+        <div class="gallery-section">
+          <h3>Dots 餅 (1–9)</h3>
+          <div class="gallery-row" id="gal-circle"></div>
+        </div>
+        <div class="gallery-section">
+          <h3>Characters 萬 (1–9)</h3>
+          <div class="gallery-row" id="gal-char"></div>
+        </div>
+        <div class="gallery-section">
+          <h3>Winds 風</h3>
+          <div class="gallery-row" id="gal-wind"></div>
+        </div>
+        <div class="gallery-section">
+          <h3>Dragons 箭</h3>
+          <div class="gallery-row" id="gal-dragon"></div>
+        </div>
+        <div class="gallery-section">
+          <h3>Flowers 花</h3>
+          <div class="gallery-row" id="gal-flower"></div>
+        </div>
+        <div class="gallery-section">
+          <h3>Seasons 季</h3>
+          <div class="gallery-row" id="gal-season"></div>
+        </div>
+
+        <button id="close-tiles">Close</button>
+      </div>
+    </div>
+
+    <div id="rules-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;overflow-y:auto;">
+      <div style="max-width:860px;margin:30px auto;background:#07301a;border:2px solid #ffd34d;border-radius:8px;padding:24px;position:relative;">
+        <button id="close-rules-overlay" style="float:right;background:#ffd34d;color:#07301a;border:0;padding:7px 18px;border-radius:4px;font-weight:700;cursor:pointer;font-size:14px;">✕ Close</button>
+        <div id="rules-content" style="color:#f5f5f5;clear:both;padding-top:8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/tiles.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>🀄 Scenario Builder</title>
+<style>
+:root{
+  --gd:#07301a;--gm:#1a6b3a;--gf:#14572b;
+  --gold:#ffd34d;--red:#e03030;--blue:#1a55cc;
+  --tb:#fffdf3;--tf:#f0e9d2;--text:#f0f0f0;--dim:#999;
+  --tw:38px;--th:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--gd);color:var(--text);min-height:100vh;font-size:12px;}
+
+/* ── TOP BAR ── */
+.topbar{background:#05200f;border-bottom:2px solid var(--gm);padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.topbar h1{font-size:16px;color:var(--gold);font-weight:800;}
+.topbar .badge{background:var(--red);color:#fff;font-size:9px;padding:2px 6px;border-radius:8px;font-weight:700;}
+.topbar-actions{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;}
+a.link{color:var(--gold);text-decoration:none;font-size:11px;}
+a.link:hover{text-decoration:underline;}
+
+/* ── MAIN LAYOUT ── */
+.main{display:grid;grid-template-columns:1fr 300px;gap:0;height:calc(100vh - 48px);}
+.left-col{display:flex;flex-direction:column;overflow:hidden;}
+.right-col{background:rgba(0,0,0,.35);border-left:1px solid var(--gm);display:flex;flex-direction:column;overflow-y:scroll;height:100%;}
+
+/* ── PALETTE (always visible, top of left col) ── */
+.palette-bar{background:rgba(0,0,0,.4);border-bottom:1px solid var(--gm);padding:8px 10px;flex-shrink:0;}
+.palette-bar h2{font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.palette-bar h2 .hint{font-size:10px;color:var(--dim);font-weight:400;}
+.suit-rows{display:flex;flex-direction:column;gap:4px;}
+.suit-row{display:flex;align-items:center;gap:3px;}
+.suit-lbl{font-size:9px;color:var(--gold);width:44px;flex-shrink:0;font-weight:700;line-height:1.3;}
+.tile-btn{
+  width:var(--tw);height:var(--th);
+  background:linear-gradient(180deg,var(--tb),var(--tf));
+  border:1.5px solid #2a1a0a;border-radius:4px;cursor:pointer;
+  font-family:"Microsoft JhengHei","PingFang TC",serif;
+  font-size:14px;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  box-shadow:1px 1px 0 #2a1a0a;position:relative;color:#111;
+  transition:transform .08s;flex-shrink:0;
+}
+.tile-btn:hover{transform:translateY(-3px);box-shadow:1px 4px 4px rgba(0,0,0,.4);}
+.tile-btn .sub{font-size:8px;color:#555;font-family:system-ui;}
+.tile-btn.bamboo{color:#1a7a1a;}.tile-btn.circle{color:#b22222;}.tile-btn.wind{color:#0033aa;}
+.tile-btn.dragon-red{color:#c80000;}.tile-btn.dragon-green{color:#1a7a1a;}.tile-btn.dragon-white{color:#0033aa;font-size:0;border:2px solid #0033aa;}
+.tile-btn.flower{color:#c8007a;font-size:12px;}.tile-btn.season{color:#d68a00;font-size:12px;}
+/* Quick-mode highlight */
+.tile-btn.q-pung:hover{outline:3px solid var(--gold);}.tile-btn.q-kong:hover{outline:3px solid #ff9800;}.tile-btn.q-chow:hover{outline:3px solid #8ad4ff;}
+.tile-btn.q-draw:hover{outline:3px solid #ff9800;}
+
+/* ── FOUR HANDS ── */
+.hands-area{flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:8px;}
+.player-card{background:rgba(0,0,0,.3);border:1px solid var(--gm);border-radius:8px;padding:8px;}
+.player-card.target{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,211,77,.2);}
+.pc-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.pc-name{font-size:12px;font-weight:800;color:var(--gold);}
+.pc-seat{font-size:10px;color:var(--dim);}
+.pc-count{font-size:10px;color:var(--gold);background:rgba(255,211,77,.15);padding:1px 7px;border-radius:10px;}
+.pc-actions{display:flex;gap:4px;margin-left:auto;}
+.pc-hand{display:flex;flex-wrap:wrap;gap:3px;min-height:56px;background:rgba(0,0,0,.2);border-radius:6px;padding:6px;align-items:flex-end;}
+.pc-empty{color:#444;font-size:11px;align-self:center;padding:4px;}
+
+/* ── HAND TILES ── */
+.ht{
+  width:var(--tw);height:var(--th);
+  background:linear-gradient(180deg,var(--tb),var(--tf));
+  border:1.5px solid #2a1a0a;border-radius:4px;
+  font-family:"Microsoft JhengHei","PingFang TC",serif;
+  font-size:13px;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;box-shadow:1px 1px 0 #2a1a0a;position:relative;color:#111;
+  transition:transform .08s;flex-shrink:0;
+}
+.ht:hover{transform:translateY(-3px);}
+.ht .sub{font-size:8px;color:#555;font-family:system-ui;}
+.ht.bamboo{color:#1a7a1a;}.ht.circle{color:#b22222;}.ht.wind{color:#0033aa;}
+.ht.dragon-red{color:#c80000;}.ht.dragon-green{color:#1a7a1a;}.ht.dragon-white{color:#0033aa;font-size:0;border:2px solid #0033aa;}
+.ht.flower{color:#c8007a;font-size:11px;}.ht.season{color:#d68a00;font-size:11px;}
+.ht.drawn{outline:3px solid #ff9800;background:linear-gradient(180deg,#fff176,#ffe033);}
+.ht.discard-t{outline:3px solid var(--red);}
+.ht.in-meld{background:rgba(30,117,64,.35);border-color:#2a8b4e;}
+.ht .rx{position:absolute;top:-5px;right:-5px;background:#cc2222;color:#fff;font-size:8px;font-weight:800;width:13px;height:13px;border-radius:50%;display:none;align-items:center;justify-content:center;font-family:system-ui;z-index:2;}
+.ht:hover .rx{display:flex;}
+
+/* Meld group divider */
+.meld-sep{width:3px;height:var(--th);background:rgba(255,211,77,.3);border-radius:2px;flex-shrink:0;}
+.meld-label{font-size:8px;color:var(--gold);text-align:center;align-self:flex-end;margin-bottom:2px;padding:1px 3px;background:rgba(0,0,0,.4);border-radius:3px;}
+
+/* ── RIGHT PANEL ── */
+.rp-section{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.rp-title{font-size:11px;font-weight:700;color:var(--gold);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+
+/* Target selector */
+.target-btns{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.tbtn{padding:8px 4px;border-radius:5px;border:2px solid transparent;background:rgba(0,0,0,.3);color:var(--dim);font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;}
+.tbtn:hover{background:rgba(255,255,255,.05);}
+.tbtn.active{background:rgba(255,211,77,.15);border-color:var(--gold);color:var(--gold);}
+
+/* Quick actions */
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.qa{padding:9px 4px;border-radius:5px;border:2px solid transparent;font-size:12px;font-weight:800;cursor:pointer;text-align:center;transition:all .15s;line-height:1.3;}
+.qa:hover{filter:brightness(1.2);}
+.qa.active-q{animation:pulse .5s ease-in-out infinite alternate;}
+@keyframes pulse{from{filter:brightness(1);}to{filter:brightness(1.3);}}
+.qa-pung{background:rgba(255,211,77,.15);border-color:var(--gold);color:var(--gold);}
+.qa-kong{background:rgba(255,152,0,.15);border-color:#ff9800;color:#ff9800;}
+.qa-chow{background:rgba(138,212,255,.12);border-color:#8ad4ff;color:#8ad4ff;}
+.qa-draw{background:rgba(255,100,0,.12);border-color:#ff6400;color:#ff6400;}
+.qa-bonus{background:rgba(200,0,122,.12);border-color:#c8007a;color:#c8007a;}
+.qa-clear{background:rgba(200,50,50,.15);border-color:#c03232;color:#ff8888;}
+.qa-status{font-size:10px;color:#8ad4ff;min-height:14px;margin-top:4px;line-height:1.4;}
+
+/* Context */
+.ctx-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:10px;}
+.ctx-lbl{color:var(--dim);width:62px;flex-shrink:0;}
+select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-radius:4px;padding:2px 4px;font-size:10px;flex:1;}
+.discard-preview{display:flex;gap:4px;align-items:flex-end;min-height:58px;background:rgba(0,0,0,.2);border-radius:5px;padding:5px;}
+
+/* Buttons */
+.btn{padding:7px 12px;border:0;border-radius:5px;font-weight:700;font-size:11px;cursor:pointer;transition:background .15s;white-space:nowrap;}
+.btn-gold{background:var(--gold);color:var(--gd);}.btn-gold:hover{background:#ffc620;}
+.btn-green{background:var(--gm);color:#fff;border:1px solid #2a8b4e;}.btn-green:hover{background:#2a8b4e;}
+.btn-red{background:#722;color:#fff;}.btn-red:hover{background:#933;}
+.btn-blue{background:#0033aa;color:#fff;}.btn-blue:hover{background:#0044dd;}
+.btn-sm{padding:4px 8px;font-size:10px;}
+.btn-row{display:flex;gap:4px;flex-wrap:wrap;}
+
+/* Save/Load */
+.preset-list{display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto;}
+.preset-item{background:rgba(0,0,0,.25);border:1px solid var(--gm);border-radius:5px;padding:6px 8px;display:flex;align-items:center;gap:5px;cursor:pointer;}
+.preset-item:hover{background:rgba(0,0,0,.4);}
+.preset-item .pi-name{flex:1;font-size:12px;font-weight:700;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.preset-item .pi-info{font-size:10px;color:var(--dim);white-space:nowrap;}
+.preset-item .pi-del{color:#c03232;font-size:12px;font-weight:800;cursor:pointer;padding:0 4px;flex-shrink:0;}
+.preset-item .pi-del:hover{color:var(--red);}
+.preset-item.builtin{border-color:#0033aa;}
+.preset-item.builtin .pi-name{color:#8ad4ff;}
+
+/* Regression */
+.reg-row{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;font-size:10px;}
+.reg-row.pass{background:rgba(93,222,122,.1);}
+.reg-row.fail{background:rgba(224,48,48,.1);}
+.reg-row .reg-name{flex:1;font-weight:700;}
+.reg-badge{font-size:9px;font-weight:800;padding:1px 5px;border-radius:3px;}
+.reg-pass{background:#1a5c2a;color:#5dde7a;}
+.reg-fail{background:#5c1a1a;color:#ff6666;}
+
+/* Status */
+.status{font-size:11px;line-height:1.7;max-height:240px;overflow-y:auto;background:rgba(0,0,0,.2);border-radius:4px;padding:6px 8px;}
+.status .ok{color:#5dde7a;}.status .warn{color:var(--gold);}.status .err{color:#ff6666;}.status .info{color:#8ad4ff;}
+
+/* Expected */
+.exp-row{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:4px;}
+.exp-row label{display:flex;align-items:center;gap:4px;cursor:pointer;}
+.exp-row input{accent-color:var(--gold);}
+.rcard{display:flex;flex-direction:column;align-items:center;background:rgba(0,0,0,.3);border-radius:5px;padding:5px;border:2px solid transparent;flex:1;}
+.rcard.pass{border-color:#5dde7a;}.rcard.fail{border-color:var(--red);}
+.rcard .rv{font-size:14px;font-weight:800;}.rv.yes{color:#5dde7a;}.rv.no{color:var(--red);}
+.rcard .rl{font-size:9px;color:var(--dim);}
+.result-row{display:flex;gap:4px;margin-top:4px;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <h1>🀄 Scenario Builder <span class="badge">DEV</span></h1>
+  <a class="link" href="index.html" target="_blank">Open Game →</a>
+  <div class="topbar-actions">
+    <button class="btn btn-gold" id="inject-btn">⚡ Inject</button>
+    <button class="btn btn-green" id="verify-btn">🔍 Verify</button>
+    <button class="btn btn-red btn-sm" id="clear-all-btn">✕ Clear All</button>
+  </div>
+</div>
+
+<div class="main">
+<!-- LEFT: PALETTE + 4 HANDS -->
+<div class="left-col">
+
+  <!-- PALETTE always visible -->
+  <div class="palette-bar">
+    <h2>Tile Palette <span class="hint">— click to add to selected player · or activate a Quick Action first</span></h2>
+    <div class="suit-rows" id="palette"></div>
+  </div>
+
+  <!-- 4 PLAYER HANDS -->
+  <div class="hands-area" id="hands-area">
+    <!-- filled by JS -->
+  </div>
+
+</div>
+
+<!-- RIGHT: CONTROLS -->
+<div class="right-col">
+
+  <!-- TARGET -->
+  <div class="rp-section">
+    <div class="rp-title">Adding tiles to →</div>
+    <div class="target-btns" id="target-btns">
+      <button class="tbtn active" data-seat="0">🧑 You<br><span style="font-size:9px;color:var(--dim);">seat 0</span></button>
+      <button class="tbtn" data-seat="1">🤖 CPU1<br><span style="font-size:9px;color:var(--dim);">seat 1</span></button>
+      <button class="tbtn" data-seat="2">🤖 CPU2<br><span style="font-size:9px;color:var(--dim);">seat 2</span></button>
+      <button class="tbtn" data-seat="3">🤖 CPU3<br><span style="font-size:9px;color:var(--dim);">seat 3</span></button>
+    </div>
+  </div>
+
+  <!-- QUICK ACTIONS -->
+  <div class="rp-section">
+    <div class="rp-title">Quick Actions</div>
+    <div class="qa-grid">
+      <button class="qa qa-pung" id="q-pung" title="Next tile pick → 3 copies as Pung meld">Pung ×3<br>→ Meld</button>
+      <button class="qa qa-kong" id="q-kong" title="Next tile pick → 4 copies as Kong meld">Kong ×4<br>→ Meld</button>
+      <button class="qa qa-chow" id="q-chow" title="Next 3 picks → Chow meld">Chow<br>pick 3</button>
+      <button class="qa qa-draw" id="q-draw" title="Next tile pick → marked as self-drawn 14th tile">Self<br>Draw 🀄</button>
+      <button class="qa qa-bonus" id="q-bonus" title="Next tile pick → bonus (flower/season) tile">Bonus 花<br>tile</button>
+      <button class="qa qa-clear" id="q-clear-player" title="Clear current player's hand">Clear<br>player</button>
+    </div>
+    <div class="qa-status" id="qa-status">Click a player above, then click tiles in the palette.</div>
+  </div>
+
+  <!-- CONTEXT -->
+  <div class="rp-section">
+    <div class="rp-title">Game Context</div>
+    <div class="ctx-row"><span class="ctx-lbl">Discard from:</span>
+      <select class="ctx-sel" id="discard-from">
+        <option value="3">CPU3 (3) LEFT</option>
+        <option value="2">CPU2 (2) TOP</option>
+        <option value="1">CPU1 (1) RIGHT</option>
+        <option value="0">You (0)</option>
+      </select>
+    </div>
+    <div class="ctx-row"><span class="ctx-lbl">Phase:</span>
+      <select class="ctx-sel" id="inject-phase">
+        <option value="claim">CLAIM (discard on table)</option>
+        <option value="discard">DISCARD (your turn)</option>
+      </select>
+    </div>
+    <div class="ctx-row"><span class="ctx-lbl">Dealer:</span>
+      <select class="ctx-sel" id="dealer-seat">
+        <option value="0">You (0)</option><option value="1">CPU1 (1)</option>
+        <option value="2">CPU2 (2)</option><option value="3">CPU3 (3)</option>
+      </select>
+    </div>
+    <div style="margin-top:4px;font-size:10px;color:var(--dim);">Discard tile (click to set):</div>
+    <div class="discard-preview" id="discard-preview">
+      <span style="color:#444;font-size:10px;align-self:center;">None — click a tile below<br>while "Discard" mode active</span>
+    </div>
+    <div style="margin-top:4px;">
+      <button class="btn btn-sm" id="q-set-discard" style="background:rgba(200,0,0,.3);border:1px solid var(--red);color:#ff8888;width:100%;">🎯 Next pick → Discard tile</button>
+    </div>
+  </div>
+
+  <!-- EXPECTED -->
+  <div class="rp-section">
+    <div class="rp-title">Expected (for verify)</div>
+    <div class="exp-row">
+      <label><input type="checkbox" id="exp-win"> Win</label>
+      <label><input type="checkbox" id="exp-pung"> Pung</label>
+      <label><input type="checkbox" id="exp-kong"> Kong</label>
+      <label><input type="checkbox" id="exp-chow"> Chow</label>
+    </div>
+    <div class="result-row" id="result-row" style="display:none;"></div>
+  </div>
+
+  <!-- SAVE / LOAD -->
+  <div class="rp-section">
+    <div class="rp-title">Save / Load Scenarios</div>
+    <div style="display:flex;gap:4px;margin-bottom:6px;">
+      <input id="preset-name" placeholder="Name this scenario…" style="flex:1;background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-radius:4px;padding:3px 6px;font-size:10px;">
+      <button class="btn btn-green btn-sm" id="save-preset-btn">💾 Save</button>
+    </div>
+    <div class="preset-list" id="preset-list"></div>
+  </div>
+
+  <!-- REGRESSION -->
+  <div class="rp-section">
+    <div class="rp-title">Regression Tests</div>
+    <div class="btn-row" style="margin-bottom:6px;">
+      <button class="btn btn-blue btn-sm" id="run-regression-btn">▶ Run All</button>
+      <button class="btn btn-sm btn-green" id="export-btn">↑ Export JSON</button>
+      <button class="btn btn-sm btn-green" id="import-btn">↓ Import JSON</button>
+      <input type="file" id="import-file" accept=".json" style="display:none;">
+    </div>
+    <div id="regression-results"></div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="rp-section">
+    <div class="rp-title">Status</div>
+    <div class="status" id="status-log"><span class="info">Ready. Select a player, then click tiles.</span></div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── TILE DATA ──────────────────────────────────────────────────
+const SUIT={B:'bamboo',C:'circle',K:'char',W:'wind',D:'dragon',F:'flower',S:'season'};
+const WINDS=['East','South','West','North'];
+const DRAGONS=['red','green','white'];
+const NUM_ZH=['','一','二','三','四','五','六','七','八','九'];
+const SUIT_ZH={bamboo:'竹',circle:'餅',char:'萬'};
+const WIND_ZH={East:'東',South:'南',West:'西',North:'北'};
+const DRAGON_ZH={red:'中',green:'發',white:'白'};
+const FLOWER_ZH=['梅','蘭','菊','竹'];
+const SEASON_ZH=['春','夏','秋','冬'];
+const SEAT_NAMES=['You','CPU1','CPU2','CPU3'];
+let _nid=8000;
+function mk(suit,value){return{id:_nid++,suit,value};}
+function lbl(t){
+  if(!t)return'?';
+  if([SUIT.B,SUIT.C,SUIT.K].includes(t.suit))return NUM_ZH[t.value]+SUIT_ZH[t.suit];
+  if(t.suit===SUIT.W)return WIND_ZH[t.value];
+  if(t.suit===SUIT.D)return DRAGON_ZH[t.value];
+  if(t.suit===SUIT.F)return FLOWER_ZH[t.value];
+  if(t.suit===SUIT.S)return SEASON_ZH[t.value];
+  return'?';
+}
+function sub(t){
+  if(!t)return'';
+  if([SUIT.B,SUIT.C,SUIT.K].includes(t.suit))return t.value;
+  if(t.suit===SUIT.W)return t.value.slice(0,1);
+  if(t.suit===SUIT.D)return['R','G','W'][DRAGONS.indexOf(t.value)];
+  if(t.suit===SUIT.F)return'F'+(t.value+1);
+  if(t.suit===SUIT.S)return'S'+(t.value+1);
+  return'';
+}
+function cls(t){
+  if(t.suit===SUIT.B)return'bamboo';
+  if(t.suit===SUIT.C)return'circle';
+  if(t.suit===SUIT.W)return'wind';
+  if(t.suit===SUIT.D)return'dragon-'+t.value;
+  if(t.suit===SUIT.F)return'flower';
+  if(t.suit===SUIT.S)return'season';
+  return'';
+}
+
+// ── STATE ─────────────────────────────────────────────────────
+// Each player: {hand:[tiles], melds:[{type,tiles}], bonus:[tiles], drawnIdx:null}
+const players=[0,1,2,3].map(()=>({hand:[],melds:[],bonus:[],drawnIdx:null}));
+let targetSeat=0;
+let discardTile=null;
+let quickMode=null; // null|'pung'|'kong'|'chow'|'draw'|'bonus'|'discard'
+let chowBuffer=[];
+
+function P(s=targetSeat){return players[s];}
+function setQStatus(msg,warn=false){
+  const el=document.getElementById('qa-status');
+  el.textContent=msg;
+  el.style.color=warn?'#ffd34d':'#8ad4ff';
+}
+
+// ── LOG ───────────────────────────────────────────────────────
+function log(msg,type='info'){
+  const el=document.getElementById('status-log');
+  const d=document.createElement('div');
+  d.className=type;
+  d.textContent=`${new Date().toLocaleTimeString()} ${msg}`;
+  el.insertBefore(d,el.firstChild);
+  while(el.children.length>60)el.removeChild(el.lastChild);
+}
+
+// ── PALETTE ───────────────────────────────────────────────────
+const PALETTE_GROUPS=[
+  {label:'萬 Char', tiles:[1,2,3,4,5,6,7,8,9].map(n=>({suit:SUIT.K,value:n}))},
+  {label:'餅 Dots', tiles:[1,2,3,4,5,6,7,8,9].map(n=>({suit:SUIT.C,value:n}))},
+  {label:'竹 Bam',  tiles:[1,2,3,4,5,6,7,8,9].map(n=>({suit:SUIT.B,value:n}))},
+  {label:'風 Wind', tiles:WINDS.map(w=>({suit:SUIT.W,value:w}))},
+  {label:'箭 Drag', tiles:DRAGONS.map(d=>({suit:SUIT.D,value:d}))},
+  {label:'花 Bonus',tiles:[
+    ...[0,1,2,3].map(i=>({suit:SUIT.F,value:i})),
+    ...[0,1,2,3].map(i=>({suit:SUIT.S,value:i})),
+  ]},
+];
+
+function buildPalette(){
+  const el=document.getElementById('palette');
+  el.innerHTML='';
+  for(const g of PALETTE_GROUPS){
+    const row=document.createElement('div');
+    row.className='suit-row';
+    const sl=document.createElement('span');sl.className='suit-lbl';sl.textContent=g.label;
+    row.appendChild(sl);
+    for(const t of g.tiles){
+      const b=document.createElement('div');
+      b.className='tile-btn '+cls(t);
+      b.id=`pb-${t.suit}-${t.value}`;
+      b.innerHTML=`<span>${lbl(t)}</span><span class="sub">${sub(t)}</span>`;
+      b.addEventListener('click',()=>onPalettePick(t.suit,t.value));
+      row.appendChild(b);
+    }
+    el.appendChild(row);
+  }
+  updatePaletteHighlight();
+}
+
+function updatePaletteHighlight(){
+  document.querySelectorAll('.tile-btn').forEach(b=>{
+    b.classList.remove('q-pung','q-kong','q-chow','q-draw');
+  });
+  if(!quickMode)return;
+  const cls2=quickMode==='pung'?'q-pung':quickMode==='kong'?'q-kong':quickMode==='chow'?'q-chow':'q-draw';
+  document.querySelectorAll('.tile-btn').forEach(b=>b.classList.add(cls2));
+}
+
+// ── TILE CLICK FROM PALETTE ───────────────────────────────────
+function onPalettePick(suit,value){
+  const p=P();
+  const isBonusSuit=(suit===SUIT.F||suit===SUIT.S);
+
+  if(quickMode==='discard'){
+    discardTile=mk(suit,value);
+    renderDiscardPreview();
+    log(`Discard set: ${lbl(discardTile)}`,'ok');
+    quickMode=null;updateQButtons();updatePaletteHighlight();setQStatus('Discard tile set.');
+    return;
+  }
+  if(quickMode==='bonus'||isBonusSuit){
+    if(p.bonus.length>=8){setQStatus('Max 8 bonus tiles.',true);return;}
+    p.bonus.push(mk(suit,value));
+    quickMode=null;updateQButtons();updatePaletteHighlight();
+    renderHands();setQStatus(`Added bonus ${lbl({suit,value})} to ${SEAT_NAMES[targetSeat]}.`);
+    return;
+  }
+  if(quickMode==='pung'){
+    p.melds.push({type:'pung',tiles:[mk(suit,value),mk(suit,value),mk(suit,value)]});
+    log(`${SEAT_NAMES[targetSeat]}: Pung of ${lbl({suit,value})} → meld`,'ok');
+    quickMode=null;updateQButtons();updatePaletteHighlight();renderHands();
+    setQStatus(`Pung meld added. Pick next action or tile.`);return;
+  }
+  if(quickMode==='kong'){
+    p.melds.push({type:'kong',tiles:[mk(suit,value),mk(suit,value),mk(suit,value),mk(suit,value)]});
+    log(`${SEAT_NAMES[targetSeat]}: Kong of ${lbl({suit,value})} → meld`,'ok');
+    quickMode=null;updateQButtons();updatePaletteHighlight();renderHands();
+    setQStatus(`Kong meld added.`);return;
+  }
+  if(quickMode==='chow'){
+    if(isBonusSuit){setQStatus('Chow needs numbered tiles.',true);return;}
+    chowBuffer.push(mk(suit,value));
+    setQStatus(`Chow: ${chowBuffer.map(t=>lbl(t)).join(' ')} ${chowBuffer.length<3?'— pick '+(3-chowBuffer.length)+' more':''}`);
+    if(chowBuffer.length===3){
+      p.melds.push({type:'chow',tiles:[...chowBuffer]});
+      log(`${SEAT_NAMES[targetSeat]}: Chow ${chowBuffer.map(t=>lbl(t)).join(' ')} → meld`,'ok');
+      chowBuffer=[];quickMode=null;updateQButtons();updatePaletteHighlight();renderHands();
+      setQStatus('Chow meld added.');
+    }
+    return;
+  }
+  if(quickMode==='draw'){
+    p.hand.push(mk(suit,value));
+    p.drawnIdx=p.hand.length-1;
+    log(`${SEAT_NAMES[targetSeat]}: ${lbl({suit,value})} marked as self-drawn`,'ok');
+    quickMode=null;updateQButtons();updatePaletteHighlight();renderHands();
+    setQStatus('Self-drawn tile added (shown in orange).');return;
+  }
+  // Normal add
+  p.hand.push(mk(suit,value));
+  renderHands();
+  // Update count hint
+  setQStatus(`${SEAT_NAMES[targetSeat]}: ${p.hand.length} tiles + ${p.melds.length} melds.`);
+}
+
+// ── RENDER FOUR HANDS ─────────────────────────────────────────
+function renderHands(){
+  const area=document.getElementById('hands-area');
+  area.innerHTML='';
+  for(let seat=0;seat<4;seat++){
+    const p=players[seat];
+    const card=document.createElement('div');
+    card.className='player-card'+(seat===targetSeat?' target':'');
+
+    // Count tiles
+    const meldTiles=p.melds.reduce((s,m)=>s+(m.tiles||[]).length,0);
+    const total=p.hand.length+meldTiles+p.bonus.length;
+
+    // Header
+    const hdr=document.createElement('div');hdr.className='pc-header';
+    hdr.innerHTML=`<span class="pc-name">${seat===0?'🧑':'🤖'} ${SEAT_NAMES[seat]}</span>
+      <span class="pc-seat">seat ${seat}</span>
+      <span class="pc-count" title="hand:${p.hand.length} melds:${p.melds.length} bonus:${p.bonus.length}">${p.hand.length}h+${meldTiles}m+${p.bonus.length}b = ${total}</span>`;
+    const acts=document.createElement('div');acts.className='pc-actions';
+    // Switch target button
+    if(seat!==targetSeat){
+      const sw=document.createElement('button');
+      sw.className='btn btn-sm btn-green';sw.textContent='Select';
+      sw.addEventListener('click',()=>setTarget(seat));
+      acts.appendChild(sw);
+    }
+    const clr=document.createElement('button');
+    clr.className='btn btn-sm btn-red';clr.textContent='✕';
+    clr.title='Clear this player';
+    clr.addEventListener('click',()=>{clearPlayer(seat);});
+    acts.appendChild(clr);
+    hdr.appendChild(acts);
+    card.appendChild(hdr);
+
+    // Hand display
+    const handDiv=document.createElement('div');handDiv.className='pc-hand';
+
+    if(total===0){
+      const em=document.createElement('span');em.className='pc-empty';em.textContent='Empty — select this player and click tiles';
+      handDiv.appendChild(em);
+    } else {
+      // Show melds first (with label)
+      p.melds.forEach((m,mi)=>{
+        if(mi>0){const sep=document.createElement('div');sep.className='meld-sep';handDiv.appendChild(sep);}
+        const lblEl=document.createElement('div');lblEl.className='meld-label';
+        lblEl.textContent=m.type[0].toUpperCase()+m.type.slice(1);
+        handDiv.appendChild(lblEl);
+        m.tiles.forEach((t,ti)=>{
+          const d=makeTileDiv(t,'ht in-meld',()=>{m.tiles.splice(ti,1);if(m.tiles.length===0)p.melds.splice(mi,1);renderHands();});
+          handDiv.appendChild(d);
+        });
+      });
+
+      // Separator before hand tiles
+      if(p.melds.length>0&&p.hand.length>0){
+        const sep=document.createElement('div');sep.className='meld-sep';handDiv.appendChild(sep);
+        const lbl2=document.createElement('div');lbl2.className='meld-label';lbl2.textContent='Hand';
+        handDiv.appendChild(lbl2);
+      }
+
+      // Hand tiles
+      p.hand.forEach((t,i)=>{
+        const extra='ht'+(i===p.drawnIdx?' drawn':'');
+        const d=makeTileDiv(t,extra,()=>{
+          if(p.drawnIdx===i)p.drawnIdx=null;
+          else if(p.drawnIdx!==null&&p.drawnIdx>i)p.drawnIdx--;
+          p.hand.splice(i,1);renderHands();
+        });
+        handDiv.appendChild(d);
+      });
+
+      // Bonus
+      if(p.bonus.length>0){
+        const sep=document.createElement('div');sep.className='meld-sep';handDiv.appendChild(sep);
+        const lbl3=document.createElement('div');lbl3.className='meld-label';lbl3.style.color='#c8007a';lbl3.textContent='Bonus';
+        handDiv.appendChild(lbl3);
+        p.bonus.forEach((t,i)=>{
+          const d=makeTileDiv(t,'ht flower',()=>{p.bonus.splice(i,1);renderHands();});
+          d.style.cssText='background:linear-gradient(180deg,#fff9e6,#fff0b3);border-color:#b8860b;';
+          handDiv.appendChild(d);
+        });
+      }
+    }
+
+    card.appendChild(handDiv);
+    area.appendChild(card);
+  }
+}
+
+function makeTileDiv(t,extraClass,onClick){
+  const d=document.createElement('div');
+  d.className=(extraClass||'ht')+' '+cls(t);
+  d.innerHTML=`<span class="rx">✕</span><span>${lbl(t)}</span><span class="sub">${sub(t)}</span>`;
+  if(onClick)d.addEventListener('click',onClick);
+  return d;
+}
+
+// ── TARGET ────────────────────────────────────────────────────
+function setTarget(seat){
+  targetSeat=seat;
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.seat)===seat));
+  renderHands();
+  setQStatus(`Adding tiles to ${SEAT_NAMES[seat]}. Hand: ${P().hand.length} tiles, ${P().melds.length} melds.`);
+}
+document.querySelectorAll('.tbtn').forEach(b=>{
+  b.addEventListener('click',()=>setTarget(parseInt(b.dataset.seat)));
+});
+
+// ── QUICK ACTIONS ─────────────────────────────────────────────
+function updateQButtons(){
+  const modes=['pung','kong','chow','draw','bonus'];
+  document.querySelectorAll('.qa').forEach(b=>{
+    const m=b.id.replace('q-','');
+    b.classList.toggle('active-q',m===quickMode);
+  });
+}
+function toggleMode(mode){
+  quickMode=(quickMode===mode)?null:mode;
+  chowBuffer=[];
+  updateQButtons();updatePaletteHighlight();
+  const msgs={
+    pung:'Click ONE tile → adds Pung (×3) meld',
+    kong:'Click ONE tile → adds Kong (×4) meld',
+    chow:'Click 3 tiles in order → adds Chow meld',
+    draw:'Click ONE tile → added as self-drawn 14th tile',
+    bonus:'Click a flower/season → adds as bonus tile',
+    discard:'Click ONE tile → sets as the discard tile',
+  };
+  setQStatus(quickMode?(msgs[quickMode]||''):'Normal tile add mode.');
+}
+
+document.getElementById('q-pung').addEventListener('click',()=>toggleMode('pung'));
+document.getElementById('q-kong').addEventListener('click',()=>toggleMode('kong'));
+document.getElementById('q-chow').addEventListener('click',()=>toggleMode('chow'));
+document.getElementById('q-draw').addEventListener('click',()=>toggleMode('draw'));
+document.getElementById('q-bonus').addEventListener('click',()=>toggleMode('bonus'));
+document.getElementById('q-set-discard').addEventListener('click',()=>toggleMode('discard'));
+document.getElementById('q-clear-player').addEventListener('click',()=>clearPlayer(targetSeat));
+
+function clearPlayer(seat){
+  // Mutate in-place so all references remain valid
+  players[seat].hand=[];
+  players[seat].melds=[];
+  players[seat].bonus=[];
+  players[seat].drawnIdx=null;
+  renderHands();
+  setQStatus(`Cleared ${SEAT_NAMES[seat]}.`);
+}
+
+// ── DISCARD PREVIEW ───────────────────────────────────────────
+function renderDiscardPreview(){
+  const el=document.getElementById('discard-preview');
+  el.innerHTML='';
+  if(!discardTile){
+    el.innerHTML='<span style="color:#444;font-size:10px;align-self:center;">None set</span>';return;
+  }
+  el.appendChild(makeTileDiv(discardTile,'ht discard-t'));
+}
+
+// ── CLEAR ALL ─────────────────────────────────────────────────
+document.getElementById('clear-all-btn').addEventListener('click',()=>{
+  players.forEach(p=>{p.hand=[];p.melds=[];p.bonus=[];p.drawnIdx=null;});
+  discardTile=null;quickMode=null;chowBuffer=[];
+  renderHands();renderDiscardPreview();updateQButtons();updatePaletteHighlight();
+  document.getElementById('result-row').style.display='none';
+  setQStatus('Cleared everything.');log('Cleared.','info');
+});
+
+// ── INJECT ────────────────────────────────────────────────────
+document.getElementById('inject-btn').addEventListener('click', ()=>injectScenario());
+document.getElementById('verify-btn').addEventListener('click', verifyScenario);
+
+function buildState(){
+  const phase=document.getElementById('inject-phase').value;
+  const discardFrom=parseInt(document.getElementById('discard-from').value);
+  const dealerSeat=parseInt(document.getElementById('dealer-seat').value);
+  const dt=discardTile?{...discardTile,_discardSeat:discardFrom}:null;
+
+  const allPlayers=[];
+  for(let seat=0;seat<4;seat++){
+    const p=players[seat];
+    if(p.hand.length===0&&p.melds.length===0&&p.bonus.length===0)continue;
+    allPlayers.push({
+      seat,
+      hand:p.hand.map((t,i)=>Object.assign({},t,{_justDrawn:i===p.drawnIdx})),
+      melds:p.melds.map(m=>({type:m.type,claimed:!!m.claimed,tiles:(m.tiles||[]).map(t=>Object.assign({},t))})),
+      bonus:(p.bonus||[]).map(t=>Object.assign({},t)),
+      drawnIdx:p.drawnIdx,
+    });
+  }
+
+  const p0=players[0];
+  return{
+    ts:Date.now(),scenario:true,phase,dealerSeat,discardFrom,discardTile:dt,
+    humanHand:p0.hand.map((t,i)=>Object.assign({},t,{_justDrawn:i===p0.drawnIdx})),
+    humanMelds:p0.melds.map(m=>({type:m.type,claimed:!!m.claimed,tiles:(m.tiles||[]).map(t=>Object.assign({},t))})),
+    humanBonus:(p0.bonus||[]).map(t=>Object.assign({},t)),
+    allPlayers,
+  };
+}
+
+function injectScenario(state){
+  // Guard: if called with an Event (e.g. from addEventListener), ignore it
+  if(state instanceof Event) state=null;
+  let s;
+  try{s=state||buildState();}
+  catch(e){log('❌ Build failed: '+e.message,'err');console.error('buildState error:',e);return false;}
+
+  // Debug: always log what's in the players array
+  console.log('[Scenario] players state:', players.map((p,i)=>
+    `seat${i}: hand=${p.hand.length} melds=${p.melds.length} bonus=${p.bonus.length}`
+  ));
+
+  if(s.phase==='claim'&&!s.discardTile){
+    log('⚠ CLAIM needs a discard tile — activate "Next pick → Discard tile" then click a tile.','warn');return false;
+  }
+  if(!s.allPlayers||s.allPlayers.length===0){
+    const counts=players.map((p,i)=>`${SEAT_NAMES[i]}:${p.hand.length}`).join(', ');
+    log(`⚠ No player hands. Internal counts: ${counts}. Try clicking a tile in the palette.`,'warn');
+    return false;
+  }
+
+  // Always refresh ts and injectId at the moment of actual injection
+  const injectTime = Date.now();
+  s.ts = injectTime;
+  s.injectId = injectTime + '-' + Math.random().toString(36).slice(2,7);
+
+  try{
+    // Clear stale action log BEFORE writing new scenario so poller doesn't read old result
+    localStorage.removeItem('mahjongActionLog');
+    const json=JSON.stringify(s);
+    localStorage.setItem('mahjongScenario',json);
+    const seats=s.allPlayers.map(p=>`${SEAT_NAMES[p.seat]}:${p.hand.length}t`).join(', ');
+    log(`✅ Injected [${s.injectId.slice(-5)}] — ${seats} | discard:${s.discardTile?lbl(s.discardTile):'none'} | phase:${s.phase}`,'ok');
+    return {id: s.injectId, ts: injectTime};
+  }catch(e){log('❌ localStorage write failed: '+e.message,'err');console.error('inject error:',e);return false;}
+}
+
+function verifyScenario(){
+  try{
+    const raw=localStorage.getItem('mahjongActionLog');
+    if(!raw){log('No action log — inject first, wait for game to process.','warn');return;}
+    const data=JSON.parse(raw);
+    if(Date.now()-data.ts>15000){log('Action log is stale (>15s). Re-inject.','warn');return;}
+    const results=[
+      {label:'Win',actual:data.win,expected:document.getElementById('exp-win').checked},
+      {label:'Pung',actual:data.pung,expected:document.getElementById('exp-pung').checked},
+      {label:'Kong',actual:data.kong,expected:document.getElementById('exp-kong').checked},
+      {label:'Chow',actual:data.chow,expected:document.getElementById('exp-chow').checked},
+    ];
+    const rr=document.getElementById('result-row');
+    rr.innerHTML='';rr.style.display='flex';
+    let allPass=true;
+    for(const r of results){
+      const pass=r.actual===r.expected;if(!pass)allPass=false;
+      const c=document.createElement('div');c.className=`rcard ${pass?'pass':'fail'}`;
+      c.innerHTML=`<div class="rl">${r.label}</div><div class="rv ${r.actual?'yes':'no'}">${r.actual?'ON':'OFF'}</div>`;
+      rr.appendChild(c);
+    }
+    log(allPass?'✅ All pass!':'❌ Some mismatches — check expected vs actual.','ok');
+  }catch(e){log('❌ '+e.message,'err');}
+}
+
+// ── SAVE / LOAD PRESETS ───────────────────────────────────────
+function getPresets(){
+  try{return JSON.parse(localStorage.getItem('mahjongScenarioPresets')||'[]');}catch(e){return[];}
+}
+function savePresets(list){
+  try{localStorage.setItem('mahjongScenarioPresets',JSON.stringify(list));}catch(e){log('Save failed: '+e.message,'err');}
+}
+
+document.getElementById('save-preset-btn').addEventListener('click',()=>{
+  const name=document.getElementById('preset-name').value.trim();
+  if(!name){log('Enter a name before saving.','warn');return;}
+  const state=buildState();
+  state._presetName=name;
+  state._expectedWin=document.getElementById('exp-win').checked;
+  state._expectedPung=document.getElementById('exp-pung').checked;
+  state._expectedKong=document.getElementById('exp-kong').checked;
+  state._expectedChow=document.getElementById('exp-chow').checked;
+  const list=getPresets();
+  const existing=list.findIndex(p=>p._presetName===name);
+  if(existing>=0)list[existing]=state;
+  else list.push(state);
+  savePresets(list);
+  document.getElementById('preset-name').value='';
+  renderPresetList();
+  log(`💾 Saved "${name}"${existing>=0?' (updated)':''}.`,'ok');
+});
+
+function renderPresetList(){
+  const el=document.getElementById('preset-list');
+  el.innerHTML='';
+  const list=getPresets();
+  if(list.length===0){
+    el.innerHTML='<span style="color:#444;font-size:10px;">No saved scenarios yet.</span>';return;
+  }
+  list.forEach((preset,i)=>{
+    const item=document.createElement('div');item.className='preset-item';
+    const seats=preset.allPlayers?preset.allPlayers.map(p=>`${SEAT_NAMES[p.seat]}`).join('+'):'You';
+    item.innerHTML=`<span class="pi-name">${preset._presetName}</span>
+      <span class="pi-info">${seats} · ${preset.phase}</span>`;
+    const loadBtn=document.createElement('button');loadBtn.className='btn btn-sm btn-green';loadBtn.textContent='Load';
+    loadBtn.addEventListener('click',(e)=>{e.stopPropagation();loadPreset(preset);});
+    const delBtn=document.createElement('span');delBtn.className='pi-del';delBtn.textContent='✕';
+    delBtn.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      const list2=getPresets();list2.splice(i,1);savePresets(list2);renderPresetList();
+      log(`Deleted "${preset._presetName}".`,'info');
+    });
+    item.appendChild(loadBtn);item.appendChild(delBtn);
+    el.appendChild(item);
+  });
+}
+
+function loadPreset(preset){
+  // Restore players
+  players.forEach((p,i)=>{p.hand=[];p.melds=[];p.bonus=[];p.drawnIdx=null;});
+  if(preset.allPlayers){
+    preset.allPlayers.forEach(pd=>{
+      const p=players[pd.seat];
+      p.hand=(pd.hand||[]).map(t=>({...t}));
+      p.melds=(pd.melds||[]).map(m=>({...m,tiles:[...m.tiles]}));
+      p.bonus=(pd.bonus||[]).map(t=>({...t}));
+      p.drawnIdx=pd.drawnIdx??null;
+    });
+  }
+  discardTile=preset.discardTile?{...preset.discardTile}:null;
+  document.getElementById('inject-phase').value=preset.phase||'claim';
+  document.getElementById('discard-from').value=preset.discardFrom??3;
+  document.getElementById('dealer-seat').value=preset.dealerSeat??0;
+  if(preset._expectedWin!==undefined){
+    document.getElementById('exp-win').checked=preset._expectedWin;
+    document.getElementById('exp-pung').checked=preset._expectedPung;
+    document.getElementById('exp-kong').checked=preset._expectedKong;
+    document.getElementById('exp-chow').checked=preset._expectedChow;
+  }
+  renderHands();renderDiscardPreview();
+  log(`Loaded "${preset._presetName}".`,'ok');
+  setQStatus(`Loaded: ${preset._presetName}`);
+}
+
+// ── REGRESSION RUNNER ─────────────────────────────────────────
+async function runRegression(){
+  const list=getPresets();
+  if(list.length===0){log('No saved scenarios to test.','warn');return;}
+  const el=document.getElementById('regression-results');
+  el.innerHTML='<span style="color:#8ad4ff;font-size:11px;">Running '+list.length+' scenarios…</span>';
+  log(`Running regression: ${list.length} scenarios.`,'info');
+
+  const results=[];
+  for(const preset of list){
+    // Clear old log first, then inject
+    localStorage.removeItem('mahjongActionLog');
+    const injected = injectScenario(preset);
+    if(!injected){results.push({name:preset._presetName,status:'error',msg:'Inject failed'});continue;}
+
+    // Wait for game tab to process — pass both the ID and the inject timestamp
+    const result = await pollActionLog(injected.id, injected.ts, 8000);
+    if(!result){
+      results.push({name:preset._presetName,status:'timeout',
+        msg:'No response — is the game tab open?'});
+      log(`  ⏱ Timeout: ${preset._presetName}. Make sure game tab is open.`,'warn');
+      continue;
+    }
+    const pass=(result.win===!!preset._expectedWin)&&
+               (result.pung===!!preset._expectedPung)&&
+               (result.kong===!!preset._expectedKong)&&
+               (result.chow===!!preset._expectedChow);
+    results.push({name:preset._presetName,status:pass?'pass':'fail',
+      actual:{win:result.win,pung:result.pung,kong:result.kong,chow:result.chow},
+      expected:{win:!!preset._expectedWin,pung:!!preset._expectedPung,
+                kong:!!preset._expectedKong,chow:!!preset._expectedChow}});
+    log(`  ${pass?'✅':'❌'} ${preset._presetName}: got win=${result.win} pung=${result.pung} kong=${result.kong} chow=${result.chow}`
+        +(pass?'':` — expected win=${!!preset._expectedWin} pung=${!!preset._expectedPung}`),
+        pass?'ok':'err');
+    await sleep(600); // gap: game tab polls every 1500ms, give it time to settle
+  }
+
+  // Render results
+  el.innerHTML='';
+  let passed=0;
+  for(const r of results){
+    const pass=r.status==='pass';
+    if(pass)passed++;
+    const row=document.createElement('div');
+    row.className='reg-row '+(pass?'pass':r.status==='timeout'?'':'fail');
+    const diffs=r.actual?Object.keys(r.expected||{}).filter(k=>r.actual[k]!==(r.expected||{})[k]).join(','):'';
+    row.innerHTML=`<span class="reg-name">${r.name}</span>
+      <span class="reg-badge ${pass?'reg-pass':'reg-fail'}">${r.status==='timeout'?'TIME':pass?'PASS':'FAIL'}</span>
+      ${diffs?`<span style="font-size:9px;color:#ff9988;">${diffs}</span>`:''}
+      ${r.msg?`<span style="font-size:9px;color:#ff9988;">${r.msg}</span>`:''}`;
+    el.appendChild(row);
+  }
+  const summary=document.createElement('div');
+  summary.style.cssText='font-size:11px;font-weight:700;margin-top:6px;';
+  summary.style.color=passed===list.length?'#5dde7a':'#ff6666';
+  summary.textContent=`${passed}/${list.length} passed`;
+  el.appendChild(summary);
+  log(`Regression done: ${passed}/${list.length} passed.`,passed===list.length?'ok':'err');
+}
+
+function pollActionLog(injectId, injectTime, timeoutMs=8000){
+  // injectTime: the moment we wrote to localStorage — only accept logs written after this
+  const t0 = injectTime || Date.now();
+  return new Promise(resolve=>{
+    const iv=setInterval(()=>{
+      try{
+        const raw=localStorage.getItem('mahjongActionLog');
+        if(raw){
+          const d=JSON.parse(raw);
+          // Accept if: exact injectId match, OR log was written after our injection moment
+          const idMatch = injectId && d.injectId && d.injectId===injectId;
+          const writtenAfter = d.ts && d.ts > t0;
+          if(idMatch || writtenAfter){clearInterval(iv);resolve(d);return;}
+        }
+      }catch(e){}
+      if(Date.now()-t0>timeoutMs){clearInterval(iv);resolve(null);}
+    },200);
+  });
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────
+document.getElementById('run-regression-btn').addEventListener('click', runRegression);
+document.getElementById('export-btn').addEventListener('click',()=>{
+  const list=getPresets();
+  if(list.length===0){log('Nothing to export.','warn');return;}
+  const blob=new Blob([JSON.stringify(list,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`mahjong-scenarios-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  log(`Exported ${list.length} scenarios.`,'ok');
+});
+document.getElementById('import-btn').addEventListener('click',()=>{
+  document.getElementById('import-file').click();
+});
+document.getElementById('import-file').addEventListener('change',e=>{
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const imported=JSON.parse(ev.target.result);
+      if(!Array.isArray(imported)){log('Invalid file format.','err');return;}
+      const existing=getPresets();
+      let added=0;
+      for(const p of imported){
+        if(p._presetName&&!existing.find(e=>e._presetName===p._presetName)){
+          existing.push(p);added++;
+        }
+      }
+      savePresets(existing);renderPresetList();
+      log(`Imported ${added} new scenarios (${imported.length-added} duplicates skipped).`,'ok');
+    }catch(err){log('Import failed: '+err.message,'err');}
+  };
+  reader.readAsText(file);
+  e.target.value='';
+});
+
+// ── AUTO-POLL VERIFY ──────────────────────────────────────────
+setInterval(()=>{
+  try{
+    const raw=localStorage.getItem('mahjongActionLog');
+    if(!raw)return;
+    const data=JSON.parse(raw);
+    if(Date.now()-data.ts>8000)return;
+    const rr=document.getElementById('result-row');
+    rr.innerHTML='';rr.style.display='flex';
+    const results=[
+      {label:'Win',actual:data.win,expected:document.getElementById('exp-win').checked},
+      {label:'Pung',actual:data.pung,expected:document.getElementById('exp-pung').checked},
+      {label:'Kong',actual:data.kong,expected:document.getElementById('exp-kong').checked},
+      {label:'Chow',actual:data.chow,expected:document.getElementById('exp-chow').checked},
+    ];
+    for(const r of results){
+      const pass=r.actual===r.expected;
+      const c=document.createElement('div');c.className=`rcard ${pass?'pass':'fail'}`;
+      c.innerHTML=`<div class="rl">${r.label}</div><div class="rv ${r.actual?'yes':'no'}">${r.actual?'ON':'OFF'}</div>`;
+      rr.appendChild(c);
+    }
+  }catch(e){}
+},1500);
+
+// ── BUILT-IN PRESETS ──────────────────────────────────────────
+// These render as a special section at bottom of save list
+const BUILTIN=[
+  {
+    _presetName:'★ Win — near-complete',_expectedWin:true,_expectedPung:true,_expectedKong:false,_expectedChow:false,
+    phase:'claim',discardFrom:3,dealerSeat:0,
+    allPlayers:[{seat:0,hand:[
+      {suit:SUIT.K,value:1},{suit:SUIT.K,value:1},{suit:SUIT.K,value:1},
+      {suit:SUIT.B,value:9},{suit:SUIT.B,value:9},{suit:SUIT.B,value:9},
+      {suit:SUIT.C,value:5},{suit:SUIT.C,value:5},{suit:SUIT.C,value:5},
+      {suit:SUIT.W,value:'East'},{suit:SUIT.W,value:'East'},
+      {suit:SUIT.D,value:'green'},{suit:SUIT.D,value:'green'},
+    ].map((t,i)=>({...mk(t.suit,t.value),_justDrawn:false})),melds:[],bonus:[],drawnIdx:null}],
+    discardTile:{...mk(SUIT.D,'green'),_discardSeat:3},
+  },
+  {
+    _presetName:'★ Self-Draw Win',_expectedWin:true,_expectedPung:false,_expectedKong:false,_expectedChow:false,
+    phase:'discard',discardFrom:3,dealerSeat:0,
+    allPlayers:[{seat:0,hand:[
+      {suit:SUIT.K,value:1},{suit:SUIT.K,value:2},{suit:SUIT.K,value:3},
+      {suit:SUIT.B,value:4},{suit:SUIT.B,value:5},{suit:SUIT.B,value:6},
+      {suit:SUIT.C,value:7},{suit:SUIT.C,value:8},{suit:SUIT.C,value:9},
+      {suit:SUIT.W,value:'East'},{suit:SUIT.W,value:'East'},{suit:SUIT.W,value:'East'},
+      {suit:SUIT.D,value:'red'},{suit:SUIT.D,value:'red'},
+    ].map((t,i)=>({...mk(t.suit,t.value),_justDrawn:i===13})),melds:[],bonus:[],drawnIdx:13}],
+    discardTile:null,
+  },
+  {
+    _presetName:'★ Kong upgrade (pung→kong self-draw)',_expectedWin:false,_expectedPung:false,_expectedKong:true,_expectedChow:false,
+    phase:'discard',discardFrom:3,dealerSeat:0,
+    allPlayers:[{seat:0,
+      // 9 hand tiles + the self-drawn 三萬 as 10th (drawnIdx:9)
+      hand:[
+        ...([SUIT.K,SUIT.K,SUIT.B,SUIT.B,SUIT.B,SUIT.C,SUIT.C,SUIT.W,SUIT.D]
+          .map((s,i)=>({...mk(s,[1,2,5,6,7,9,8,'East','red'][i]),_justDrawn:false}))),
+        {...mk(SUIT.K,3),_justDrawn:true},  // self-drawn 三萬 → triggers pung→kong upgrade
+      ],
+      melds:[{type:'pung',tiles:[mk(SUIT.K,3),mk(SUIT.K,3),mk(SUIT.K,3)]}],
+      bonus:[],drawnIdx:9}],
+    discardTile:null,
+  },
+  {
+    _presetName:'★ No claim',_expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
+    phase:'claim',discardFrom:2,dealerSeat:0,
+    allPlayers:[{seat:0,hand:[
+      mk(SUIT.K,1),mk(SUIT.K,3),mk(SUIT.K,5),mk(SUIT.B,2),mk(SUIT.B,4),
+      mk(SUIT.B,6),mk(SUIT.C,7),mk(SUIT.C,9),mk(SUIT.W,'North'),
+    ].map(t=>({...t,_justDrawn:false})),melds:[],bonus:[],drawnIdx:null}],
+    discardTile:{...mk(SUIT.W,'South'),_discardSeat:2},
+  },
+];
+
+function renderPresetListFull(){
+  const el=document.getElementById('preset-list');
+  el.innerHTML='';
+  // Built-ins
+  BUILTIN.forEach(preset=>{
+    const item=document.createElement('div');item.className='preset-item builtin';
+    item.innerHTML=`<span class="pi-name">${preset._presetName}</span><span class="pi-info">built-in</span>`;
+    const loadBtn=document.createElement('button');loadBtn.className='btn btn-sm btn-blue';loadBtn.textContent='Load';
+    loadBtn.addEventListener('click',(e)=>{e.stopPropagation();loadPreset(preset);});
+    item.appendChild(loadBtn);
+    el.appendChild(item);
+  });
+  // Saved
+  const list=getPresets();
+  if(list.length===0&&BUILTIN.length>0)return;
+  if(list.length>0){
+    const sep=document.createElement('div');sep.style.cssText='font-size:9px;color:var(--dim);margin:4px 0 2px;';sep.textContent='— Saved —';
+    el.appendChild(sep);
+  }
+  list.forEach((preset,i)=>{
+    const item=document.createElement('div');item.className='preset-item';
+    const seats=preset.allPlayers?preset.allPlayers.map(p=>SEAT_NAMES[p.seat]).join('+'):'You';
+    item.innerHTML=`<span class="pi-name">${preset._presetName}</span><span class="pi-info">${seats}·${preset.phase}</span>`;
+    const loadBtn=document.createElement('button');loadBtn.className='btn btn-sm btn-green';loadBtn.textContent='Load';
+    loadBtn.addEventListener('click',(e)=>{e.stopPropagation();loadPreset(preset);});
+    const delBtn=document.createElement('span');delBtn.className='pi-del';delBtn.textContent='✕';
+    delBtn.addEventListener('click',(e)=>{
+      e.stopPropagation();const list2=getPresets();list2.splice(i,1);savePresets(list2);renderPresetListFull();
+      log(`Deleted "${preset._presetName}".`,'info');
+    });
+    item.appendChild(loadBtn);item.appendChild(delBtn);
+    el.appendChild(item);
+  });
+}
+
+// Override renderPresetList
+function renderPresetList(){renderPresetListFull();}
+
+// ── INIT ──────────────────────────────────────────────────────
+buildPalette();
+renderHands();
+renderDiscardPreview();
+renderPresetListFull();
+
+// ── CAPTURE RECEIVER ──────────────────────────────────────────
+function loadCapturedState(){
+  try{
+    const raw=localStorage.getItem('mahjongCapturedState');
+    if(!raw)return;
+    const state=JSON.parse(raw);
+    if(!state||!state.allPlayers)return;
+    localStorage.removeItem('mahjongCapturedState');
+    loadPreset(state);
+    // Pre-fill the name field
+    document.getElementById('preset-name').value=state._presetName||'';
+    log(`📸 Captured state loaded — ${state.allPlayers.length} players, phase:${state.phase}. Review then Save.`,'ok');
+  }catch(e){log('Capture load failed: '+e.message,'err');}
+}
+
+// Check on page load (if scenario builder was already open)
+loadCapturedState();
+
+// Also listen for postMessage from game tab (if scenario builder was already open)
+window.addEventListener('message', e=>{
+  if(e.data&&e.data.type==='loadCapture') loadCapturedState();
+});
+</script>
+</body>
+</html>

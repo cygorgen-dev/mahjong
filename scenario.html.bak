@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Mahjong Scenario Tester</title>
+  <style>
+    :root {
+      --green-dark: #07301a;
+      --green-mid:  #1a6b3a;
+      --green-felt: #14572b;
+      --gold:       #ffd34d;
+      --gold-dim:   #b89a2a;
+      --tile-bg:    #fffdf3;
+      --tile-face:  #f0e9d2;
+      --red:        #e03030;
+      --blue:       #1a55cc;
+      --text:       #f0f0f0;
+      --dim:        #aaa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--green-dark);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 20px;
+      color: var(--gold);
+      border-bottom: 2px solid var(--green-mid);
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h1 span.badge {
+      font-size: 11px;
+      background: var(--red);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    h2 {
+      font-size: 13px;
+      color: var(--gold);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    h2::before { content: "▸"; opacity: 0.6; }
+
+    .layout { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+
+    /* ---- PANEL ---- */
+    .panel {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--green-mid);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .panel + .panel { margin-top: 12px; }
+
+    /* ---- SCENARIO PRESETS ---- */
+    .preset-list { display: flex; flex-direction: column; gap: 6px; }
+    .preset-btn {
+      background: var(--green-mid);
+      color: #fff;
+      border: 1px solid #2a8b4e;
+      border-radius: 6px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: left;
+      transition: background 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .preset-btn:hover { background: #2a8b4e; }
+    .preset-btn .ptitle { font-weight: 700; font-size: 13px; }
+    .preset-btn .pdesc  { opacity: 0.75; font-size: 11px; }
+    .preset-btn.active  { border-color: var(--gold); background: #1e7540; }
+
+    /* ---- TILE BUILDER ---- */
+    .tile-builder { display: flex; flex-direction: column; gap: 10px; }
+    .suit-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .suit-label {
+      font-size: 11px;
+      color: var(--gold);
+      width: 56px;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+    .tile-btn {
+      width: 38px; height: 52px;
+      background: linear-gradient(180deg, var(--tile-bg), var(--tile-face));
+      border: 1.5px solid #2a1a0a;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: "Microsoft JhengHei","PingFang TC",serif;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1px;
+      box-shadow: 1px 1px 0 #2a1a0a;
+      transition: transform 0.08s, box-shadow 0.08s;
+      position: relative;
+      color: #111;
+    }
+    .tile-btn:hover { transform: translateY(-3px); box-shadow: 1px 4px 4px rgba(0,0,0,0.4); }
+    .tile-btn .sub { font-size: 9px; color: #555; font-family: system-ui; }
+    .tile-btn.bamboo { color: #1a7a1a; }
+    .tile-btn.circle { color: #b22222; }
+    .tile-btn.wind   { color: #0033aa; }
+    .tile-btn.dragon-red { color: #c80000; }
+    .tile-btn.dragon-green { color: #1a7a1a; }
+    .tile-btn.dragon-white { color: #0033aa; font-size:0; border:2px solid #0033aa; }
+    .tile-btn.flower, .tile-btn.season { color: #c8007a; font-size: 14px; }
+    .tile-btn.season { color: #d68a00; }
+    .tile-btn.selected {
+      outline: 3px solid var(--gold);
+      transform: translateY(-4px);
+      box-shadow: 0 0 8px rgba(255,211,77,0.7);
+    }
+    .tile-btn .count-badge {
+      position: absolute;
+      top: -6px; right: -6px;
+      background: var(--gold);
+      color: #07301a;
+      font-size: 10px;
+      font-weight: 800;
+      font-family: system-ui;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ---- HAND DISPLAY ---- */
+    .hand-display {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      min-height: 60px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 6px;
+      padding: 8px;
+      align-items: flex-end;
+    }
+    .hand-tile {
+      width: 38px; height: 52px;
+      background: linear-gradient(180deg, var(--tile-bg), var(--tile-face));
+      border: 1.5px solid #2a1a0a;
+      border-radius: 4px;
+      font-family: "Microsoft JhengHei","PingFang TC",serif;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 1px 1px 0 #2a1a0a;
+      position: relative;
+      color: #111;
+      transition: transform 0.08s;
+    }
+    .hand-tile:hover { transform: translateY(-4px); }
+    .hand-tile .sub { font-size: 9px; color: #555; font-family: system-ui; }
+    .hand-tile.bamboo { color: #1a7a1a; }
+    .hand-tile.circle { color: #b22222; }
+    .hand-tile.wind   { color: #0033aa; }
+    .hand-tile.dragon-red { color: #c80000; }
+    .hand-tile.dragon-green { color: #1a7a1a; }
+    .hand-tile.dragon-white { color: #0033aa; font-size:0; border:2px solid #0033aa; }
+    .hand-tile.flower, .hand-tile.season { color: #c8007a; }
+    .hand-tile.season { color: #d68a00; }
+    .hand-tile.discard-tile { outline: 3px solid var(--red); }
+    .hand-tile .remove-x {
+      position: absolute; top: -5px; right: -5px;
+      background: #cc2222; color: #fff;
+      font-size: 9px; font-weight: 800;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      display: none; align-items: center; justify-content: center;
+      font-family: system-ui;
+    }
+    .hand-tile:hover .remove-x { display: flex; }
+    .hand-tile.meld-marker {
+      opacity: 0.5;
+      border-style: dashed;
+    }
+
+    /* ---- MELD SECTION ---- */
+    .meld-area {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .meld-row {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .meld-label {
+      font-size: 11px; color: var(--dim); width: 45px; flex-shrink: 0;
+    }
+    .meld-tiles {
+      display: flex; gap: 3px;
+    }
+    .meld-type-select {
+      background: var(--green-dark);
+      color: var(--text);
+      border: 1px solid var(--green-mid);
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .meld-clear {
+      background: none; border: 1px solid #555; color: #aaa;
+      border-radius: 4px; padding: 2px 6px; font-size: 10px;
+      cursor: pointer;
+    }
+    .meld-clear:hover { color: var(--red); border-color: var(--red); }
+
+    /* ---- DISCARD SECTION ---- */
+    .discard-area {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .discard-label { font-size: 12px; color: var(--dim); }
+
+    /* ---- CONTROLS ---- */
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .btn {
+      padding: 8px 16px; border: 0; border-radius: 6px;
+      font-weight: 700; font-size: 13px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: var(--gold); color: var(--green-dark); }
+    .btn-primary:hover { background: #ffc620; }
+    .btn-secondary { background: var(--green-mid); color: #fff; border: 1px solid #2a8b4e; }
+    .btn-secondary:hover { background: #2a8b4e; }
+    .btn-danger { background: #722; color: #fff; }
+    .btn-danger:hover { background: #933; }
+
+    /* ---- STATUS / LOG ---- */
+    .status-box {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--green-mid);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.6;
+      min-height: 60px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .status-box .ok   { color: #5dde7a; }
+    .status-box .warn { color: var(--gold); }
+    .status-box .err  { color: #ff6666; }
+    .status-box .info { color: #8ad4ff; }
+
+    /* ---- EXPECTED RESULT ---- */
+    .expect-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .expect-lbl { font-size: 12px; color: var(--dim); }
+    .expect-check {
+      display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer;
+    }
+    .expect-check input { accent-color: var(--gold); }
+
+    /* ---- RESULT DISPLAY ---- */
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .result-card {
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+      border: 2px solid transparent;
+      font-size: 12px;
+    }
+    .result-card .label { font-size: 10px; color: var(--dim); margin-bottom: 3px; }
+    .result-card .value { font-size: 18px; font-weight: 700; }
+    .result-card.pass { border-color: #5dde7a; }
+    .result-card.fail { border-color: var(--red); }
+    .result-card.neutral { border-color: var(--green-mid); }
+    .result-card .value.yes { color: #5dde7a; }
+    .result-card .value.no  { color: var(--red); }
+
+    /* ---- COUNTER ---- */
+    .counter-row {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px;
+    }
+    .counter-row .count-lbl { color: var(--dim); }
+    .count-badge-inline {
+      background: var(--gold); color: var(--green-dark);
+      font-size: 11px; font-weight: 700;
+      padding: 1px 7px; border-radius: 10px;
+    }
+    small { font-size: 11px; color: var(--dim); }
+
+    .divider { height: 1px; background: var(--green-mid); margin: 10px 0; opacity: 0.5; }
+
+    /* MODE TAB */
+    .mode-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+    .mode-tab {
+      padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 700;
+      cursor: pointer; background: rgba(0,0,0,0.3); border: 1px solid var(--green-mid);
+      color: var(--dim);
+    }
+    .mode-tab.active { background: var(--green-mid); color: #fff; border-color: #2a8b4e; }
+
+    .section { display: none; }
+    .section.visible { display: block; }
+
+    /* info bar */
+    .info-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; color: var(--dim);
+      margin-bottom: 8px;
+    }
+    .info-bar a { color: var(--gold); text-decoration: none; }
+    .info-bar a:hover { text-decoration: underline; }
+
+    .phase-select {
+      background: var(--green-dark); color: var(--text);
+      border: 1px solid var(--green-mid); border-radius: 4px;
+      padding: 4px 8px; font-size: 12px; cursor: pointer;
+    }
+    .seat-select {
+      background: var(--green-dark); color: var(--text);
+      border: 1px solid var(--green-mid); border-radius: 4px;
+      padding: 4px 8px; font-size: 12px; cursor: pointer;
+    }
+
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(255,211,77,0.15); border: 1px solid rgba(255,211,77,0.3);
+      border-radius: 12px; padding: 2px 8px; font-size: 11px; color: var(--gold);
+    }
+  </style>
+</head>
+<body>
+<h1>
+  🀄 Mahjong Scenario Tester
+  <span class="badge">DEV TOOL</span>
+  <small style="font-size:12px;color:#aaa;margin-left:8px;">Inject test states into the main game</small>
+</h1>
+
+<div class="layout">
+
+  <!-- LEFT: Presets & Controls -->
+  <div>
+    <div class="panel">
+      <h2>Quick Scenarios</h2>
+      <div class="preset-list" id="preset-list"></div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>Game Context</h2>
+        <div style="background:rgba(0,0,0,0.4);border-radius:6px;padding:8px;margin-bottom:10px;font-size:11px;text-align:center;line-height:1.8;color:#aaa;">
+          <div style="color:var(--gold);font-weight:700;margin-bottom:2px;">Board Layout</div>
+          <div>CPU2 West 西 — <b style="color:#fff">TOP</b></div>
+          <div>CPU3 North 北 — <b style="color:#fff">LEFT</b> &nbsp;|&nbsp; CPU1 South 南 — <b style="color:#fff">RIGHT</b></div>
+          <div>You — <b style="color:#fff">BOTTOM</b></div>
+        </div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:var(--dim);width:90px;">Discard from:</span>
+          <select class="seat-select" id="discard-from">
+            <option value="3">CPU3 (North) — LEFT player</option>
+            <option value="2">CPU2 (West)  — TOP player</option>
+            <option value="1">CPU1 (South) — RIGHT player</option>
+            <option value="0">Self (draw)</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:var(--dim);width:90px;">Phase after:</span>
+          <select class="phase-select" id="inject-phase">
+            <option value="claim">CLAIM (discard on table)</option>
+            <option value="discard">DISCARD (your turn to discard)</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:var(--dim);width:90px;">Dealer seat:</span>
+          <select class="seat-select" id="dealer-seat">
+            <option value="0">You (seat 0)</option>
+            <option value="1">CPU1 (seat 1)</option>
+            <option value="2">CPU2 (seat 2)</option>
+            <option value="3">CPU3 (seat 3)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>Expected Results</h2>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+        <label class="expect-check"><input type="checkbox" id="exp-win"> Win button enabled</label>
+        <label class="expect-check"><input type="checkbox" id="exp-pung"> Pung button enabled</label>
+        <label class="expect-check"><input type="checkbox" id="exp-kong" checked> Kong button enabled</label>
+        <label class="expect-check"><input type="checkbox" id="exp-chow"> Chow button enabled</label>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>Status Log</h2>
+      <div class="status-box" id="status-log">
+        <span class="info">Ready. Build a scenario and click Inject.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Builder -->
+  <div>
+    <div class="panel">
+      <div class="info-bar">
+        <span>Open <a href="index.html" target="_blank" id="game-link">index.html</a> in another tab first — then inject scenarios here.</span>
+        <span class="chip">💡 Click tiles to add · Click hand tile to remove</span>
+      </div>
+
+      <div class="mode-tabs">
+        <div class="mode-tab active" data-section="hand-section">Hand Builder</div>
+        <div class="mode-tab" data-section="meld-section">Melds</div>
+        <div class="mode-tab" data-section="bonus-section">Bonus Tiles 花</div>
+        <div class="mode-tab" data-section="discard-section">Discard Tile</div>
+      </div>
+
+      <!-- HAND SECTION -->
+      <div class="section visible" id="hand-section">
+        <h2>Your Hand Tiles</h2>
+        <div class="counter-row" style="margin-bottom:6px;">
+          <span class="count-lbl">Tiles in hand:</span>
+          <span class="count-badge-inline" id="hand-count">0</span>
+          <span style="color:var(--dim);font-size:11px;">/ 13 normal max (14 if self-draw)</span>
+        </div>
+        <div class="hand-display" id="hand-display">
+          <span style="color:#555;font-size:12px;align-self:center;">Click tiles below to build your hand</span>
+        </div>
+        <div class="divider"></div>
+        <div class="tile-builder" id="tile-builder"></div>
+      </div>
+
+      <!-- MELD SECTION -->
+      <div class="section" id="meld-section">
+        <h2>Claimed Melds (Pung / Kong / Chow)</h2>
+        <small>Add melds your player has already claimed. These are removed from hand count.</small>
+        <div style="margin-top:10px;" class="meld-area" id="meld-area">
+          <!-- dynamically built -->
+        </div>
+        <button class="btn btn-secondary" style="margin-top:8px;font-size:11px;" id="add-meld-btn">+ Add Meld</button>
+      </div>
+
+      <!-- BONUS SECTION -->
+      <div class="section" id="bonus-section">
+        <h2>Bonus Tiles 花牌 (Flowers & Seasons)</h2>
+        <small>Add flower/season tiles to test faan counting. 7 bonus = 3f win. 8 bonus = max faan win.</small>
+        <div class="counter-row" style="margin:8px 0 6px;">
+          <span class="count-lbl">Bonus tiles:</span>
+          <span class="count-badge-inline" id="bonus-count">0</span>
+          <span style="color:var(--dim);font-size:11px;">/ 8 max · 7+ enables special Win</span>
+        </div>
+        <div class="hand-display" id="bonus-display">
+          <span style="color:#555;font-size:12px;align-self:center;">Click flowers/seasons below to add bonus tiles</span>
+        </div>
+        <div class="divider"></div>
+        <div style="margin-top:8px;">
+          <div class="suit-row">
+            <span class="suit-label" style="color:var(--gold);">花 Flowers</span>
+            <div id="flower-btns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          </div>
+          <div class="suit-row" style="margin-top:8px;">
+            <span class="suit-label" style="color:var(--gold);">季 Seasons</span>
+            <div id="season-btns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:8px;background:rgba(255,211,77,0.08);border:1px solid rgba(255,211,77,0.2);border-radius:6px;font-size:11px;line-height:1.7;color:#ccc;">
+          <strong style="color:var(--gold);">Faan from bonus tiles:</strong><br>
+          Own flower/season (matches seat index) = <strong>+1f each</strong><br>
+          All 4 Flowers = <strong>+1f extra</strong> (total 2f from flowers: 1f own + 1f set)<br>
+          All 4 Seasons = <strong>+1f extra</strong> (same logic)<br>
+          7 bonus tiles = <strong>3f special win</strong> (hand structure ignored)<br>
+          8 bonus tiles = <strong>13f special win</strong> (capped by Max Faan setting)
+        </div>
+      </div>
+
+      <!-- DISCARD SECTION -->
+      <div class="section" id="discard-section">
+        <h2>Discard Tile on Table</h2>
+        <small>The tile currently face-up that players can claim. Required for CLAIM phase.</small>
+        <div style="margin-top:10px;">
+          <div class="discard-area">
+            <span class="discard-label">Current discard:</span>
+            <div id="discard-display" style="display:flex;align-items:center;gap:8px;">
+              <span style="color:#555;font-size:12px;">None set</span>
+            </div>
+            <button class="btn btn-danger" style="font-size:11px;padding:4px 10px;" id="clear-discard-btn">Clear</button>
+          </div>
+          <div class="divider"></div>
+          <div class="tile-builder" id="discard-builder"></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- INJECT CONTROLS -->
+      <div class="controls">
+        <button class="btn btn-primary" id="inject-btn">⚡ Inject Scenario</button>
+        <button class="btn btn-secondary" id="verify-btn">🔍 Verify (check buttons)</button>
+        <button class="btn btn-danger" id="clear-all-btn">✕ Clear All</button>
+      </div>
+
+      <!-- RESULT -->
+      <div id="result-area" style="margin-top:12px;display:none;">
+        <h2>Test Result</h2>
+        <div class="result-grid" id="result-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  Tile definitions (mirror from tiles.js)
+// ============================================================
+const SUIT = { BAMBOO:'bamboo', CIRCLE:'circle', CHAR:'char', WIND:'wind', DRAGON:'dragon', FLOWER:'flower', SEASON:'season' };
+const WINDS = ['East','South','West','North'];
+const DRAGONS = ['red','green','white'];
+const NUM_ZH  = ['','一','二','三','四','五','六','七','八','九'];
+const SUIT_ZH = { bamboo:'竹', circle:'餅', char:'萬' };
+const WIND_ZH = { East:'東', South:'南', West:'西', North:'北' };
+const DRAGON_ZH = { red:'中', green:'發', white:'白' };
+const FLOWER_ZH = ['梅','蘭','菊','竹'];
+const SEASON_ZH = ['春','夏','秋','冬'];
+
+let _nextId = 8000;
+function mkTile(suit, value) { return { id: _nextId++, suit, value }; }
+
+function tileLabel(t) {
+  if (!t) return '?';
+  if (t.suit === SUIT.BAMBOO || t.suit === SUIT.CIRCLE || t.suit === SUIT.CHAR)
+    return NUM_ZH[t.value] + SUIT_ZH[t.suit];
+  if (t.suit === SUIT.WIND)   return WIND_ZH[t.value];
+  if (t.suit === SUIT.DRAGON) return DRAGON_ZH[t.value];
+  if (t.suit === SUIT.FLOWER) return FLOWER_ZH[t.value];
+  if (t.suit === SUIT.SEASON) return SEASON_ZH[t.value];
+  return '?';
+}
+function tileSub(t) {
+  if (!t) return '';
+  if ([SUIT.BAMBOO,SUIT.CIRCLE,SUIT.CHAR].includes(t.suit)) return t.value;
+  if (t.suit === SUIT.WIND) return t.value.slice(0,1);
+  if (t.suit === SUIT.DRAGON) return ['R','G','W'][DRAGONS.indexOf(t.value)];
+  if (t.suit === SUIT.FLOWER) return 'F'+(t.value+1);
+  if (t.suit === SUIT.SEASON) return 'S'+(t.value+1);
+  return '';
+}
+function tileClass(t) {
+  if (t.suit === SUIT.BAMBOO) return 'bamboo';
+  if (t.suit === SUIT.CIRCLE) return 'circle';
+  if (t.suit === SUIT.WIND)   return 'wind';
+  if (t.suit === SUIT.DRAGON) return 'dragon-' + t.value;
+  if (t.suit === SUIT.FLOWER) return 'flower';
+  if (t.suit === SUIT.SEASON) return 'season';
+  return '';
+}
+
+// ============================================================
+//  State
+// ============================================================
+let hand    = [];      // array of tile objects
+let melds   = [];      // [{type:'pung'|'kong'|'chow', tiles:[...]}]
+let bonus   = [];      // array of bonus tile objects (flowers/seasons)
+let discard = null;    // tile object or null
+let builderMode = 'hand'; // 'hand' | 'discard'
+
+// ============================================================
+//  Tile palette builder
+// ============================================================
+function buildPalette(containerId, clickHandler) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+
+  const groups = [
+    { label:'萬 Char',   tiles: [1,2,3,4,5,6,7,8,9].map(n => mkTile(SUIT.CHAR, n)) },
+    { label:'餅 Dots',   tiles: [1,2,3,4,5,6,7,8,9].map(n => mkTile(SUIT.CIRCLE, n)) },
+    { label:'竹 Bam',    tiles: [1,2,3,4,5,6,7,8,9].map(n => mkTile(SUIT.BAMBOO, n)) },
+    { label:'風 Winds',  tiles: WINDS.map(w => mkTile(SUIT.WIND, w)) },
+    { label:'箭 Dragon', tiles: DRAGONS.map(d => mkTile(SUIT.DRAGON, d)) },
+    { label:'花 Bonus',  tiles: [
+      ...([0,1,2,3].map(i => mkTile(SUIT.FLOWER, i))),
+      ...([0,1,2,3].map(i => mkTile(SUIT.SEASON, i))),
+    ]},
+  ];
+
+  for (const g of groups) {
+    const row = document.createElement('div');
+    row.className = 'suit-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'suit-label';
+    lbl.textContent = g.label;
+    row.appendChild(lbl);
+    for (const t of g.tiles) {
+      const btn = document.createElement('div');
+      btn.className = 'tile-btn ' + tileClass(t);
+      btn.dataset.suit  = t.suit;
+      btn.dataset.value = t.value;
+      const zh = document.createElement('span');
+      zh.textContent = tileLabel(t);
+      const sub = document.createElement('span');
+      sub.className = 'sub';
+      sub.textContent = tileSub(t);
+      btn.appendChild(zh);
+      btn.appendChild(sub);
+      btn.addEventListener('click', () => clickHandler(t.suit, t.value));
+      row.appendChild(btn);
+    }
+    el.appendChild(row);
+  }
+}
+
+// ============================================================
+//  Hand management
+// ============================================================
+function addToHand(suit, value) {
+  hand.push(mkTile(suit, value));
+  renderHand();
+  log(`Added ${tileLabel({suit,value})} to hand. Hand size: ${hand.length}`, 'info');
+}
+
+function removeFromHand(idx) {
+  const t = hand[idx];
+  hand.splice(idx, 1);
+  renderHand();
+  log(`Removed ${tileLabel(t)} from hand.`, 'info');
+}
+
+function renderHand() {
+  const el = document.getElementById('hand-display');
+  el.innerHTML = '';
+  if (hand.length === 0) {
+    el.innerHTML = '<span style="color:#555;font-size:12px;align-self:center;">Click tiles below to build your hand</span>';
+    document.getElementById('hand-count').textContent = '0';
+    return;
+  }
+  hand.forEach((t, idx) => {
+    const div = document.createElement('div');
+    div.className = 'hand-tile ' + tileClass(t);
+    const zh = document.createElement('span');
+    zh.textContent = tileLabel(t);
+    const sub = document.createElement('span');
+    sub.className = 'sub';
+    sub.textContent = tileSub(t);
+    const x = document.createElement('span');
+    x.className = 'remove-x';
+    x.textContent = '✕';
+    div.appendChild(x);
+    div.appendChild(zh);
+    div.appendChild(sub);
+    div.addEventListener('click', () => removeFromHand(idx));
+    el.appendChild(div);
+  });
+  document.getElementById('hand-count').textContent = hand.length;
+}
+
+// ============================================================
+//  Bonus tile management (Flowers & Seasons)
+// ============================================================
+const FLOWER_NAMES = ['Plum 梅','Orchid 蘭','Chrysanthemum 菊','Bamboo 竹'];
+const SEASON_NAMES = ['Spring 春','Summer 夏','Autumn 秋','Winter 冬'];
+const SEAT_LABELS  = ['East 東 (0)','South 南 (1)','West 西 (2)','North 北 (3)'];
+
+function buildBonusPalette() {
+  const fw = document.getElementById('flower-btns');
+  const sw = document.getElementById('season-btns');
+  fw.innerHTML = ''; sw.innerHTML = '';
+  [0,1,2,3].forEach(i => {
+    // Flower
+    const fb = document.createElement('div');
+    fb.className = 'tile-btn flower';
+    fb.style.cssText = 'flex-direction:column;gap:2px;';
+    fb.innerHTML = `<span>${FLOWER_ZH[i]}</span><span class="sub">F${i+1}·${SEAT_LABELS[i].split(' ')[0]}</span>`;
+    fb.title = `${FLOWER_NAMES[i]} — matches ${SEAT_LABELS[i]} seat`;
+    fb.addEventListener('click', () => addBonus(SUIT.FLOWER, i));
+    fw.appendChild(fb);
+    // Season
+    const sb = document.createElement('div');
+    sb.className = 'tile-btn season';
+    sb.style.cssText = 'flex-direction:column;gap:2px;';
+    sb.innerHTML = `<span>${SEASON_ZH[i]}</span><span class="sub">S${i+1}·${SEAT_LABELS[i].split(' ')[0]}</span>`;
+    sb.title = `${SEASON_NAMES[i]} — matches ${SEAT_LABELS[i]} seat`;
+    sb.addEventListener('click', () => addBonus(SUIT.SEASON, i));
+    sw.appendChild(sb);
+  });
+}
+
+function addBonus(suit, value) {
+  if (bonus.length >= 8) { log('Maximum 8 bonus tiles reached.', 'warn'); return; }
+  bonus.push(mkTile(suit, value));
+  renderBonus();
+  log(`Added ${tileLabel({suit,value})} to bonus tiles. Total: ${bonus.length}`, 'info');
+}
+
+function removeBonus(idx) {
+  const t = bonus[idx];
+  bonus.splice(idx, 1);
+  renderBonus();
+  log(`Removed ${tileLabel(t)} from bonus tiles.`, 'info');
+}
+
+function renderBonus() {
+  const el = document.getElementById('bonus-display');
+  const countEl = document.getElementById('bonus-count');
+  el.innerHTML = '';
+  countEl.textContent = bonus.length;
+  if (bonus.length === 0) {
+    el.innerHTML = '<span style="color:#555;font-size:12px;align-self:center;">Click flowers/seasons below to add bonus tiles</span>';
+    return;
+  }
+  bonus.forEach((t, idx) => {
+    const div = document.createElement('div');
+    div.className = 'hand-tile ' + tileClass(t);
+    div.style.cssText = 'background:linear-gradient(180deg,#fff9e6,#fff0b3);border-color:#b8860b;';
+    const zh = document.createElement('span');
+    zh.textContent = tileLabel(t);
+    const sub = document.createElement('span');
+    sub.className = 'sub';
+    sub.textContent = tileSub(t);
+    const x = document.createElement('span');
+    x.className = 'remove-x';
+    x.textContent = '✕';
+    div.appendChild(x);
+    div.appendChild(zh);
+    div.appendChild(sub);
+    div.addEventListener('click', () => removeBonus(idx));
+    el.appendChild(div);
+  });
+  // Show win hint if 7+ bonus
+  if (bonus.length >= 7) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'font-size:11px;color:#ffd34d;font-weight:700;align-self:center;padding:4px 8px;background:rgba(255,211,77,0.15);border-radius:4px;';
+    hint.textContent = bonus.length === 7 ? '🏆 7 bonus → 3f Win!' : '🏆 8 bonus → MAX faan Win!';
+    el.appendChild(hint);
+  }
+}
+
+
+function setDiscard(suit, value) {
+  discard = mkTile(suit, value);
+  renderDiscard();
+  log(`Discard tile set: ${tileLabel(discard)}`, 'info');
+}
+
+function renderDiscard() {
+  const el = document.getElementById('discard-display');
+  el.innerHTML = '';
+  if (!discard) {
+    el.innerHTML = '<span style="color:#555;font-size:12px;">None set</span>';
+    return;
+  }
+  const div = document.createElement('div');
+  div.className = 'hand-tile discard-tile ' + tileClass(discard);
+  div.innerHTML = `<span>${tileLabel(discard)}</span><span class="sub">${tileSub(discard)}</span>`;
+  el.appendChild(div);
+}
+
+document.getElementById('clear-discard-btn').addEventListener('click', () => {
+  discard = null;
+  renderDiscard();
+  log('Discard cleared.', 'info');
+});
+
+// ============================================================
+//  Melds management
+// ============================================================
+let meldBuilders = []; // [{type, tiles:[]}]
+
+function addMeld() {
+  const id = Date.now();
+  const meld = { id, type: 'pung', tiles: [] };
+  meldBuilders.push(meld);
+  renderMelds();
+}
+
+function renderMelds() {
+  const el = document.getElementById('meld-area');
+  el.innerHTML = '';
+  if (meldBuilders.length === 0) {
+    el.innerHTML = '<span style="color:#555;font-size:12px;">No melds added yet.</span>';
+    return;
+  }
+  for (const [mi, meld] of meldBuilders.entries()) {
+    const row = document.createElement('div');
+    row.style.cssText = 'background:rgba(0,0,0,0.25);border-radius:6px;padding:8px;margin-bottom:6px;';
+
+    // header
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+    hdr.innerHTML = `<span style="color:var(--dim);font-size:11px;">Meld ${mi+1}:</span>`;
+
+    const typeSelect = document.createElement('select');
+    typeSelect.className = 'meld-type-select';
+    ['pung','kong','chow'].forEach(t => {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t.charAt(0).toUpperCase()+t.slice(1);
+      if (t === meld.type) o.selected = true;
+      typeSelect.appendChild(o);
+    });
+    typeSelect.addEventListener('change', () => {
+      meld.type = typeSelect.value;
+      renderMelds();
+    });
+    hdr.appendChild(typeSelect);
+
+    const clr = document.createElement('button');
+    clr.className = 'meld-clear';
+    clr.textContent = 'Remove meld';
+    clr.addEventListener('click', () => {
+      meldBuilders.splice(mi, 1);
+      renderMelds();
+    });
+    hdr.appendChild(clr);
+    row.appendChild(hdr);
+
+    // tiles row
+    const tilesRow = document.createElement('div');
+    tilesRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;align-items:flex-end;';
+    meld.tiles.forEach((t, ti) => {
+      const div = document.createElement('div');
+      div.className = 'hand-tile ' + tileClass(t);
+      div.style.cssText = 'width:34px;height:46px;font-size:13px;';
+      div.innerHTML = `<span>${tileLabel(t)}</span><span class="sub">${tileSub(t)}</span>`;
+      const x = document.createElement('span');
+      x.className = 'remove-x';
+      x.textContent = '✕';
+      x.style.display = 'flex';
+      div.appendChild(x);
+      div.addEventListener('click', () => {
+        meld.tiles.splice(ti, 1);
+        renderMelds();
+      });
+      tilesRow.appendChild(div);
+    });
+    // add tile prompt
+    const addHint = document.createElement('span');
+    const needed = meld.type === 'pung' ? 3 : meld.type === 'kong' ? 4 : 3;
+    addHint.style.cssText = 'font-size:11px;color:var(--dim);align-self:center;';
+    addHint.textContent = meld.tiles.length < needed ? `+ ${needed - meld.tiles.length} more tile(s)` : '✓ complete';
+    tilesRow.appendChild(addHint);
+    row.appendChild(tilesRow);
+
+    // mini palette for adding to this meld
+    const miniPalBtn = document.createElement('button');
+    miniPalBtn.className = 'btn btn-secondary';
+    miniPalBtn.style.cssText = 'font-size:10px;padding:3px 8px;margin-top:6px;';
+    miniPalBtn.textContent = '+ Pick tile for this meld';
+    miniPalBtn.addEventListener('click', () => {
+      const modal = document.getElementById('meld-picker-modal');
+      modal.dataset.meldIdx = mi;
+      modal.style.display = 'flex';
+    });
+    row.appendChild(miniPalBtn);
+
+    el.appendChild(row);
+  }
+}
+
+document.getElementById('add-meld-btn').addEventListener('click', addMeld);
+
+// Meld tile picker modal
+const modal = document.createElement('div');
+modal.id = 'meld-picker-modal';
+modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:center;justify-content:center;';
+modal.innerHTML = `
+  <div style="background:#07301a;border:2px solid var(--gold);border-radius:10px;padding:16px;max-width:680px;width:95vw;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="color:var(--gold);font-weight:700;">Pick tile for meld</span>
+      <button id="close-meld-picker" style="background:#722;color:#fff;border:0;border-radius:4px;padding:3px 10px;cursor:pointer;">✕</button>
+    </div>
+    <div class="tile-builder" id="meld-picker-palette"></div>
+  </div>`;
+document.body.appendChild(modal);
+document.getElementById('close-meld-picker').addEventListener('click', () => { modal.style.display = 'none'; });
+
+buildPalette('meld-picker-palette', (suit, value) => {
+  const mi = parseInt(modal.dataset.meldIdx, 10);
+  if (isNaN(mi) || !meldBuilders[mi]) return;
+  meldBuilders[mi].tiles.push(mkTile(suit, value));
+  renderMelds();
+  modal.style.display = 'none';
+});
+
+// ============================================================
+//  Tabs
+// ============================================================
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.section).classList.add('visible');
+  });
+});
+
+// ============================================================
+//  Log
+// ============================================================
+function log(msg, type = 'info') {
+  const el = document.getElementById('status-log');
+  const div = document.createElement('div');
+  div.className = type;
+  div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.insertBefore(div, el.firstChild);
+  while (el.children.length > 40) el.removeChild(el.lastChild);
+}
+
+// ============================================================
+//  Build palettes
+// ============================================================
+buildPalette('tile-builder', (suit, value) => addToHand(suit, value));
+buildPalette('discard-builder', (suit, value) => setDiscard(suit, value));
+
+// ============================================================
+//  INJECT — write state into the game via localStorage
+// ============================================================
+document.getElementById('inject-btn').addEventListener('click', injectScenario);
+document.getElementById('verify-btn').addEventListener('click', verifyScenario);
+document.getElementById('clear-all-btn').addEventListener('click', clearAll);
+
+function buildScenarioState() {
+  const phase = document.getElementById('inject-phase').value;
+  const discardFrom = parseInt(document.getElementById('discard-from').value, 10);
+  const dealerSeat  = parseInt(document.getElementById('dealer-seat').value, 10);
+
+  // Mark discard tile with _discardSeat
+  const discardTile = discard ? { ...discard, _discardSeat: discardFrom } : null;
+
+  // Build melds array
+  const meldData = meldBuilders
+    .filter(m => m.tiles.length > 0)
+    .map(m => ({ type: m.type, tiles: m.tiles, claimed: true }));
+
+  return {
+    ts: Date.now(),
+    scenario: true,
+    phase,
+    dealerSeat,
+    discardFrom,
+    discardTile,
+    humanHand: hand.map(t => ({...t})),
+    humanMelds: meldData,
+    humanBonus: bonus.map(t => ({...t})),
+  };
+}
+
+function injectScenario() {
+  const state = buildScenarioState();
+
+  if (state.phase === 'claim' && !state.discardTile) {
+    log('⚠ CLAIM phase needs a discard tile — go to Discard Tile tab and set one.', 'warn');
+    return;
+  }
+
+  try {
+    localStorage.setItem('mahjongScenario', JSON.stringify(state));
+    log(`✅ Scenario injected! Switch to the game tab and press F5 to reload, OR the game will auto-pick it up within 2s.`, 'ok');
+    log(`   Hand: ${hand.length} tiles, Melds: ${meldBuilders.filter(m=>m.tiles.length>0).length}, Discard: ${state.discardTile ? tileLabel(state.discardTile) : 'none'}`, 'info');
+  } catch(e) {
+    log('❌ localStorage write failed: ' + e.message, 'err');
+  }
+}
+
+function verifyScenario() {
+  try {
+    const raw = localStorage.getItem('mahjongActionLog');
+    if (!raw) { log('No action log found. Inject a scenario first, then check in game.', 'warn'); return; }
+    const data = JSON.parse(raw);
+    const { win, pung, kong, chow } = data;
+
+    const expWin  = document.getElementById('exp-win').checked;
+    const expPung = document.getElementById('exp-pung').checked;
+    const expKong = document.getElementById('exp-kong').checked;
+    const expChow = document.getElementById('exp-chow').checked;
+
+    const results = [
+      { label: 'Win',  actual: win,  expected: expWin  },
+      { label: 'Pung', actual: pung, expected: expPung },
+      { label: 'Kong', actual: kong, expected: expKong },
+      { label: 'Chow', actual: chow, expected: expChow },
+    ];
+
+    const grid = document.getElementById('result-grid');
+    grid.innerHTML = '';
+    document.getElementById('result-area').style.display = 'block';
+
+    let allPass = true;
+    for (const r of results) {
+      const pass = r.actual === r.expected;
+      if (!pass) allPass = false;
+      const card = document.createElement('div');
+      card.className = `result-card ${pass ? 'pass' : 'fail'}`;
+      card.innerHTML = `
+        <div class="label">${r.label} btn</div>
+        <div class="value ${r.actual ? 'yes' : 'no'}">${r.actual ? 'ON' : 'OFF'}</div>
+        <div style="font-size:10px;color:${pass?'#5dde7a':'#ff6666'};margin-top:2px;">${pass ? '✓ pass' : `✗ expected ${r.expected ? 'ON' : 'OFF'}`}</div>`;
+      grid.appendChild(card);
+    }
+
+    log(allPass ? '✅ All button states match expectations!' : '❌ Some button states do NOT match.', allPass ? 'ok' : 'err');
+    if (data.ts) log(`Game logged at: ${new Date(data.ts).toLocaleTimeString()}`, 'info');
+  } catch(e) {
+    log('❌ Verify failed: ' + e.message, 'err');
+  }
+}
+
+function clearAll() {
+  hand = []; melds = []; discard = null; meldBuilders = []; bonus = [];
+  renderHand(); renderDiscard(); renderMelds(); renderBonus();
+  document.getElementById('result-area').style.display = 'none';
+  log('Cleared all.', 'info');
+}
+
+// ============================================================
+//  PRESETS
+// ============================================================
+const PRESETS = [
+  {
+    title: '🀄 Kong Bug — pung meld + draw match',
+    desc: 'Pung of 3-Char in melds. Discard is another 3-Char from LEFT player. Kong should be enabled.',
+    setup() {
+      clearAll();
+      [[SUIT.CHAR,1],[SUIT.CHAR,2],[SUIT.BAMBOO,5],[SUIT.BAMBOO,6],[SUIT.BAMBOO,7],
+       [SUIT.CIRCLE,9],[SUIT.CIRCLE,8],[SUIT.WIND,'East'],[SUIT.DRAGON,'red']
+      ].forEach(([s,v]) => hand.push(mkTile(s,v)));
+      meldBuilders.push({ id:1, type:'pung', tiles:[mkTile(SUIT.CHAR,3),mkTile(SUIT.CHAR,3),mkTile(SUIT.CHAR,3)] });
+      discard = mkTile(SUIT.CHAR, 3);
+      document.getElementById('inject-phase').value = 'claim';
+      document.getElementById('discard-from').value = '3'; // seat 3 = LEFT player
+      document.getElementById('exp-kong').checked = true;
+      document.getElementById('exp-pung').checked = false;
+      document.getElementById('exp-win').checked = false;
+      document.getElementById('exp-chow').checked = false;
+      renderHand(); renderDiscard(); renderMelds();
+      log('Preset loaded: Kong bug test — pung→kong upgrade via discard from LEFT player.', 'ok');
+    }
+  },
+  {
+    title: '🀄 Kong — 3 in hand + discard = 4th',
+    desc: '3 matching tiles in hand. Discard is the 4th from LEFT player. Both Pung+Kong enabled.',
+    setup() {
+      clearAll();
+      [[SUIT.BAMBOO,5],[SUIT.BAMBOO,5],[SUIT.BAMBOO,5],[SUIT.CHAR,2],[SUIT.CHAR,3],
+       [SUIT.CIRCLE,7],[SUIT.CIRCLE,8],[SUIT.CIRCLE,9],[SUIT.WIND,'West']
+      ].forEach(([s,v]) => hand.push(mkTile(s,v)));
+      discard = mkTile(SUIT.BAMBOO, 5);
+      document.getElementById('inject-phase').value = 'claim';
+      document.getElementById('discard-from').value = '3'; // seat 3 = LEFT player
+      document.getElementById('exp-kong').checked = true;
+      document.getElementById('exp-pung').checked = true;
+      document.getElementById('exp-win').checked = false;
+      document.getElementById('exp-chow').checked = false;
+      renderHand(); renderDiscard(); renderMelds();
+      log('Preset loaded: 3 in hand + discard from LEFT → pung and kong both enabled.', 'ok');
+    }
+  },
+  {
+    title: '✅ Pung only — 2 in hand, no 3rd',
+    desc: '2 matching tiles in hand. Discard is the 3rd from TOP player. Pung enabled, Kong NOT.',
+    setup() {
+      clearAll();
+      [[SUIT.CIRCLE,3],[SUIT.CIRCLE,3],[SUIT.CHAR,1],[SUIT.CHAR,5],[SUIT.BAMBOO,2],
+       [SUIT.BAMBOO,3],[SUIT.BAMBOO,4],[SUIT.WIND,'North'],[SUIT.DRAGON,'green']
+      ].forEach(([s,v]) => hand.push(mkTile(s,v)));
+      discard = mkTile(SUIT.CIRCLE, 3);
+      document.getElementById('inject-phase').value = 'claim';
+      document.getElementById('discard-from').value = '2'; // seat 2 = TOP player
+      document.getElementById('exp-kong').checked = false;
+      document.getElementById('exp-pung').checked = true;
+      document.getElementById('exp-win').checked = false;
+      document.getElementById('exp-chow').checked = false;
+      renderHand(); renderDiscard(); renderMelds();
+      log('Preset loaded: 2 in hand → only Pung (not Kong). Discard from TOP player.', 'ok');
+    }
+  },
+  {
+    title: '🟡 Chow — sequential discard',
+    desc: 'Hand has 4-5 Char, discard is 3-Char from LEFT player (seat 3, diff=1). Chow enabled.',
+    setup() {
+      clearAll();
+      [[SUIT.CHAR,4],[SUIT.CHAR,5],[SUIT.CIRCLE,1],[SUIT.CIRCLE,9],[SUIT.BAMBOO,7],
+       [SUIT.BAMBOO,8],[SUIT.BAMBOO,9],[SUIT.WIND,'South'],[SUIT.DRAGON,'white']
+      ].forEach(([s,v]) => hand.push(mkTile(s,v)));
+      discard = mkTile(SUIT.CHAR, 3);
+      document.getElementById('inject-phase').value = 'claim';
+      document.getElementById('discard-from').value = '3'; // seat 3 = LEFT player → diff=1 → Chow allowed
+      document.getElementById('exp-kong').checked = false;
+      document.getElementById('exp-pung').checked = false;
+      document.getElementById('exp-win').checked = false;
+      document.getElementById('exp-chow').checked = true;
+      renderHand(); renderDiscard(); renderMelds();
+      log('Preset loaded: 4-5 in hand, discard 3 from LEFT player → Chow enabled.', 'ok');
+    }
+  },
+  {
+    title: '🏆 Win — complete winning hand',
+    desc: 'Near-complete hand. Discard completes it. Win should be enabled.',
+    setup() {
+      clearAll();
+      [[SUIT.CHAR,1],[SUIT.CHAR,1],[SUIT.CHAR,1],
+       [SUIT.BAMBOO,9],[SUIT.BAMBOO,9],[SUIT.BAMBOO,9],
+       [SUIT.CIRCLE,5],[SUIT.CIRCLE,5],[SUIT.CIRCLE,5],
+       [SUIT.WIND,'East'],[SUIT.WIND,'East'],
+       [SUIT.DRAGON,'green'],[SUIT.DRAGON,'green']
+      ].forEach(([s,v]) => hand.push(mkTile(s,v)));
+      discard = mkTile(SUIT.DRAGON, 'green');
+      document.getElementById('inject-phase').value = 'claim';
+      document.getElementById('discard-from').value = '3'; // LEFT player
+      document.getElementById('exp-kong').checked = false;
+      document.getElementById('exp-pung').checked = true;
+      document.getElementById('exp-win').checked = false; // scoring varies, leave unchecked
+      document.getElementById('exp-chow').checked = false;
+      renderHand(); renderDiscard(); renderMelds();
+      log('Preset loaded: near-complete hand — check if Win is shown.', 'ok');
+    }
+  },
+  {
+    title: '🔲 No claim — unrelated discard',
+    desc: 'All tiles unrelated. No win/pung/kong/chow possible.',
+    setup() {
+      clearAll();
+      [[SUIT.CHAR,1],[SUIT.CHAR,3],[SUIT.CHAR,5],
+       [SUIT.BAMBOO,2],[SUIT.BAMBOO,4],[SUIT.BAMBOO,6],
+       [SUIT.CIRCLE,7],[SUIT.CIRCLE,9],[SUIT.WIND,'North']
+      ].forEach(([s,v]) => hand.push(mkTile(s,v)));
+      discard = mkTile(SUIT.WIND, 'South');
+      document.getElementById('inject-phase').value = 'claim';
+      document.getElementById('discard-from').value = '2'; // TOP player
+      document.getElementById('exp-kong').checked = false;
+      document.getElementById('exp-pung').checked = false;
+      document.getElementById('exp-win').checked = false;
+      document.getElementById('exp-chow').checked = false;
+      renderHand(); renderDiscard(); renderMelds();
+      log('Preset loaded: unrelated tiles — all buttons should be disabled.', 'ok');
+    }
+  },
+];
+
+const presetList = document.getElementById('preset-list');
+PRESETS.forEach((p, i) => {
+  const btn = document.createElement('div');
+  btn.className = 'preset-btn';
+  btn.innerHTML = `<span class="ptitle">${p.title}</span><span class="pdesc">${p.desc}</span>`;
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    p.setup();
+  });
+  presetList.appendChild(btn);
+});
+
+// ============================================================
+//  Auto-poll: watch for game's action log response
+// ============================================================
+setInterval(() => {
+  try {
+    const raw = localStorage.getItem('mahjongActionLog');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    // Only show if fresh (within 10s)
+    if (Date.now() - data.ts < 10000) {
+      document.getElementById('result-area').style.display = 'block';
+      const grid = document.getElementById('result-grid');
+      const expWin  = document.getElementById('exp-win').checked;
+      const expPung = document.getElementById('exp-pung').checked;
+      const expKong = document.getElementById('exp-kong').checked;
+      const expChow = document.getElementById('exp-chow').checked;
+      const results = [
+        { label:'Win',  actual:data.win,  expected:expWin  },
+        { label:'Pung', actual:data.pung, expected:expPung },
+        { label:'Kong', actual:data.kong, expected:expKong },
+        { label:'Chow', actual:data.chow, expected:expChow },
+      ];
+      grid.innerHTML = '';
+      for (const r of results) {
+        const pass = r.actual === r.expected;
+        const card = document.createElement('div');
+        card.className = `result-card ${pass ? 'pass' : 'fail'}`;
+        card.innerHTML = `<div class="label">${r.label}</div>
+          <div class="value ${r.actual?'yes':'no'}">${r.actual?'ON':'OFF'}</div>
+          <div style="font-size:10px;color:${pass?'#5dde7a':'#ff6666'};margin-top:2px;">${pass?'✓':'✗'}</div>`;
+        grid.appendChild(card);
+      }
+    }
+  } catch(e) {}
+}, 1500);
+
+// initial renders
+renderMelds();
+renderBonus();
+buildBonusPalette();
+</script>
+</body>
+</html>
