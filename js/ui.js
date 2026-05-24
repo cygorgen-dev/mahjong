@@ -382,6 +382,7 @@ function showHint(lines) {
 
 function renderAll() {
   if (!_game) return;
+  _tileElInUse = new Set();
   if (_game.phase !== PHASE.CLAIM || !_game.claimOptions?.chow) {
     const p = document.getElementById('chow-picker');
     if (p) { p.classList.add('hidden'); p.innerHTML = ''; }
@@ -1122,6 +1123,11 @@ const _imgCache = window._imgCache || (window._imgCache = {});
 // Back tiles (concealed kongs) are excluded because 3 backs share one tile ID.
 const _tileElCache = new Map();
 
+// Per-render-cycle in-use tracking: prevents two appendChild calls stealing the same
+// cached element (which would move it out of its first position, leaving a hole).
+// Set to a new Set() at the start of renderAll(); null between render cycles.
+let _tileElInUse = null;
+
 function _resetTileEl(el) {
   // el is the value stored in _tileElCache: wrapper div (rotated) or tile div (non-rotated)
   const inner = el.classList.contains('tile') ? el : (el.querySelector('.tile') || el);
@@ -1221,11 +1227,14 @@ function makeTileEl(t, opts = {}) {
   // Return a cached element when possible so the <img> inside is never destroyed
   // between renders — the browser keeps its decoded pixel data alive.
   // Back tiles are excluded: a concealed kong has three backs sharing one tile ID.
+  // In-use guard: if the same key was already placed this render cycle, skip the
+  // cache and build a fresh element — prevents DOM theft (holes / split melds).
   if (!opts.back) {
     const key = `${t.id}:${rot}`;
-    if (_tileElCache.has(key)) {
+    if (_tileElCache.has(key) && (!_tileElInUse || !_tileElInUse.has(key))) {
       const cached = _tileElCache.get(key);
       _resetTileEl(cached);
+      if (_tileElInUse) _tileElInUse.add(key);
       const inner = rot ? cached.querySelector('.tile') : cached;
       if (opts.clickable)  inner.classList.add('clickable');
       if (opts.justDrawn)  inner.classList.add('just-drawn');
@@ -1279,11 +1288,19 @@ function makeTileEl(t, opts = {}) {
       div.style.flexShrink = '0';
     }
     wrapper.appendChild(div);
-    if (!opts.back) _tileElCache.set(`${t.id}:${rot}`, wrapper);
+    if (!opts.back) {
+      const k = `${t.id}:${rot}`;
+      if (!_tileElCache.has(k)) _tileElCache.set(k, wrapper);
+      if (_tileElInUse) _tileElInUse.add(k);
+    }
     return wrapper;
   }
 
-  if (!opts.back) _tileElCache.set(`${t.id}:0`, div);
+  if (!opts.back) {
+    const k = `${t.id}:0`;
+    if (!_tileElCache.has(k)) _tileElCache.set(k, div);
+    if (_tileElInUse) _tileElInUse.add(k);
+  }
   return div;
 }
 
