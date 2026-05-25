@@ -792,15 +792,27 @@ document.addEventListener('DOMContentLoaded', () => {
     game.lastResult = null; game.dealerSeat = 1; game.currentSeat = 1;
     game.phase = PHASE.DISCARD;
 
-    // Human (seat 0): simple hand so the board isn't empty
+    // BOTTOM / Human (seat 0): 4 kongs → 3 fit in melds row (12 cap), 4th kong + all bonus → hand row
     const human = game.players[0];
-    for (let j = 0; j < 10; j++) human.hand.push(T(SUIT.CHAR, (j % 9) + 1));
+    human.melds = [
+      { type:'kong', claimed:true, tiles:[T(SUIT.BAMBOO,1),T(SUIT.BAMBOO,1),T(SUIT.BAMBOO,1),T(SUIT.BAMBOO,1)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.BAMBOO,2),T(SUIT.BAMBOO,2),T(SUIT.BAMBOO,2),T(SUIT.BAMBOO,2)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.BAMBOO,3),T(SUIT.BAMBOO,3),T(SUIT.BAMBOO,3),T(SUIT.BAMBOO,3)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.BAMBOO,4),T(SUIT.BAMBOO,4),T(SUIT.BAMBOO,4),T(SUIT.BAMBOO,4)] },
+    ];
+    human.bonus = [T(SUIT.FLOWER,0), T(SUIT.FLOWER,1), T(SUIT.SEASON,0), T(SUIT.SEASON,1)];
+    human.hand = [T(SUIT.CHAR,1), T(SUIT.CHAR,2)];
 
-    // TOP (seat 2): placeholder
+    // TOP (seat 2): 4 kongs → 3 fit in melds row (12 cap), 4th kong + all bonus → hand row
     const top = game.players[2];
-    for (let j = 0; j < 7; j++) top.hand.push(T(SUIT.BAMBOO, (j % 9) + 1));
-    top.melds.push({ type:'pung', claimed:true,
-      tiles:[T(SUIT.CIRCLE,5),T(SUIT.CIRCLE,5),T(SUIT.CIRCLE,5)] });
+    top.melds = [
+      { type:'kong', claimed:true, tiles:[T(SUIT.CIRCLE,6),T(SUIT.CIRCLE,6),T(SUIT.CIRCLE,6),T(SUIT.CIRCLE,6)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.CIRCLE,7),T(SUIT.CIRCLE,7),T(SUIT.CIRCLE,7),T(SUIT.CIRCLE,7)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.CIRCLE,8),T(SUIT.CIRCLE,8),T(SUIT.CIRCLE,8),T(SUIT.CIRCLE,8)] },
+      { type:'kong', claimed:true, tiles:[T(SUIT.CIRCLE,9),T(SUIT.CIRCLE,9),T(SUIT.CIRCLE,9),T(SUIT.CIRCLE,9)] },
+    ];
+    top.bonus = [T(SUIT.FLOWER,2), T(SUIT.FLOWER,3), T(SUIT.SEASON,2), T(SUIT.SEASON,3)];
+    top.hand = [T(SUIT.WIND,'East'), T(SUIT.WIND,'South')];
 
     // RIGHT (seat 1): 4 kongs (16 tiles) + 8 bonus tiles → only 3 kongs fit (12) in claim
     // 4th kong and all 8 bonus overflow into hand column
@@ -835,7 +847,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderAll();
     window.addMsg && window.addMsg(
-      '<strong>Demo Overflow 溢</strong>: Right=4 kongs+8 bonus (4th kong+all bonus → hand col). ' +
+      '<strong>Demo Overflow 溢</strong>: ' +
+      'Bottom/Top=4 kongs+4 bonus (4th kong+all bonus → hand row). ' +
+      'Right=4 kongs+8 bonus (4th kong+all bonus → hand col). ' +
       'Left=2 kongs+3 pungs+4 bonus (2 pungs+3 bonus → hand col). Open Hands to see full detail.'
     );
   });
