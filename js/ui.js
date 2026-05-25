@@ -489,16 +489,19 @@ function renderSeats() {
     // Top player (seat 2) also needs rotation so tiles face toward the player
     const needsRotation = isSidePlayer || seat === 2;
 
-    // Cap claim row at 12 tiles for ALL seats; excess spills into the hand row
+    // Human (seat 0): all melds/bonus go directly to the hand row (cap=0) so the
+    // melds row stays empty and collapses, moving the hand row up toward the board.
+    // All other seats: cap at 12 tiles; excess spills into the hand row.
     let claimMelds = [], claimBonus = [];
     let overflowMelds = [], overflowBonus = [];
     {
+      const meldCap = (seat === 0) ? 0 : 12;
       let n = 0;
       for (const meld of p.melds) {
-        if (n + meld.tiles.length <= 12) { claimMelds.push(meld); n += meld.tiles.length; }
+        if (n + meld.tiles.length <= meldCap) { claimMelds.push(meld); n += meld.tiles.length; }
         else overflowMelds.push(meld);
       }
-      const room = Math.max(0, 12 - n);
+      const room = Math.max(0, meldCap - n);
       claimBonus = p.bonus.slice(0, room);
       overflowBonus = p.bonus.slice(room);
     }
@@ -556,12 +559,12 @@ function renderSeats() {
     }
 
     // Fill melds row with invisible ghost placeholders to hold fixed height/size.
-    // Human (seat 0): 14 slots matches the hand row so the board never shifts on first meld.
+    // Human (seat 0): cap=0 so row stays empty and collapses.
     // Side CPUs: 12 rotated slots.  Top/bottom CPUs: 12 normal slots.
     {
       const filled = claimMelds.reduce((s, m) => s + m.tiles.length, 0) + claimBonus.length;
       const ghostCls = isSidePlayer ? 'tile-ghost-rot' : 'tile-ghost';
-      const cap = seat === 0 ? 14 : 12;
+      const cap = seat === 0 ? 0 : 12;
       for (let i = filled; i < cap; i++) {
         const g = document.createElement('div');
         g.className = ghostCls;
