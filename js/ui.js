@@ -659,12 +659,15 @@ function renderSeats() {
     // nodes can be reused incorrectly after a claim win or other non-draw render,
     // which causes the bottom hand to lose or misplace tiles.
     if (isHuman) {
+      const overflowCount = overflowMelds.reduce((s, m) => s + m.tiles.length, 0) + overflowBonus.length;
       const justDrawnTile = p.hand.find(t => t._justDrawn);
       const displayTiles = justDrawnTile
         ? [...sortHand(p.hand.filter(t => !t._justDrawn)), justDrawnTile]
         : sortHand(p.hand);
 
-      for (let i = 0; i < 14; i++) {
+      // Leave exactly overflowCount slots at the right end for overflow melds
+      const slotCount = Math.max(displayTiles.length, 14 - overflowCount);
+      for (let i = 0; i < slotCount; i++) {
         const t = displayTiles[i];
         if (t) {
           const opts = {
@@ -688,7 +691,7 @@ function renderSeats() {
           handEl.appendChild(el2);
         } else {
           const ghost = document.createElement('div');
-          ghost.className = justDrawnTile || i !== 13 ? 'tile-ghost' : 'tile-ghost draw-slot';
+          ghost.className = justDrawnTile || i !== slotCount - 1 ? 'tile-ghost' : 'tile-ghost draw-slot';
           handEl.appendChild(ghost);
         }
       }
