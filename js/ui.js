@@ -96,6 +96,7 @@ function initUI(game) {
     if (!window.AUTO_MODE) {
       if (window._autorunTimer) { clearTimeout(window._autorunTimer); window._autorunTimer = null; }
       window._autorunLeft = 0;
+      delete window._autorunPrevMode;
       const ainp = document.getElementById('autorun-count');
       if (ainp) ainp.value = '0';
       const albl = document.getElementById('autorun-label');
@@ -119,16 +120,49 @@ function initUI(game) {
     }
   }
 
-  btnHuman?.addEventListener('click', (e) => { e.stopPropagation(); setAutoMode(null); });
+  // Expose for tickAutorun (which lives outside initUI closure)
+  window._setAutoMode = setAutoMode;
+
+  btnHuman?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    // Cancelling autorun: clear saved mode so restoration doesn't re-apply fast
+    delete window._autorunPrevMode;
+    setAutoMode(null);
+  });
   btnSlow?.addEventListener('click',  (e) => { e.stopPropagation(); setAutoMode('slow'); });
   btnFast?.addEventListener('click',  (e) => { e.stopPropagation(); setAutoMode('fast'); });
   document.getElementById('autorun-go-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     const inp = document.getElementById('autorun-count');
     const n = Math.max(0, parseInt(inp?.value, 10) || 0);
+
+    // Cancel any in-flight timer
+    if (window._autorunTimer) { clearTimeout(window._autorunTimer); window._autorunTimer = null; }
+
     window._autorunLeft = n;
-    if (n > 0 && _game && _game.phase === PHASE.END && !(_game.lastResult?.gameOver)) {
-      tickAutorun();
+
+    if (n > 0) {
+      // Save mode and force fast — autorun needs all-CPU play
+      if (window._autorunPrevMode === undefined) {
+        window._autorunPrevMode = window.AUTO_MODE;
+      }
+      if (!window.AUTO_MODE) setAutoMode('fast');
+
+      // If stalled mid-game on seat 0, kick it now
+      if (_game && _game.phase !== PHASE.END) {
+        if ((_game.phase === PHASE.DISCARD || _game.phase === PHASE.CLAIM) && _game.currentSeat === 0) {
+          _game._scheduleOrStep(() => _game.aiPlay(0));
+          renderAll();
+        }
+      } else if (_game && _game.phase === PHASE.END && !(_game.lastResult?.gameOver)) {
+        tickAutorun();
+      }
+    } else {
+      // Count set to 0 — stop and restore
+      if (window._autorunPrevMode !== undefined) {
+        setAutoMode(window._autorunPrevMode);
+        delete window._autorunPrevMode;
+      }
     }
   });
 
@@ -408,8 +442,15 @@ function showHint(lines) {
 
 function tickAutorun() {
   if (!_game || _game.phase !== PHASE.END) return;
-  if (_game.lastResult && _game.lastResult.gameOver) return;
-  if (!window._autorunLeft || window._autorunLeft <= 0) return;
+  if (_game.lastResult && _game.lastResult.gameOver) {
+    // Game over — stop and restore mode
+    _autorunFinish();
+    return;
+  }
+  if (!window._autorunLeft || window._autorunLeft <= 0) {
+    _autorunFinish();
+    return;
+  }
   if (window._autorunTimer) return; // already scheduled
   const lbl = document.getElementById('autorun-label');
   if (lbl) lbl.textContent = `${window._autorunLeft} left`;
@@ -424,6 +465,18 @@ function tickAutorun() {
     _game.nextDeal();
     renderAll();
   }, 1500);
+}
+
+function _autorunFinish() {
+  const lbl = document.getElementById('autorun-label');
+  if (lbl) lbl.textContent = '';
+  const inp = document.getElementById('autorun-count');
+  if (inp) inp.value = '0';
+  if (window._autorunPrevMode !== undefined) {
+    const prev = window._autorunPrevMode;
+    delete window._autorunPrevMode;
+    if (window._setAutoMode) window._setAutoMode(prev);
+  }
 }
 
 function renderAll() {
