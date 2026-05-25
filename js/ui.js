@@ -489,14 +489,13 @@ function renderSeats() {
     // Top player (seat 2) also needs rotation so tiles face toward the player
     const needsRotation = isSidePlayer || seat === 2;
 
-    // Human (seat 0) and top CPU (seat 2): all melds/bonus go directly to the
-    // hand row (cap=0) so the melds row stays permanently empty and collapsed,
-    // keeping both horizontal seats tight against the board centre.
-    // Side CPUs: cap at 12 tiles; excess spills into the hand row.
+    // Horizontal seats (0, 2): 14-tile melds row keeps both rows at exactly
+    // 14 tile-widths at all times (ghost-padded), giving a rigid rectangle.
+    // Side CPUs: 12-tile cap; excess spills into the hand row.
     let claimMelds = [], claimBonus = [];
     let overflowMelds = [], overflowBonus = [];
     {
-      const meldCap = (seat === 0 || seat === 2) ? 0 : 12;
+      const meldCap = (seat === 0 || seat === 2) ? 14 : 12;
       let n = 0;
       for (const meld of p.melds) {
         if (n + meld.tiles.length <= meldCap) { claimMelds.push(meld); n += meld.tiles.length; }
@@ -560,12 +559,12 @@ function renderSeats() {
     }
 
     // Fill melds row with invisible ghost placeholders to hold fixed height/size.
-    // Seats 0 and 2: cap=0 so row stays permanently empty and collapses.
-    // Side CPUs: 12 rotated slots.  Top/bottom CPUs: 12 normal slots.
+    // Seats 0 and 2: 14 slots so the melds row is always exactly 1 tile tall.
+    // Side CPUs: 12 rotated slots.
     {
       const filled = claimMelds.reduce((s, m) => s + m.tiles.length, 0) + claimBonus.length;
       const ghostCls = isSidePlayer ? 'tile-ghost-rot' : 'tile-ghost';
-      const cap = (seat === 0 || seat === 2) ? 0 : 12;
+      const cap = (seat === 0 || seat === 2) ? 14 : 12;
       for (let i = filled; i < cap; i++) {
         const g = document.createElement('div');
         g.className = ghostCls;
