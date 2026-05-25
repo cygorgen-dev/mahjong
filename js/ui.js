@@ -1114,6 +1114,12 @@ function _resetTileEl(el, opts = {}) {
   const inner = el.classList.contains('tile') ? el : (el.querySelector('.tile') || el);
   inner.classList.remove('selected', 'clickable', 'win-tile', 'just-drawn', 'last-discard', 'small');
   if (opts.small) inner.classList.add('small');
+  // Clear inline styles from discard-pile positioning (left/top) and robbing-kong scale
+  // (.tile has position:relative, so leftover style.top causes tiles to shift downward)
+  el.style.left = '';
+  el.style.top = '';
+  el.style.transform = '';
+  el.style.zIndex = '';
   // Clear any inline styles set by Open Hands colour hints or robbing-kong highlight
   inner.style.outline = '';
   inner.style.opacity = '';
