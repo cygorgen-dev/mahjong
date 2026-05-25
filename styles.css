@@ -51,7 +51,7 @@ main#table {
   grid-template-rows: auto auto auto;
   grid-template-areas: ". top ." "left center right" ". bottom .";
   gap: 2px;
-  padding: 4px;
+  padding: 2px 4px;
   overflow: visible;
 }
 .seat { display:flex; flex-direction:column; align-items:center; gap:4px; position:relative; }
@@ -74,7 +74,7 @@ main#table {
   align-items: center;
   justify-content: flex-start;   /* indicators always at left, tiles follow */
   width: 880px; min-width: 880px; /* fixed — never recenters as tile count changes */
-  min-height: calc(var(--th) + 4px);
+  min-height: var(--th);
   flex-shrink: 0;
 }
 .seat-top .melds {
