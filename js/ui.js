@@ -556,13 +556,14 @@ function renderSeats() {
       meldsEl.appendChild(bonusDiv);
     }
 
-    // Fill melds column to 12 tile slots with invisible ghost placeholders (CPU only).
-    // Human melds row is intentionally left at natural size — it lives between the
-    // board and the hand row and must be empty/invisible when no melds are present.
-    if (seat !== 0) {
+    // Fill melds row with invisible ghost placeholders to hold fixed height/size.
+    // Human (seat 0): 14 slots matches the hand row so the board never shifts on first meld.
+    // Side CPUs: 12 rotated slots.  Top/bottom CPUs: 12 normal slots.
+    {
       const filled = claimMelds.reduce((s, m) => s + m.tiles.length, 0) + claimBonus.length;
       const ghostCls = isSidePlayer ? 'tile-ghost-rot' : 'tile-ghost';
-      for (let i = filled; i < 12; i++) {
+      const cap = seat === 0 ? 14 : 12;
+      for (let i = filled; i < cap; i++) {
         const g = document.createElement('div');
         g.className = ghostCls;
         meldsEl.appendChild(g);

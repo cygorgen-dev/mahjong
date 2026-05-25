@@ -102,7 +102,7 @@ main#table {
   display: flex; flex-wrap: nowrap; gap: 3px;
   justify-content: flex-start; align-items: center;
   width: 880px; min-width: 880px;
-  min-height: 0;
+  min-height: var(--th);
   flex-shrink: 0;
 }
 .seat-bottom .hand {
