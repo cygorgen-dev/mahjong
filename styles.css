@@ -16,7 +16,7 @@ body {
   transform-origin: top left;
   transition: grid-template-columns 0.2s ease;
 }
-#app.sidebar-open { grid-template-columns: 1fr 185px; }
+#app.sidebar-open { grid-template-columns: 1fr 240px; }
 header {
   grid-area: header;
   background: #07301a;
@@ -443,16 +443,16 @@ main#table { position: relative; }
   overflow: hidden; min-width: 0;
 }
 #app:not(.sidebar-open) #sidebar { pointer-events: none; visibility: hidden; }
-.sidebar-section { border-bottom: 1px solid #1a6b3a; padding: 8px 10px; min-width: 165px; }
-.sidebar-heading { color: #ffd34d; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; white-space: nowrap; }
-.sidebar-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 5px; }
-.sb-label { font-size: 11px; color: #ccc; white-space: nowrap; }
-.sb-select { background: #1a6b3a; color: #fff; border: 1px solid #ffd34d; border-radius: 4px; padding: 2px 3px; font-size: 11px; font-weight: 600; cursor: pointer; flex:1; max-width: 100px; }
-.sb-input { background: #1a6b3a; color: #fff; border: 1px solid #ffd34d; border-radius: 4px; padding: 2px 3px; font-size: 11px; font-weight: 600; width: 60px; }
-.sidebar-check { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; font-size: 11px; color: #ddd; }
+.sidebar-section { border-bottom: 1px solid #1a6b3a; padding: 8px 12px; min-width: 218px; }
+.sidebar-heading { color: #ffd34d; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; white-space: nowrap; }
+.sidebar-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 5px; }
+.sb-label { font-size: 13px; color: #ccc; white-space: nowrap; }
+.sb-select { background: #1a6b3a; color: #fff; border: 1px solid #ffd34d; border-radius: 4px; padding: 2px 4px; font-size: 13px; font-weight: 600; cursor: pointer; flex:1; max-width: 110px; }
+.sb-input { background: #1a6b3a; color: #fff; border: 1px solid #ffd34d; border-radius: 4px; padding: 2px 4px; font-size: 13px; font-weight: 600; width: 64px; }
+.sidebar-check { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 13px; color: #ddd; }
 .sidebar-check label { cursor: pointer; }
 .sidebar-btngroup { display: flex; flex-direction: column; gap: 4px; }
-.sb-btn { background: #2a8b4e; color: #fff; border: 0; border-radius: 4px; padding: 5px 8px; font-size: 11px; font-weight: 600; cursor: pointer; text-align: left; width: 100%; white-space: nowrap; }
+.sb-btn { background: #2a8b4e; color: #fff; border: 0; border-radius: 4px; padding: 6px 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; width: 100%; white-space: nowrap; }
 .sb-btn:hover { filter: brightness(1.15); }
 
 /* Auto mode big buttons */
