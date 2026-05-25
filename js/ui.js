@@ -1446,31 +1446,52 @@ function populateWallPeek() {
   el.innerHTML = '';
 
   const wall      = _game.wall;
-  const head      = _game.wallIdx   ?? 0;
+  const wallIdx   = _game.wallIdx   ?? 0;
   const tailCol   = _game.tailCol   ?? 71;
   const tailPhase = _game.tailPhase ?? 0;
-  const remain    = _game.wallRemaining();
-  const nextTail  = tailCol * 2 + tailPhase; // index of next replacement tile
+  const remain    = Math.max(0, 2 * (tailCol + 1) - wallIdx - tailPhase);
+  const tailUsed  = (71 - tailCol) * 2 + tailPhase;
+  const exhausted = remain === 0;
 
   if (!wall || wall.length === 0) {
     el.innerHTML = '<p style="color:#aaa;padding:10px;">No game in progress.</p>'; return;
   }
 
-  const tailUsed = (71 - tailCol) * 2 + tailPhase;
+  // Match drawFromWall skip: if head is at top of tailCol but tail already took it, advance by 1
+  const headSkips = wallIdx % 2 === 0 && Math.floor(wallIdx / 2) === tailCol && tailPhase === 1;
+  const effectiveHeadIdx = wallIdx + (headSkips ? 1 : 0);
+  // Match drawFromTail skip: if head took the top of tailCol, tail uses bottom instead
+  const effTailPhase = (tailPhase === 0 && tailCol * 2 < wallIdx) ? 1 : tailPhase;
+  const effectiveTailIdx = tailCol * 2 + effTailPhase;
+  // Last-tile case: head and tail converge on same index
+  const lastTile = !exhausted && effectiveHeadIdx === effectiveTailIdx;
 
   // ── Stats bar ────────────────────────────────────────────────
   const stats = document.createElement('div');
   stats.style.cssText = 'display:flex;gap:16px;padding:6px 10px;background:rgba(0,0,0,.3);border-radius:6px;margin-bottom:8px;font-size:11px;flex-wrap:wrap;';
-  stats.innerHTML = `
-    <span style="color:#aaa;">${head} drawn · <strong style="color:#7dffff">${remain}</strong> live · ${tailUsed} replaced</span>
-    <span style="color:#ffd34d;">▼ next draw (top row)</span>
-    <span style="color:#ff9800;">▲ next replacement (top row)</span>
-    <span style="color:#555;">dim = consumed</span>
-  `;
+  if (exhausted) {
+    stats.innerHTML = `
+      <span style="color:#ff4444;font-weight:700;font-size:12px;">🏁 WALL EXHAUSTED — 0 tiles left</span>
+      <span style="color:#aaa">${wallIdx} drawn · ${tailUsed} replaced</span>
+    `;
+  } else if (lastTile) {
+    stats.innerHTML = `
+      <span style="color:#ff4444;font-weight:700">▼▲ LAST TILE — head &amp; tail meet</span>
+      <span style="color:#7dffff">1 live</span>
+      <span style="color:#aaa">${wallIdx} drawn · ${tailUsed} replaced</span>
+      <span style="color:#555">dim = used</span>
+    `;
+  } else {
+    stats.innerHTML = `
+      <span style="color:#7dffff">${remain} live</span>
+      <span style="color:#aaa">${wallIdx} drawn · ${tailUsed} replaced</span>
+      <span style="color:#ffd34d">▼ next draw</span>
+      <span style="color:#ff9800">▲ next replacement</span>
+      <span style="color:#555">dim = used</span>
+    `;
+  }
   el.appendChild(stats);
 
-  // ── 72 columns × 2 rows — top tile (even index) above bottom tile (odd index) ──
-  // Columns wrap left-to-right. HEAD marker on next draw, TAIL marker on next replacement.
   function isTailConsumed(i) {
     const c = Math.floor(i / 2);
     const isTop = (i % 2 === 0);
@@ -1483,16 +1504,17 @@ function populateWallPeek() {
   colsDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;align-items:flex-start;';
 
   for (let c = 0; c < 72; c++) {
-    const topIdx = c * 2;      // even — top tile
-    const botIdx = c * 2 + 1; // odd  — bottom tile
+    const topIdx = c * 2;
+    const botIdx = c * 2 + 1;
 
     const colDiv = document.createElement('div');
-    colDiv.style.cssText = 'display:flex;flex-direction:column;gap:1px;flex-shrink:0;';
+    colDiv.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;';
 
     for (const i of [topIdx, botIdx]) {
-      const isHead     = i === head;
-      const isTail     = i === nextTail;
-      const isHeadUsed = i < head;
+      const isHead     = !exhausted && i === effectiveHeadIdx;
+      const isTail     = !exhausted && !lastTile && i === effectiveTailIdx;
+      const isBoth     = !exhausted && lastTile && i === effectiveHeadIdx;
+      const isHeadUsed = i < wallIdx;
       const isTailUsed = isTailConsumed(i);
 
       const wrap = document.createElement('div');
@@ -1501,20 +1523,44 @@ function populateWallPeek() {
       const te = makeTileEl(wall[i], { small: true });
       te.style.cssText += 'width:30px!important;height:42px!important;font-size:11px;cursor:default;';
 
-      if      (isHeadUsed) { te.style.opacity = '0.22'; }
-      else if (isTailUsed) { te.style.opacity = '0.28'; te.style.outline = '1px solid rgba(255,152,0,0.3)'; }
-
-      if (isHead) { te.style.opacity='1'; te.style.outline='3px solid #ffd34d'; te.style.boxShadow='0 0 6px 2px rgba(255,211,77,0.5)'; }
-      if (isTail) { te.style.opacity='1'; te.style.outline='3px solid #ff9800'; te.style.boxShadow='0 0 6px 2px rgba(255,152,0,0.5)'; }
+      if (isBoth) {
+        te.style.outline = '3px solid #ff4444';
+        te.style.boxShadow = '0 0 8px 3px rgba(255,68,68,0.7)';
+      } else if (isHead) {
+        te.style.outline = '3px solid #ffd34d';
+        te.style.boxShadow = '0 0 6px 2px rgba(255,211,77,0.5)';
+      } else if (isTail) {
+        te.style.outline = '3px solid #ff9800';
+        te.style.boxShadow = '0 0 6px 2px rgba(255,152,0,0.5)';
+      } else if (exhausted || isHeadUsed) {
+        te.style.opacity = '0.18';
+      } else if (isTailUsed) {
+        te.style.opacity = '0.22';
+        te.style.outline = '1px solid rgba(255,152,0,0.35)';
+      }
 
       wrap.appendChild(te);
-      if (isHead || isTail) {
+      if (isHead || isTail || isBoth) {
         const lbl = document.createElement('div');
-        lbl.style.cssText = `font-size:7px;font-weight:700;line-height:1;margin-top:1px;color:${isHead?'#ffd34d':'#ff9800'};`;
-        lbl.textContent = isHead ? '▼' : '▲';
+        lbl.style.cssText = `font-size:7px;font-weight:700;line-height:1;margin-top:1px;color:${isBoth?'#ff4444':isHead?'#ffd34d':'#ff9800'};`;
+        lbl.textContent = isBoth ? '▼▲' : isHead ? '▼' : '▲';
         wrap.appendChild(lbl);
       }
       colDiv.appendChild(wrap);
+    }
+
+    // Column label under pointer columns
+    const isHeadCol  = !exhausted && c === Math.floor(effectiveHeadIdx / 2);
+    const isTailColH = !exhausted && !lastTile && c === Math.floor(effectiveTailIdx / 2);
+    const isBothCol  = !exhausted && lastTile && c === Math.floor(effectiveHeadIdx / 2);
+    if (isHeadCol || isTailColH || isBothCol) {
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'font-size:8px;font-weight:700;line-height:1;margin-top:2px;';
+      if (isBothCol) { lbl.style.color = '#ff4444'; lbl.textContent = '▼▲'; }
+      else if (isHeadCol && isTailColH) { lbl.style.color = '#fff'; lbl.textContent = '▼▲'; }
+      else if (isHeadCol) { lbl.style.color = '#ffd34d'; lbl.textContent = '▼'; }
+      else { lbl.style.color = '#ff9800'; lbl.textContent = '▲'; }
+      colDiv.appendChild(lbl);
     }
 
     colsDiv.appendChild(colDiv);
@@ -1522,11 +1568,11 @@ function populateWallPeek() {
 
   el.appendChild(colsDiv);
 
-  if (remain === 0) {
-    const e = document.createElement('p');
-    e.style.cssText = 'color:#ff6666;margin-top:8px;font-size:12px;';
-    e.textContent = 'Wall exhausted!';
-    el.appendChild(e);
+  if (exhausted) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'margin-top:10px;padding:8px 14px;background:rgba(255,68,68,0.12);border:2px solid #ff4444;border-radius:8px;text-align:center;font-size:12px;font-weight:700;color:#ff8080;';
+    banner.textContent = '🏁 Wall exhausted — no tiles remain. This hand ends in a draw (黃牌).';
+    el.appendChild(banner);
   }
 }
 
