@@ -352,7 +352,7 @@ main#table {
   padding: 0 12px;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  min-height: 34px; /* pre-reserve 2-line height so win result never shifts the header */
 }
 main#table { position: relative; }
 #action-bar button {

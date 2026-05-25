@@ -62,6 +62,8 @@ function initUI(game) {
   window.AUTO_MODE = null;
   window.AUTO_USER_LEVEL = 1;
   window.AUTO_FAST_DELAY = 120;
+  window._autorunLeft = 0;
+  window._autorunTimer = null;
 
   const autoLevelRow  = document.getElementById('auto-level-row');
   const autoLevelSel  = document.getElementById('auto-user-level');
@@ -90,6 +92,15 @@ function initUI(game) {
         : mode === 'slow' ? 'Slow: step-by-step.' : '';
     }
 
+    // Cancel any autorun when returning to Human
+    if (!window.AUTO_MODE) {
+      if (window._autorunTimer) { clearTimeout(window._autorunTimer); window._autorunTimer = null; }
+      window._autorunLeft = 0;
+      const ainp = document.getElementById('autorun-count');
+      if (ainp) ainp.value = '0';
+      const albl = document.getElementById('autorun-label');
+      if (albl) albl.textContent = '';
+    }
     // If switching TO manual while game is waiting on human, just let them continue
     if (!window.AUTO_MODE && _game) {
       const msg = document.getElementById('message');
@@ -111,6 +122,16 @@ function initUI(game) {
   btnHuman?.addEventListener('click', (e) => { e.stopPropagation(); setAutoMode(null); });
   btnSlow?.addEventListener('click',  (e) => { e.stopPropagation(); setAutoMode('slow'); });
   btnFast?.addEventListener('click',  (e) => { e.stopPropagation(); setAutoMode('fast'); });
+  document.getElementById('autorun-go-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const inp = document.getElementById('autorun-count');
+    const n = Math.max(0, parseInt(inp?.value, 10) || 0);
+    window._autorunLeft = n;
+    if (n > 0 && _game && _game.phase === PHASE.END && !(_game.lastResult?.gameOver)) {
+      tickAutorun();
+    }
+  });
+
   autoLevelSel?.addEventListener('change', (e) => {
     e.stopPropagation();
     window.AUTO_USER_LEVEL = parseInt(e.target.value, 10) || 1;
@@ -118,6 +139,10 @@ function initUI(game) {
 
   document.getElementById('new-game-btn').addEventListener('click', (e) => {
     e.stopPropagation();
+    if (window._autorunTimer) { clearTimeout(window._autorunTimer); window._autorunTimer = null; }
+    window._autorunLeft = 0;
+    const ainp = document.getElementById('autorun-count');
+    if (ainp) ainp.value = '0';
     try { sessionStorage.removeItem('mahjongGameState'); } catch(e2) {}
     // Reset any demo-activated toggles
     const ltChk = document.getElementById('last-tile-toggle');
@@ -279,6 +304,7 @@ function initUI(game) {
       _game.stepAuto(); return;
     }
     if (_game.phase === PHASE.END) {
+      if (window._autorunTimer) { clearTimeout(window._autorunTimer); window._autorunTimer = null; }
       _tileElCache.clear(); _game.nextDeal(); renderAll(); return;
     }
     // Auto mode: hand this turn over to CPU-You
@@ -380,6 +406,26 @@ function showHint(lines) {
   _hintTimeout = null;
 }
 
+function tickAutorun() {
+  if (!_game || _game.phase !== PHASE.END) return;
+  if (_game.lastResult && _game.lastResult.gameOver) return;
+  if (!window._autorunLeft || window._autorunLeft <= 0) return;
+  if (window._autorunTimer) return; // already scheduled
+  const lbl = document.getElementById('autorun-label');
+  if (lbl) lbl.textContent = `${window._autorunLeft} left`;
+  window._autorunTimer = setTimeout(() => {
+    window._autorunTimer = null;
+    window._autorunLeft = Math.max(0, window._autorunLeft - 1);
+    const inp = document.getElementById('autorun-count');
+    if (inp) inp.value = window._autorunLeft;
+    const lbl2 = document.getElementById('autorun-label');
+    if (lbl2) lbl2.textContent = window._autorunLeft > 0 ? `${window._autorunLeft} left` : '';
+    _tileElCache.clear();
+    _game.nextDeal();
+    renderAll();
+  }, 1500);
+}
+
 function renderAll() {
   if (!_game) return;
   _tileElInUse = new Set();
@@ -395,6 +441,7 @@ function renderAll() {
   renderSidebar();
   renderWallRing();
   _broadcastWallState();
+  tickAutorun();
 }
 
 function renderInfoBar() {
