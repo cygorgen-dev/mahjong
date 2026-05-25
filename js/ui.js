@@ -489,12 +489,11 @@ function renderSeats() {
     // Top player (seat 2) also needs rotation so tiles face toward the player
     const needsRotation = isSidePlayer || seat === 2;
 
-    // Side players: cap claim column at 12 tiles; overflow spills into hand column
-    let claimMelds = p.melds, claimBonus = p.bonus;
+    // Cap claim row at 12 tiles for ALL seats; excess spills into the hand row
+    let claimMelds = [], claimBonus = [];
     let overflowMelds = [], overflowBonus = [];
-    if (isSidePlayer) {
+    {
       let n = 0;
-      claimMelds = [];
       for (const meld of p.melds) {
         if (n + meld.tiles.length <= 12) { claimMelds.push(meld); n += meld.tiles.length; }
         else overflowMelds.push(meld);
@@ -693,11 +692,41 @@ function renderSeats() {
           handEl.appendChild(ghost);
         }
       }
+      // Overflow melds spill into hand row at the free (right) end
+      if (overflowMelds.length > 0 || overflowBonus.length > 0) {
+        for (const meld of overflowMelds) {
+          const meldDiv = document.createElement('div');
+          meldDiv.className = 'meld';
+          if (meld.type === 'kong' && meld.concealed) {
+            for (let i = 0; i < 3; i++) {
+              const bt = Object.assign({}, meld.tiles[0], { _forceBack: true });
+              meldDiv.appendChild(makeTileEl(bt, { small: true, back: true, seatRotation: 0 }));
+            }
+            meldDiv.appendChild(makeTileEl(meld.tiles[0], { small: true, seatRotation: 0 }));
+          } else {
+            const dTiles = meld.type === 'chow'
+              ? [...meld.tiles].sort((a, b) => a.value - b.value)
+              : meld.tiles;
+            for (const t of dTiles) {
+              meldDiv.appendChild(makeTileEl(t, { small: true, seatRotation: 0 }));
+            }
+          }
+          handEl.appendChild(meldDiv);
+        }
+        if (overflowBonus.length > 0) {
+          const bonusDiv = document.createElement('div');
+          bonusDiv.className = 'bonus-tiles';
+          for (const b of overflowBonus) {
+            bonusDiv.appendChild(makeTileEl(b, { small: true, seatRotation: 0 }));
+          }
+          handEl.appendChild(bonusDiv);
+        }
+      }
     } else {
       // CPU players: render tiles face-down normally, or face-up if Open Hands enabled
 
-      // Side players: render overflow melds/bonus (beyond claim-column cap) into hand column
-      if (isSidePlayer && (overflowMelds.length > 0 || overflowBonus.length > 0)) {
+      // Side + top players: render overflow melds/bonus (beyond claim-row cap) into hand row
+      if ((isSidePlayer || seat === 2) && (overflowMelds.length > 0 || overflowBonus.length > 0)) {
         for (const meld of overflowMelds) {
           const meldDiv = document.createElement('div');
           meldDiv.className = 'meld';
@@ -765,7 +794,7 @@ function renderSeats() {
       }
       // Pad all CPU hand columns to 14 real tile slots with invisible ghost tiles
       // so the column is always full and the board never shifts.
-      const overflowTileCount = isSidePlayer
+      const overflowTileCount = (isSidePlayer || seat === 2)
         ? overflowMelds.reduce((s, m) => s + m.tiles.length, 0) + overflowBonus.length
         : 0;
       const handGhostCls = isSidePlayer ? 'tile-ghost-rot' : 'tile-ghost';
