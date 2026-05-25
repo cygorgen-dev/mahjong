@@ -171,9 +171,9 @@ main#table {
 /* Melds column: stacks vertically for side players.
    Each meld renders tiles vertically (each rotated tile = 66w x 46h). */
 .seat-left  .melds { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 3px; order: 2;
-  align-items: flex-end; flex-shrink: 0; width: 70px; }
+  align-items: flex-end; justify-content: flex-start; flex-shrink: 0; width: 70px; }
 .seat-right .melds { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 3px; order: 1;
-  align-items: flex-start; flex-shrink: 0; width: 70px; }
+  align-items: flex-start; justify-content: flex-start; flex-shrink: 0; width: 70px; }
 
 /* Each meld for side players: stack tiles vertically */
 .seat-left  .meld,
