@@ -844,9 +844,11 @@ body.hide-tile-labels .tile-en { display:none !important; }
 .side-hand-label .badge-wind { width: 32px; height: 32px; }
 .side-hand-label .dice-display { transform: scale(0.65); transform-origin: center; }
 
-/* Start hand column from top, not centered vertically */
+/* Start hand column from top, not centered vertically.
+   gap:0 keeps 13 tiles (13×50=650px) under the center row height (~660px)
+   so the side panel never forces the grid row taller than #center. */
 .seat-left  .hand,
-.seat-right .hand { align-self: flex-start; }
+.seat-right .hand { align-self: flex-start; gap: 0; }
 
 /* With claim-row hidden, re-pack tiles to outer edges */
 .seat-left  { justify-content: flex-start !important; }
