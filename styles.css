@@ -308,10 +308,10 @@ main#table {
    overflow:visible lets side-player tiles (8 rows) extend into the wall ring margin. */
 #discard-pile {
   position:absolute;
-  top:26px; left:26px;
-  width:670px; height:556px;
-  --tw: 46px;
-  --th: 66px;
+  top:46px; left:26px;
+  width:670px; height:536px;
+  --tw: 48px;
+  --th: 70px;
   background:rgba(0,0,0,0.18);
   border-radius:8px;
   overflow:visible;

@@ -922,13 +922,13 @@ function renderSeats() {
 
 function getDiscardFillOrders() {
   if (_discardFillOrders) return _discardFillOrders;
-  const TW = 46, TH = 66, GAP = 2;
+  const TW = 48, TH = 70, GAP = 0;
   const N_COLS = 14, N_ROWS = 7;
-  const PILE_W = 670, PILE_H = 556;
-  const gridW = N_COLS * TW + (N_COLS - 1) * GAP; // 670
-  const gridH = N_ROWS * TH + (N_ROWS - 1) * GAP; // 474
-  const originX = Math.round((PILE_W - gridW) / 2); // 0
-  const originY = Math.round((PILE_H - gridH) / 2); // 41
+  const PILE_W = 670, PILE_H = 536;
+  const gridW = N_COLS * TW + (N_COLS - 1) * GAP; // 672
+  const gridH = N_ROWS * TH + (N_ROWS - 1) * GAP; // 490
+  const originX = Math.round((PILE_W - gridW) / 2); // -1
+  const originY = Math.round((PILE_H - gridH) / 2); // 23
   const zones = [[], [], [], []];
   for (let r = 0; r < N_ROWS; r++) {
     for (let c = 0; c < N_COLS; c++) {
@@ -965,8 +965,8 @@ function renderDiscard() {
     const kSeat = _game.robbingKongSeat ?? 0;
     kt._discardSeat = kSeat;
     kt._discardIdxBySeat = 0;
-    const W = 670, H = 556;
-    const TW = 46, TH = 66;
+    const W = 670, H = 536;
+    const TW = 48, TH = 70;
     const te = makeTileEl(kt, { small: true });
     te.style.left = ((W - TW) / 2) + 'px';
     te.style.top  = ((H - TH) / 2) + 'px';
