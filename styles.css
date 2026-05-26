@@ -41,8 +41,8 @@ header .zh { color:#ffd34d; margin-left:6px; font-size:15px; }
 
 /* ONE tile size used everywhere */
 :root {
-  --tw: 46px;
-  --th: 66px;
+  --tw: 50px;
+  --th: 72px;
 }
 
 main#table {
@@ -150,7 +150,7 @@ main#table {
 }
 
 /* Hand column: single column of face-down rotated tiles for side players.
-   Each rotated wrapper = 66px wide x 46px tall. Column flex, tiles stack top-to-bottom. */
+   Each rotated wrapper = 72px wide x 50px tall. Column flex, tiles stack top-to-bottom. */
 .seat-left  .hand {
   display: flex;
   flex-direction: column;
@@ -158,7 +158,7 @@ main#table {
   gap: 3px;
   order: 1;
   flex-shrink: 0;
-  width: 66px;
+  width: 72px;
   align-items: center;
 }
 .seat-right .hand {
@@ -168,16 +168,16 @@ main#table {
   gap: 3px;
   order: 2;
   flex-shrink: 0;
-  width: 66px;
+  width: 72px;
   align-items: center;
 }
 
 /* Melds column: stacks vertically for side players.
-   Each meld renders tiles vertically (each rotated tile = 66w x 46h). */
+   Each meld renders tiles vertically (each rotated tile = 72w x 50h). */
 .seat-left  .melds { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 3px; order: 2;
-  align-items: flex-end; justify-content: flex-start; flex-shrink: 0; width: 70px; }
+  align-items: flex-end; justify-content: flex-start; flex-shrink: 0; width: 76px; }
 .seat-right .melds { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 3px; order: 1;
-  align-items: flex-start; justify-content: flex-start; flex-shrink: 0; width: 70px; }
+  align-items: flex-start; justify-content: flex-start; flex-shrink: 0; width: 76px; }
 
 /* Each meld for side players: stack tiles vertically */
 .seat-left  .meld,
@@ -185,7 +185,7 @@ main#table {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: 70px;
+  width: 76px;
   align-items: center;
 }
 
@@ -282,11 +282,11 @@ main#table {
   width: 70px;
   gap: 2px;
 }
-/* Overflow melds/bonus rendered inside the 66px hand column for side players */
+/* Overflow melds/bonus rendered inside the 72px hand column for side players */
 .seat-left  .hand .meld,
-.seat-right .hand .meld { width: 66px; }
+.seat-right .hand .meld { width: 72px; }
 .seat-left  .hand .bonus-tiles,
-.seat-right .hand .bonus-tiles { width: 66px; }
+.seat-right .hand .bonus-tiles { width: 72px; }
 
 /* Overflow melds/bonus in top/bottom hand rows: remove padding and margin so tiles
    align flush with the regular hand tiles in the same row. */
@@ -304,14 +304,17 @@ main#table {
   overflow:visible;
 }
 
-/* DISCARD AREA — inset inside wall margin so wall tiles are always visible */
+/* DISCARD AREA — inset inside wall margin so wall tiles are always visible.
+   overflow:visible lets side-player tiles (8 rows) extend into the wall ring margin. */
 #discard-pile {
   position:absolute;
   top:26px; left:26px;
-  width:668px; height:556px;
+  width:670px; height:556px;
+  --tw: 46px;
+  --th: 66px;
   background:rgba(0,0,0,0.18);
   border-radius:8px;
-  overflow:hidden;
+  overflow:visible;
   z-index:2;
 }
 #discard-pile .tile {
@@ -428,7 +431,7 @@ main#table { position: relative; }
 .meld { display:flex; gap:3px; padding:2px; background:rgba(0,0,0,0.2); border-radius:4px; }
 
 /* Invisible ghost slots — hold fixed space in CPU seat columns */
-.tile-ghost-rot { width:66px; height:46px; flex-shrink:0; visibility:hidden; }
+.tile-ghost-rot { width:72px; height:50px; flex-shrink:0; visibility:hidden; }
 
 /* WALL RING — SVG behind discard, drawing tile backs in the margins */
 #wall-ring-wrap { position:relative; width:720px; height:608px; flex-shrink:0; }
@@ -803,10 +806,10 @@ body.hide-tile-labels .tile-en { display:none !important; }
 .seat-left  .claim-row,
 .seat-right .claim-row { display: none !important; }
 
-/* Label block: same width as a rotated tile (66px wide x 46px tall landscape) */
+/* Label block: same width as a rotated tile (72px wide x 50px tall landscape) */
 .side-hand-label {
-  width: 66px;
-  height: 46px;
+  width: 72px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -850,8 +853,8 @@ body.hide-tile-labels .tile-en { display:none !important; }
 
 /* Fake tile blocks for wind and dice — same landscape size as rotated tiles */
 .side-hand-fake-tile {
-  width: 66px;
-  height: 46px;
+  width: 72px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
