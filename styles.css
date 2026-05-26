@@ -115,7 +115,7 @@ main#table {
   display: flex; flex-wrap: nowrap; gap: 3px;
   align-items: center;
   justify-content: flex-start;   /* indicators always at left, tiles follow */
-  margin-left: calc(-1 * var(--tw));
+  margin-left: calc(-2 * var(--tw));
   width: 880px; min-width: 880px; /* fixed — never recenters */
   flex-shrink: 0;
 }
