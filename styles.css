@@ -304,6 +304,7 @@ main#table {
   display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
   gap:0; padding:0;
   overflow:visible;
+  align-self: end;
 }
 
 /* DISCARD AREA — inset inside wall margin so wall tiles are always visible.
