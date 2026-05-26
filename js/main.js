@@ -10,10 +10,13 @@
     const scale = Math.min(1, window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT);
     const app = document.getElementById('app');
     if (app) {
+      const preScaleH = scale < 1 ? (window.innerHeight / scale) + 'px' : '';
       app.style.transform = scale < 1 ? `scale(${scale})` : '';
       app.style.width = scale < 1 ? (100 / scale) + '%' : '';
-      // Shrink the overall height so the page doesn't scroll vertically
-      document.body.style.height = scale < 1 ? (window.innerHeight / scale) + 'px' : '';
+      // html overflow:hidden clips at its own height; stretch both html and body
+      // so the pre-scale layout isn't clipped before the transform shrinks it back
+      document.documentElement.style.height = preScaleH;
+      document.body.style.height = preScaleH;
     }
   }
   document.addEventListener('DOMContentLoaded', applyScale);
