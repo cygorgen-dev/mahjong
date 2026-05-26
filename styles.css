@@ -115,6 +115,7 @@ main#table {
   display: flex; flex-wrap: nowrap; gap: 3px;
   align-items: center;
   justify-content: flex-start;   /* indicators always at left, tiles follow */
+  margin-left: calc(-1 * var(--tw));
   width: 880px; min-width: 880px; /* fixed — never recenters */
   flex-shrink: 0;
 }
@@ -816,11 +817,13 @@ body.hide-tile-labels .tile-en { display:none !important; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.65);
   border-radius: 5px;
-  flex-shrink: 0;
   box-sizing: border-box;
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
   overflow: hidden;
 }
 .side-hand-label.active { background: #ffd34d; }
@@ -846,11 +849,10 @@ body.hide-tile-labels .tile-en { display:none !important; }
 .side-hand-label .badge-wind { width: 32px; height: 32px; }
 .side-hand-label .dice-display { transform: scale(0.65); transform-origin: center; }
 
-/* Start hand column from top, not centered vertically.
-   gap:0 keeps 13 tiles (13×50=650px) under the center row height (~660px)
-   so the side panel never forces the grid row taller than #center. */
+/* Start hand column from top; position:relative lets the label float absolute.
+   gap:0 keeps 13 tiles (13×50=650px) ≈ center height so no dead gap. */
 .seat-left  .hand,
-.seat-right .hand { align-self: flex-start; gap: 0; }
+.seat-right .hand { align-self: flex-start; gap: 0; position: relative; }
 
 /* With claim-row hidden, re-pack tiles to outer edges */
 .seat-left  { justify-content: flex-start !important; }
