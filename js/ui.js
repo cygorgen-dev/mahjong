@@ -1142,6 +1142,12 @@ function renderMessage() {
 }
 
 function renderSidebar() {
+  // Inline player scores in PLAYERS section
+  for (const p of _game.players) {
+    const id = p.isHuman ? 'you-score' : `cpu${p.name.replace('CPU', '')}-score`;
+    const el = document.getElementById(id);
+    if (el) el.textContent = p.score;
+  }
   // Scoreboard (optional — only present if sidebar has score section)
   const tbody = document.querySelector('#scoreboard tbody');
   if (tbody) {

@@ -453,6 +453,7 @@ main#table { position: relative; }
 .sidebar-check label { cursor: pointer; }
 .sidebar-btngroup { display: flex; flex-direction: column; gap: 4px; }
 .sb-btn { background: #2a8b4e; color: #fff; border: 0; border-radius: 4px; padding: 6px 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; width: 100%; white-space: nowrap; }
+.player-score { font-size: 12px; color: #ffd34d; font-weight: 700; min-width: 38px; text-align: right; flex-shrink: 0; }
 .sb-btn:hover { filter: brightness(1.15); }
 
 /* Auto mode big buttons */

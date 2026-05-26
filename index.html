@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="app">
+  <div id="app" class="sidebar-open">
     <header>
       <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span style="font-size:11px;color:#aaa;font-weight:400;">v0524-121</span></h1>
       <div id="message"></div>
@@ -117,27 +117,47 @@
         </div>
       </div>
       <div class="sidebar-section">
-        <div class="sidebar-heading">🤖 CPU Skills</div>
+        <div class="sidebar-heading">PLAYERS</div>
         <div class="sidebar-row">
           <label class="sb-label">CPU 1</label>
-          <select id="cpu1-level" class="sb-select">
-            <option value="1" selected>🟢 Beginner</option>
-            <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
-          </select>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="player-score" id="cpu1-score">—</span>
+            <select id="cpu1-level" class="sb-select">
+              <option value="1" selected>🟢 Beginner</option>
+              <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
+            </select>
+          </div>
         </div>
         <div class="sidebar-row">
           <label class="sb-label">CPU 2</label>
-          <select id="cpu2-level" class="sb-select">
-            <option value="1" selected>🟢 Beginner</option>
-            <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
-          </select>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="player-score" id="cpu2-score">—</span>
+            <select id="cpu2-level" class="sb-select">
+              <option value="1" selected>🟢 Beginner</option>
+              <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
+            </select>
+          </div>
         </div>
         <div class="sidebar-row">
           <label class="sb-label">CPU 3</label>
-          <select id="cpu3-level" class="sb-select">
-            <option value="1" selected>🟢 Beginner</option>
-            <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
-          </select>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="player-score" id="cpu3-score">—</span>
+            <select id="cpu3-level" class="sb-select">
+              <option value="1" selected>🟢 Beginner</option>
+              <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
+            </select>
+          </div>
+        </div>
+        <div class="sidebar-row" id="auto-level-row">
+          <label class="sb-label">YOU</label>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="player-score" id="you-score">—</span>
+            <select id="auto-user-level" class="sb-select" title="Skill level when CPU takes over your seat in auto mode">
+              <option value="1" selected title="Discard isolated tiles, claim freely">🟢 Beginner</option>
+              <option value="2" title="Pursues Seven Pairs and Pure Suit, selective claims">🟡 Inter</option>
+              <option value="3" title="Prizes concealed hands, safety-aware, only claims when near tenpai">🔴 Expert</option><option value="4" title="Opponent-aware: reads suit hoarding, defensive when anyone near tenpai">🔥 Master</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="sidebar-section">
@@ -146,14 +166,6 @@
           <button id="auto-btn-human" class="auto-mode-btn auto-btn-human active-mode" title="Manual Human play — you control all moves">🧑 HUMAN</button>
           <button id="auto-btn-slow"  class="auto-mode-btn auto-btn-slow"  title="Slow step-by-step auto play">🐢 SLOW</button>
           <button id="auto-btn-fast"  class="auto-mode-btn auto-btn-fast"  title="Fast fully automatic play">⚡ FAST</button>
-        </div>
-        <div class="sidebar-row" id="auto-level-row">
-          <label class="sb-label">CPU-You level:</label>
-          <select id="auto-user-level" class="sb-select" title="Skill level when CPU takes over your seat in auto mode">
-            <option value="1" selected title="Discard isolated tiles, claim freely">🟢 Beginner</option>
-            <option value="2" title="Pursues Seven Pairs and Pure Suit, selective claims">🟡 Inter</option>
-            <option value="3" title="Prizes concealed hands, safety-aware, only claims when near tenpai">🔴 Expert</option><option value="4" title="Opponent-aware: reads suit hoarding, defensive when anyone near tenpai">🔥 Master</option>
-          </select>
         </div>
         <div id="auto-status" style="font-size:12px;color:#aaa;margin-top:4px;"></div>
         <div class="sidebar-row" style="margin-top:6px;align-items:center;gap:4px;">
