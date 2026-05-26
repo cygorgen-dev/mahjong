@@ -4,9 +4,10 @@
 
 // --- Auto-scale to fit viewport ---
 (function setupScale() {
-  const DESIGN_WIDTH = 1285; // v0516-33
+  const DESIGN_WIDTH = 1285;
+  const DESIGN_HEIGHT = 1000; // header + top seat + wall ring + action bar + bottom seat
   function applyScale() {
-    const scale = Math.min(1, window.innerWidth / DESIGN_WIDTH);
+    const scale = Math.min(1, window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT);
     const app = document.getElementById('app');
     if (app) {
       app.style.transform = scale < 1 ? `scale(${scale})` : '';
