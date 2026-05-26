@@ -500,6 +500,7 @@ function renderAll() {
   renderMessage();
   renderSidebar();
   renderWallRing();
+  populateWallPeek();
   _broadcastWallState();
   tickAutorun();
 }
