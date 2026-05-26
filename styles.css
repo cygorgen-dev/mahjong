@@ -54,6 +54,7 @@ main#table {
   grid-template-areas: ". top ." "left center right" ". bottom .";
   gap: 2px;
   padding: 2px 4px;
+  align-content: start;
   overflow: visible;
 }
 .seat { display:flex; flex-direction:column; align-items:center; gap:4px; position:relative; }
