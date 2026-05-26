@@ -12,8 +12,9 @@ body {
 #app {
   display: grid;
   grid-template-columns: 1fr 0px;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto;
   grid-template-areas: "header sidebar" "table sidebar";
+  align-content: start;
   min-height: 100vh;
   transform-origin: top left;
   transition: grid-template-columns 0.2s ease;
@@ -22,7 +23,7 @@ body {
 header {
   grid-area: header;
   background: #07301a;
-  padding: 6px 14px;
+  padding: 4px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -52,8 +53,8 @@ main#table {
   grid-template-columns: 200px minmax(0,1fr) 200px;
   grid-template-rows: auto auto auto;
   grid-template-areas: ". top ." "left center right" ". bottom .";
-  gap: 2px;
-  padding: 2px 4px;
+  gap: 0;
+  padding: 0 4px;
   align-content: start;
   overflow: visible;
 }
@@ -67,7 +68,7 @@ main#table {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 0;
 }
 .seat-top .h-indicators { display: none !important; }
 .seat-top .h-tile-area  { display: contents; }
@@ -97,7 +98,7 @@ main#table {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 0;
 }
 .seat-bottom .h-indicators { display: none !important; }
 .seat-bottom .h-tile-area  { display: contents; }
@@ -301,7 +302,7 @@ main#table {
 #center {
   grid-area:center;
   display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-  gap:6px; padding:4px;
+  gap:0; padding:0;
   overflow:visible;
 }
 
