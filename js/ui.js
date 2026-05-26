@@ -193,7 +193,7 @@ function initUI(game) {
     e.stopPropagation();
     _broadcastWallState();
     if (!_peekWin || _peekWin.closed) {
-      _peekWin = window.open('peek.html', 'mahjong-peek', 'width=860,height=480,resizable=yes,scrollbars=yes');
+      _peekWin = window.open('peek.html', 'mahjong-peek', (() => { const left = window.screenLeft + window.outerWidth; const w = screen.width - left; return `width=${w},height=${screen.height},left=${left},top=0,resizable=yes,scrollbars=yes`; })());
     } else {
       _peekWin.focus();
     }
@@ -201,6 +201,12 @@ function initUI(game) {
   document.getElementById('close-peek')?.addEventListener('click', (e) => {
     e.stopPropagation();
     if (_peekWin && !_peekWin.closed) _peekWin.close();
+  });
+  document.getElementById('force-exhaust-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!_game) return;
+    _game.wallIdx = Math.max(_game.wallIdx, 2 * (_game.tailCol + 1) - _game.tailPhase);
+    _broadcastWallState();
   });
 
   // Draggable peek panel

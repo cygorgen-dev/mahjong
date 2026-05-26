@@ -174,9 +174,12 @@
         seq.appendChild(colWrap);
       }
 
-      // Prominent exhausted banner below tiles
+      // Prominent exhausted banner below tiles — remove stale banner first
+      const oldBanner = document.getElementById('wall-exhausted-banner');
+      if (oldBanner) oldBanner.remove();
       if (exhausted) {
         const banner = document.createElement('div');
+        banner.id = 'wall-exhausted-banner';
         banner.style.cssText = 'margin-top:12px;padding:10px 18px;background:rgba(255,68,68,0.12);border:2px solid #ff4444;border-radius:8px;text-align:center;font-size:13px;font-weight:700;color:#ff8080;';
         banner.textContent = '🏁 Wall exhausted — no tiles remain. This hand ends in a draw (黃牌).';
         seq.after(banner);
