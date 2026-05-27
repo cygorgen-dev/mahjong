@@ -226,6 +226,7 @@ class Game {
     // Clear the last-discard highlight now that a new tile has been drawn
     this.discard = null;
     this.discardSeat = null;
+    this.lastClaimedTile = null;
 
     // Clear just-drawn highlight from all players before marking the new draw
     for (const player of this.players) {
@@ -340,7 +341,7 @@ class Game {
     }
     const result = canWin(p.hand, p.melds, ctx);
     const minF = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
-    if (result.win && result.faan >= minF) {
+    if (result.win && result.faan >= minF && p.hand.some(t => t._justDrawn)) {
       this.resolveWin(seat, null, result);
       return;
     }
@@ -760,7 +761,7 @@ class Game {
     // Remove discard from discard pile
     const dIdx = this.discardPile.findIndex(t => t.id === tile.id);
     if (dIdx !== -1) this.discardPile.splice(dIdx, 1);
-    tile._claimedTile = true;
+    this.lastClaimedTile = tile;
 
     if (action === 'pung') {
       const pair = p.hand.filter(t => sameType(t, tile)).slice(0, 2);
