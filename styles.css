@@ -658,7 +658,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 
 /* Top/bottom seat labels and wind - positioned at outer edges */
 .seat-top    { position: relative; }
-.seat-bottom { position: relative; }
+.seat-bottom { position: relative; left: -68px; margin-top: -60px; }
 
 /* Side player badge - overlaid on hand column, no flex interference */
 .side-player-badge {
