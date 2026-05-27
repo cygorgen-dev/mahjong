@@ -267,7 +267,7 @@ class Game {
       }
     } else {
       this.onUpdate('cpu-drew');  // render draw state so just-drawn highlight is visible
-      this._scheduleOrStep(() => this.aiPlay(seat));
+      if (window.AUTO_MODE === 'slow') { this.aiPlay(seat); } else { this._scheduleOrStep(() => this.aiPlay(seat)); }
     }
   }
 
@@ -306,7 +306,7 @@ class Game {
     const p = this.players[seat];
     if (p.isHuman && window.AUTO_MODE) {
       this.onUpdate(updateEvent);
-      this._scheduleOrStep(() => this.aiPlay(seat));
+      if (window.AUTO_MODE === 'slow') { this.aiPlay(seat); } else { this._scheduleOrStep(() => this.aiPlay(seat)); }
     } else if (p.isHuman) {
       this.onUpdate(updateEvent);
     } else {
@@ -643,7 +643,7 @@ class Game {
     });
     if (claims.length === 0) {
       const next = (fromSeat + 1) % 4;
-      this._scheduleOrStep(() => this.startTurn(next));
+      if (window.AUTO_MODE === 'slow') { this.startTurn(next); } else { this._scheduleOrStep(() => this.startTurn(next)); }
       return;
     }
     const best = claims[0];
@@ -659,7 +659,7 @@ class Game {
       if (!result.win || result.faan < minF) {
         // Faan too low — skip win, treat as pass
         const next = (fromSeat + 1) % 4;
-        this._scheduleOrStep(() => this.startTurn(next));
+        if (window.AUTO_MODE === 'slow') { this.startTurn(next); } else { this._scheduleOrStep(() => this.startTurn(next)); }
         return;
       }
       this.resolveWin(best.seat, fromSeat, result);
@@ -760,6 +760,7 @@ class Game {
     // Remove discard from discard pile
     const dIdx = this.discardPile.findIndex(t => t.id === tile.id);
     if (dIdx !== -1) this.discardPile.splice(dIdx, 1);
+    tile._claimedTile = true;
 
     if (action === 'pung') {
       const pair = p.hand.filter(t => sameType(t, tile)).slice(0, 2);

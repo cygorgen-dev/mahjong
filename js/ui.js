@@ -636,7 +636,9 @@ function renderSeats() {
         const opts = needsRotation
           ? { small: true, seatRotation: seat }
           : { small: true };
-        meldDiv.appendChild(makeTileEl(t, opts));
+        const tEl = makeTileEl(t, opts);
+        if (t._claimedTile) tEl.classList.add('last-discard');
+        meldDiv.appendChild(tEl);
       }
       if (_game.robbingKongSeat === seat && _game.robbingKongTile &&
           meld.type === 'pung' && meld.tiles[0] &&
