@@ -846,12 +846,6 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let j = 0; j < 2; j++) left.hand.push(T(SUIT.WIND, 'West'));
 
     renderAll();
-    window.addMsg && window.addMsg(
-      '<strong>Demo Overflow 溢</strong>: ' +
-      'Bottom/Top=4 kongs+4 bonus (4th kong+all bonus → hand row). ' +
-      'Right=4 kongs+8 bonus (4th kong+all bonus → hand col). ' +
-      'Left=2 kongs+3 pungs+4 bonus (2 pungs+3 bonus → hand col). Open Hands to see full detail.'
-    );
   });
 
   // ---- Rotate Seats button ----
