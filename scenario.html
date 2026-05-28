@@ -78,8 +78,9 @@ a.link:hover{text-decoration:underline;}
   font-size:13px;font-weight:700;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   cursor:pointer;box-shadow:1px 1px 0 #2a1a0a;position:relative;color:#111;
-  transition:transform .08s;flex-shrink:0;
+  transition:transform .08s;flex-shrink:0;overflow:hidden;
 }
+.ht img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;padding:1px;}
 .ht:hover{transform:translateY(-3px);}
 .ht .sub{font-size:8px;color:#555;font-family:system-ui;}
 .ht.bamboo{color:#1a7a1a;}.ht.circle{color:#b22222;}.ht.wind{color:#0033aa;}
@@ -578,7 +579,17 @@ function renderHands(){
 function makeTileDiv(t,extraClass,onClick){
   const d=document.createElement('div');
   d.className=(extraClass||'ht')+' '+cls(t);
-  d.innerHTML=`<span class="rx">✕</span><span>${lbl(t)}</span><span class="sub">${sub(t)}</span>`;
+  const rx=document.createElement('span');rx.className='rx';rx.textContent='✕';
+  d.appendChild(rx);
+  const img=document.createElement('img');
+  img.src=`img/tiles/${t.suit}_${t.value}.png`;
+  img.alt='';
+  img.onerror=()=>{
+    img.remove();
+    const s=document.createElement('span');s.textContent=lbl(t);d.appendChild(s);
+    const sb=document.createElement('span');sb.className='sub';sb.textContent=sub(t);d.appendChild(sb);
+  };
+  d.appendChild(img);
   if(onClick)d.addEventListener('click',onClick);
   return d;
 }

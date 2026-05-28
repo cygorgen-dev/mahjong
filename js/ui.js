@@ -998,24 +998,24 @@ function renderDiscard() {
       y = startY + row * (TH + GAP);
 
     } else if (seat === 3) {
-      // Left: 8 rows x 3 cols — col 0 is innermost (nearest center), stacking leftward
+      // Left: 8 rows x 3 cols — innermost col's right edge aligns with center startX
       const rows = 8;
       const row = idx % rows;
       const col = Math.floor(idx / rows);
       const totalColH = rows * TH + (rows - 1) * GAP;
       const startY = (H - totalColH) / 2;
-      const startX = 4;
+      const startX = 20;
       x = startX + col * (TW + GAP);
       y = startY + row * (TH + GAP);
 
     } else {
-      // Right (seat 1): 8 rows x 3 cols, stacking rightward from right edge
+      // Right (seat 1): 8 rows x 3 cols — innermost col's left edge aligns with center end
       const rows = 8;
       const row = idx % rows;
       const col = Math.floor(idx / rows);
       const totalColH = rows * TH + (rows - 1) * GAP;
       const startY = (H - totalColH) / 2;
-      const startX = W - TW - 4;
+      const startX = W - TW - 20;
       x = startX - col * (TW + GAP);
       y = startY + row * (TH + GAP);
     }
