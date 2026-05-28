@@ -244,8 +244,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  const parensChk = document.getElementById('show-seat-parens-toggle');
-  if(parensChk) parensChk.addEventListener('change', () => { setShowSeatParens(parensChk.checked); renderAll(); });
+  const dealerSeatSel = document.getElementById('game-dealer-seat');
+  if (dealerSeatSel) dealerSeatSel.addEventListener('change', () => {
+    if (game) { game.dealerSeat = parseInt(dealerSeatSel.value); renderAll(); }
+  });
+  const roundWindSel = document.getElementById('game-round-wind');
+  if (roundWindSel) roundWindSel.addEventListener('change', () => {
+    if (game) { game.roundWind = roundWindSel.value; renderAll(); }
+  });
 
   // CPU skill level dropdowns
   function updateCpuLevels() {
@@ -1038,6 +1044,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       game.dealerSeat  = s.dealerSeat ?? 0;
+      game.roundWind   = s.roundWind  ?? 'East';
       game.currentSeat = 0;
       game.discardPile = [];
       game.lastResult  = null;

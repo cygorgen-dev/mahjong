@@ -221,8 +221,16 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
         </div>
         <div class="ctx-row"><span class="ctx-lbl">Dealer:</span>
           <select class="ctx-sel" id="dealer-seat">
-            <option value="0">You (0)</option><option value="1">CPU1 (1)</option>
-            <option value="2">CPU2 (2)</option><option value="3">CPU3 (3)</option>
+            <option value="0">Seat 0</option><option value="1">Seat 1</option>
+            <option value="2">Seat 2</option><option value="3">Seat 3</option>
+          </select>
+        </div>
+        <div class="ctx-row"><span class="ctx-lbl">Round Wind:</span>
+          <select class="ctx-sel" id="round-wind" title="Round wind for this scenario">
+            <option value="East">East 東</option>
+            <option value="South">South 南</option>
+            <option value="West">West 西</option>
+            <option value="North">North 北</option>
           </select>
         </div>
       </div>
@@ -647,6 +655,7 @@ function buildState(){
   const phase=document.getElementById('inject-phase').value;
   const discardFrom=parseInt(document.getElementById('discard-from').value);
   const dealerSeat=parseInt(document.getElementById('dealer-seat').value);
+  const roundWind=document.getElementById('round-wind').value;
   const dt=discardTile?{...discardTile,_discardSeat:discardFrom}:null;
 
   const allPlayers=[];
@@ -664,7 +673,7 @@ function buildState(){
 
   const p0=players[0];
   return{
-    ts:Date.now(),scenario:true,phase,dealerSeat,discardFrom,discardTile:dt,
+    ts:Date.now(),scenario:true,phase,dealerSeat,roundWind,discardFrom,discardTile:dt,
     humanHand:p0.hand.map((t,i)=>Object.assign({},t,{_justDrawn:i===p0.drawnIdx})),
     humanMelds:p0.melds.map(m=>({type:m.type,claimed:!!m.claimed,tiles:(m.tiles||[]).map(t=>Object.assign({},t))})),
     humanBonus:(p0.bonus||[]).map(t=>Object.assign({},t)),
@@ -804,6 +813,7 @@ function loadPreset(preset){
   document.getElementById('inject-phase').value=preset.phase||'claim';
   document.getElementById('discard-from').value=preset.discardFrom??3;
   document.getElementById('dealer-seat').value=preset.dealerSeat??0;
+  document.getElementById('round-wind').value=preset.roundWind??'East';
   if(preset._expectedWin!==undefined){
     document.getElementById('exp-win').checked=preset._expectedWin;
     document.getElementById('exp-pung').checked=preset._expectedPung;
@@ -1068,9 +1078,16 @@ function loadCapturedState(){
     if(!state||!state.allPlayers)return;
     localStorage.removeItem('mahjongCapturedState');
     loadPreset(state);
-    // Pre-fill the name field
-    document.getElementById('preset-name').value=state._presetName||'';
-    const captureMsg=`📸 Captured state loaded — ${state.allPlayers.length} players, phase:${state.phase}. Review then Save.`;
+    // Auto-save to presets list so it persists and can be reloaded later
+    const name=state._presetName||`Captured ${new Date().toLocaleTimeString()}`;
+    state._presetName=name;
+    const list=getPresets();
+    const existing=list.findIndex(p=>p._presetName===name);
+    if(existing>=0)list[existing]=state;else list.push(state);
+    savePresets(list);
+    renderPresetList();
+    document.getElementById('preset-name').value='';
+    const captureMsg=`📸 "${name}" saved to presets — click Load then Inject to replay.`;
     setLoadSaveMsg(captureMsg);
     log(captureMsg,'ok');
   }catch(e){log('Capture load failed: '+e.message,'err');}

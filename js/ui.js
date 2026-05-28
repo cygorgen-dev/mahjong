@@ -260,6 +260,7 @@ function initUI(game) {
       _presetName: `Captured ${new Date(now).toLocaleTimeString()}`,
       phase: _game.phase === 'discard' ? 'discard' : 'claim',
       dealerSeat: _game.dealerSeat,
+      roundWind: _game.roundWind,
       discardFrom,
       discardTile: discard ? {...discard, _discardSeat: discardFrom} : null,
       allPlayers,
@@ -1163,6 +1164,10 @@ function renderSidebar() {
       tbody.appendChild(tr);
     }
   }
+  const dealerEl = document.getElementById('game-dealer-seat');
+  if (dealerEl) dealerEl.value = _game.dealerSeat;
+  const windEl = document.getElementById('game-round-wind');
+  if (windEl) windEl.value = _game.roundWind;
   const lh = document.getElementById('last-hand');
   if (lh) {
     if (_game.lastResult && _game.lastResult.faan > 0) {
