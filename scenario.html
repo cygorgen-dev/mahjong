@@ -143,6 +143,8 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
 .preset-item .pi-del:hover{color:var(--red);}
 .preset-item.builtin{border-color:#0033aa;}
 .preset-item.builtin .pi-name{color:#8ad4ff;}
+.preset-item.just-captured{border-color:#ffd34d;box-shadow:0 0 8px 2px rgba(255,211,77,0.45);}
+.preset-item.just-captured .pi-name{color:#ffd34d;}
 
 /* Regression */
 .reg-row{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;font-size:10px;}
@@ -1086,8 +1088,16 @@ function loadCapturedState(){
     if(existing>=0)list[existing]=state;else list.push(state);
     savePresets(list);
     renderPresetList();
+    // Highlight and scroll to the newly saved item
+    for(const item of document.querySelectorAll('#preset-list .preset-item')){
+      if(item.querySelector('.pi-name')?.textContent===name){
+        item.classList.add('just-captured');
+        item.scrollIntoView({behavior:'smooth',block:'nearest'});
+        break;
+      }
+    }
     document.getElementById('preset-name').value='';
-    const captureMsg=`📸 "${name}" saved to presets — click Load then Inject to replay.`;
+    const captureMsg=`📸 "${name}" saved — see highlighted item above.`;
     setLoadSaveMsg(captureMsg);
     log(captureMsg,'ok');
   }catch(e){log('Capture load failed: '+e.message,'err');}
