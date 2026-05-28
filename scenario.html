@@ -134,7 +134,7 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
 .btn-row{display:flex;gap:4px;flex-wrap:wrap;}
 
 /* Save/Load */
-.preset-list{display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto;}
+.preset-list{display:flex;flex-direction:column;gap:4px;}
 .preset-item{background:rgba(0,0,0,.25);border:1px solid var(--gm);border-radius:5px;padding:6px 8px;display:flex;align-items:center;gap:5px;cursor:pointer;}
 .preset-item:hover{background:rgba(0,0,0,.4);}
 .preset-item .pi-name{flex:1;font-size:12px;font-weight:700;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -1048,8 +1048,7 @@ function renderPresetListFull(){
   }
   list.forEach((preset,i)=>{
     const item=document.createElement('div');item.className='preset-item';
-    const seats=preset.allPlayers?preset.allPlayers.map(p=>SEAT_NAMES[p.seat]).join('+'):'You';
-    item.innerHTML=`<span class="pi-name">${preset._presetName}</span><span class="pi-info">${seats}·${preset.phase}</span>`;
+    item.innerHTML=`<span class="pi-name">${preset._presetName}</span>`;
     const loadBtn=document.createElement('button');loadBtn.className='btn btn-sm btn-green';loadBtn.textContent='Load';
     loadBtn.addEventListener('click',(e)=>{e.stopPropagation();loadPreset(preset);});
     const delBtn=document.createElement('span');delBtn.className='pi-del';delBtn.textContent='✕';
