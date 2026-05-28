@@ -12,10 +12,8 @@ const PHASE = {
 
 const SEAT_NAMES = ['East 東', 'South 南', 'West 西', 'North 北'];
 
-// Returns "CPU1 (East 東)" or "You (East 東)" for log messages
-function playerTag(player, seatWind) {
-  const wind = seatWind || SEAT_NAMES[player.seat];
-  return `${player.name} (${wind})`;
+function playerTag(player) {
+  return `Seat ${player.seat}`;
 }
 
 class Game {
