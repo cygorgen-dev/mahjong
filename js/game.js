@@ -594,12 +594,15 @@ class Game {
       // Manual mode: wait for human Pass click
     } else {
       // Seat 0 (human or CPU-You) just discarded
+      this.onUpdate('claim-prompt');
       if (claims.length === 0) {
         const next = (fromSeat + 1) % 4;
-        this.onUpdate('claim-prompt');
         this._scheduleOrStep(() => this.startTurn(next));
       } else {
-        this.resolveAIClaims(fromSeat, tile, claims);
+        this._scheduleOrStep(() => {
+          this.claimOptions = null;
+          this.resolveAIClaims(fromSeat, tile, claims);
+        });
       }
     }
   }
