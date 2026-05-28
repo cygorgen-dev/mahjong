@@ -762,6 +762,8 @@ class Game {
     const dIdx = this.discardPile.findIndex(t => t.id === tile.id);
     if (dIdx !== -1) this.discardPile.splice(dIdx, 1);
     this.lastClaimedTile = tile;
+    // Clear stale just-drawn highlights — startTurn won't fire for this cycle
+    for (const pl of this.players) for (const t of pl.hand) t._justDrawn = false;
 
     if (action === 'pung') {
       const pair = p.hand.filter(t => sameType(t, tile)).slice(0, 2);
