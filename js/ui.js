@@ -637,7 +637,10 @@ function renderSeats() {
           ? { small: true, seatRotation: seat }
           : { small: true };
         const tEl = makeTileEl(t, opts);
-        if (t._claimedTile) tEl.classList.add('last-discard');
+        if (_game.lastClaimedTile && t.id === _game.lastClaimedTile.id) {
+          const inner = tEl.querySelector('.tile') || tEl;
+          inner.classList.add('last-discard');
+        }
         meldDiv.appendChild(tEl);
       }
       if (_game.robbingKongSeat === seat && _game.robbingKongTile &&
