@@ -45,8 +45,9 @@ a.link:hover{text-decoration:underline;}
   font-size:14px;font-weight:700;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
   box-shadow:1px 1px 0 #2a1a0a;position:relative;color:#111;
-  transition:transform .08s;flex-shrink:0;
+  transition:transform .08s;flex-shrink:0;overflow:hidden;
 }
+.tile-btn img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;padding:1px;}
 .tile-btn:hover{transform:translateY(-3px);box-shadow:1px 4px 4px rgba(0,0,0,.4);}
 .tile-btn .sub{font-size:8px;color:#555;font-family:system-ui;}
 .tile-btn.bamboo{color:#1a7a1a;}.tile-btn.circle{color:#b22222;}.tile-btn.wind{color:#0033aa;}
@@ -406,7 +407,11 @@ function buildPalette(){
       const b=document.createElement('div');
       b.className='tile-btn '+cls(t);
       b.id=`pb-${t.suit}-${t.value}`;
-      b.innerHTML=`<span>${lbl(t)}</span><span class="sub">${sub(t)}</span>`;
+      const img=document.createElement('img');
+      img.src=`img/tiles/${t.suit}_${t.value}.png`;
+      img.alt='';
+      img.onerror=()=>{img.remove();b.innerHTML=`<span>${lbl(t)}</span><span class="sub">${sub(t)}</span>`;};
+      b.appendChild(img);
       b.addEventListener('click',()=>onPalettePick(t.suit,t.value));
       row.appendChild(b);
     }
