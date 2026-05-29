@@ -1273,6 +1273,11 @@ function _resetTileEl(el, opts = {}) {
   el.style.top = '';
   el.style.transform = '';
   el.style.zIndex = '';
+  // Clear size overrides injected by wall-peek mini rendering (width:30px!important etc.)
+  inner.style.removeProperty('width');
+  inner.style.removeProperty('height');
+  inner.style.removeProperty('font-size');
+  inner.style.removeProperty('cursor');
   // Clear any inline styles set by Open Hands colour hints or robbing-kong highlight
   inner.style.outline = '';
   inner.style.opacity = '';
@@ -1433,7 +1438,7 @@ function makeTileEl(t, opts = {}) {
       div.style.flexShrink = '0';
     }
     wrapper.appendChild(div);
-    if (!opts.back) {
+    if (!opts.back && !opts.skipCache) {
       const k = `${t.id}:${rot}`;
       if (!_tileElCache.has(k)) _tileElCache.set(k, wrapper);
       if (_tileElInUse) _tileElInUse.add(k);
@@ -1441,7 +1446,7 @@ function makeTileEl(t, opts = {}) {
     return wrapper;
   }
 
-  if (!opts.back) {
+  if (!opts.back && !opts.skipCache) {
     const k = `${t.id}:0`;
     if (!_tileElCache.has(k)) _tileElCache.set(k, div);
     if (_tileElInUse) _tileElInUse.add(k);
@@ -1590,7 +1595,7 @@ function populateWallPeek() {
       const wrap = document.createElement('div');
       wrap.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;';
 
-      const te = makeTileEl(wall[i], { small: true });
+      const te = makeTileEl(wall[i], { small: true, skipCache: true });
       te.style.cssText += 'width:30px!important;height:42px!important;font-size:11px;cursor:default;';
 
       if (isBoth) {
