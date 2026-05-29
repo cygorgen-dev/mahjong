@@ -1100,6 +1100,31 @@ document.addEventListener('DOMContentLoaded', () => {
       const hijacker = game.pendingClaims && game.pendingClaims.length > 0
         ? game.pendingClaims.find(c => c.action === 'win') : null;
       const uiSummary = getHumanHandLayoutSummary();
+
+      // Compute post-PASS winner: which AI player wins if human presses Pass?
+      let passWinnerSeat = null, passWinFaan = null, passWinLabel = null;
+      if (game.phase === PHASE.CLAIM && game.discard && game.pendingClaims && game.pendingClaims.length > 0) {
+        const fromSeat = game.discardSeat ?? 0;
+        const winClaims = game.pendingClaims
+          .filter(c => c.action === 'win')
+          .sort((a, b) => ((a.seat - fromSeat + 4) % 4) - ((b.seat - fromSeat + 4) % 4));
+        if (winClaims.length > 0) {
+          const best = winClaims[0];
+          const pw = game.players[best.seat];
+          if (pw) {
+            const pwCtx = game.makeCtx(best.seat, false);
+            const pwHand = [...pw.hand, game.discard];
+            const minFpw = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
+            const pwResult = canWin(pwHand, pw.melds, pwCtx);
+            if (pwResult.win && pwResult.faan >= minFpw) {
+              passWinnerSeat = best.seat;
+              passWinFaan = pwResult.faan;
+              passWinLabel = pwResult.label;
+            }
+          }
+        }
+      }
+
       localStorage.setItem('mahjongActionLog', JSON.stringify({
         ts: Date.now(),
         injectId: s.injectId ?? null,   // echo back the injection ID for matching
@@ -1111,6 +1136,9 @@ document.addEventListener('DOMContentLoaded', () => {
         winSuppressed: !!(opts._winSuppressed),
         uiLayoutOk: !!uiSummary.uiLayoutOk,
         uiSummary,
+        passWinnerSeat,
+        passWinFaan,
+        passWinLabel,
       }));
     } catch(e) {
       console.error('[Scenario] inject error:', e);

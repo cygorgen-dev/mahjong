@@ -274,6 +274,19 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
       <label><input type="checkbox" id="exp-kong"> Kong</label>
       <label><input type="checkbox" id="exp-chow"> Chow</label>
     </div>
+    <div class="exp-row" style="margin-top:3px;align-items:center;gap:5px;">
+      <span style="color:#8ad4ff;font-size:10px;white-space:nowrap;">Pass→</span>
+      <select id="exp-pass-winner" style="background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-radius:3px;font-size:10px;padding:1px 2px;">
+        <option value="-1">(no win)</option>
+        <option value="0">You (0)</option>
+        <option value="1">Right (1)</option>
+        <option value="2">Top (2)</option>
+        <option value="3">Left (3)</option>
+      </select>
+      <span id="exp-pass-faan-wrap" style="font-size:10px;color:#aaa;display:none;">
+        ≥<input type="number" id="exp-pass-min-faan" value="0" min="0" max="13" style="width:28px;background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-radius:3px;font-size:10px;padding:1px;">f
+      </span>
+    </div>
     <div class="result-row" id="result-row" style="display:none;"></div>
   </div>
 
@@ -666,8 +679,14 @@ document.getElementById('clear-all-btn').addEventListener('click',()=>{
 });
 
 // ── INJECT ────────────────────────────────────────────────────
+// Track last inject so verify can poll for the matching response
+let _lastInjectId = null, _lastInjectTs = 0;
+
 document.getElementById('inject-btn').addEventListener('click', ()=>injectScenario());
-document.getElementById('verify-btn').addEventListener('click', verifyScenario);
+document.getElementById('verify-btn').addEventListener('click', ()=>verifyScenario());
+document.getElementById('exp-pass-winner').addEventListener('change', function(){
+  document.getElementById('exp-pass-faan-wrap').style.display = this.value === '-1' ? 'none' : '';
+});
 
 function buildState(){
   const phase=document.getElementById('inject-phase').value;
@@ -730,23 +749,28 @@ function injectScenario(state){
     localStorage.removeItem('mahjongActionLog');
     const json=JSON.stringify(s);
     localStorage.setItem('mahjongScenario',json);
+    // Remember this injection so verify() can poll for its matching response
+    _lastInjectId = s.injectId;
+    _lastInjectTs = injectTime;
     const seats=s.allPlayers.map(p=>`${SEAT_NAMES[p.seat]}:${p.hand.length}t`).join(', ');
     log(`✅ Injected [${s.injectId.slice(-5)}] — ${seats} | discard:${s.discardTile?lbl(s.discardTile):'none'} | phase:${s.phase}`,'ok');
     return {id: s.injectId, ts: injectTime};
   }catch(e){log('❌ localStorage write failed: '+e.message,'err');console.error('inject error:',e);return false;}
 }
 
-function verifyScenario(){
+async function verifyScenario(){
+  if(!_lastInjectId){log('No injection yet — click Inject first.','warn');return;}
+  log('⏳ Verifying — waiting for game tab…','info');
+  const data = await pollActionLog(_lastInjectId, _lastInjectTs, 7000);
+  if(!data){log('⏱ Timeout — is index.html open? Re-inject and try again.','warn');return;}
   try{
-    const raw=localStorage.getItem('mahjongActionLog');
-    if(!raw){log('No action log — inject first, wait for game to process.','warn');return;}
-    const data=JSON.parse(raw);
-    if(Date.now()-data.ts>15000){log('Action log is stale (>15s). Re-inject.','warn');return;}
+    const expPassWinner = parseInt(document.getElementById('exp-pass-winner').value,10);
+    const expPassMinFaan = parseInt(document.getElementById('exp-pass-min-faan').value,10)||0;
     const results=[
-      {label:'Win',actual:data.win,expected:document.getElementById('exp-win').checked},
-      {label:'Pung',actual:data.pung,expected:document.getElementById('exp-pung').checked},
-      {label:'Kong',actual:data.kong,expected:document.getElementById('exp-kong').checked},
-      {label:'Chow',actual:data.chow,expected:document.getElementById('exp-chow').checked},
+      {label:'Win', actual:data.win,  expected:document.getElementById('exp-win').checked},
+      {label:'Pung',actual:data.pung, expected:document.getElementById('exp-pung').checked},
+      {label:'Kong',actual:data.kong, expected:document.getElementById('exp-kong').checked},
+      {label:'Chow',actual:data.chow, expected:document.getElementById('exp-chow').checked},
     ];
     const rr=document.getElementById('result-row');
     rr.innerHTML='';rr.style.display='flex';
@@ -757,7 +781,31 @@ function verifyScenario(){
       c.innerHTML=`<div class="rl">${r.label}</div><div class="rv ${r.actual?'yes':'no'}">${r.actual?'ON':'OFF'}</div>`;
       rr.appendChild(c);
     }
-    log(allPass?'✅ All pass!':'❌ Some mismatches — check expected vs actual.','ok');
+    // Pass-winner card
+    if(expPassWinner>=0){
+      const gotSeat=data.passWinnerSeat;
+      const gotFaan=data.passWinFaan??0;
+      const seatOk = gotSeat===expPassWinner;
+      const faanOk = expPassMinFaan===0 || gotFaan>=expPassMinFaan;
+      const passWin = seatOk && faanOk;
+      if(!passWin) allPass=false;
+      const seatNames=['You','Right','Top','Left'];
+      const gotLabel = gotSeat!=null ? `seat ${gotSeat} (${seatNames[gotSeat]??gotSeat}) ${gotFaan}f` : 'none';
+      const c=document.createElement('div');c.className=`rcard ${passWin?'pass':'fail'}`;
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv ${passWin?'yes':'no'}" style="font-size:9px;">${gotLabel}</div>`;
+      rr.appendChild(c);
+      if(data.passWinLabel){
+        const lc=document.createElement('div');lc.style.cssText='font-size:9px;color:#aaa;margin-top:2px;width:100%;';
+        lc.textContent=data.passWinLabel;rr.appendChild(lc);
+      }
+    } else if(data.passWinnerSeat!=null){
+      // Not asserting, but show informational card
+      const seatNames=['You','Right','Top','Left'];
+      const c=document.createElement('div');c.className='rcard';c.style.background='#1a3a4a';
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv" style="font-size:9px;color:#8ad4ff;">${seatNames[data.passWinnerSeat]??data.passWinnerSeat} ${data.passWinFaan}f</div>`;
+      rr.appendChild(c);
+    }
+    log(allPass?'✅ All pass!':'❌ Some mismatches — check expected vs actual.',allPass?'ok':'err');
   }catch(e){log('❌ '+e.message,'err');}
 }
 
@@ -778,6 +826,8 @@ document.getElementById('save-preset-btn').addEventListener('click',()=>{
   state._expectedPung=document.getElementById('exp-pung').checked;
   state._expectedKong=document.getElementById('exp-kong').checked;
   state._expectedChow=document.getElementById('exp-chow').checked;
+  state._expectedPassWinnerSeat=parseInt(document.getElementById('exp-pass-winner').value,10);
+  state._expectedPassMinFaan=parseInt(document.getElementById('exp-pass-min-faan').value,10)||0;
   const list=getPresets();
   const existing=list.findIndex(p=>p._presetName===name);
   if(existing>=0)list[existing]=state;
@@ -838,6 +888,10 @@ function loadPreset(preset){
     document.getElementById('exp-kong').checked=preset._expectedKong;
     document.getElementById('exp-chow').checked=preset._expectedChow;
   }
+  const passWinnerSel=document.getElementById('exp-pass-winner');
+  passWinnerSel.value=String(preset._expectedPassWinnerSeat??-1);
+  document.getElementById('exp-pass-min-faan').value=String(preset._expectedPassMinFaan??0);
+  document.getElementById('exp-pass-faan-wrap').style.display=(preset._expectedPassWinnerSeat>=0)?'':'none';
   renderHands();renderDiscardPreview();
   const loadMsg=`Loaded "${preset._presetName}".`;
   setLoadSaveMsg(loadMsg);
@@ -871,17 +925,27 @@ async function runRegression(){
     }
     const uiExpected = !!preset._expectedUiLayout;
     const uiPass = !uiExpected || !!result.uiLayoutOk;
+    const expPassSeat = preset._expectedPassWinnerSeat ?? -1;
+    const expPassFaan = preset._expectedPassMinFaan ?? 0;
+    const passWinOk = expPassSeat < 0
+      ? true
+      : (result.passWinnerSeat === expPassSeat) &&
+        (expPassFaan === 0 || (result.passWinFaan ?? 0) >= expPassFaan);
     const pass=(result.win===!!preset._expectedWin)&&
                (result.pung===!!preset._expectedPung)&&
                (result.kong===!!preset._expectedKong)&&
                (result.chow===!!preset._expectedChow)&&
-               uiPass;
+               uiPass && passWinOk;
+    const passInfo = expPassSeat >= 0
+      ? ` pass→seat${result.passWinnerSeat??'?'}(${result.passWinFaan??0}f)`
+      : (result.passWinnerSeat != null ? ` [pass→seat${result.passWinnerSeat} ${result.passWinFaan}f]` : '');
     results.push({name:preset._presetName,status:pass?'pass':'fail',
-      actual:{win:result.win,pung:result.pung,kong:result.kong,chow:result.chow,uiLayoutOk:!!result.uiLayoutOk},
+      actual:{win:result.win,pung:result.pung,kong:result.kong,chow:result.chow,uiLayoutOk:!!result.uiLayoutOk,passWinnerSeat:result.passWinnerSeat},
       expected:{win:!!preset._expectedWin,pung:!!preset._expectedPung,
-                kong:!!preset._expectedKong,chow:!!preset._expectedChow,uiLayoutOk:uiExpected}});
-    log(`  ${pass?'✅':'❌'} ${preset._presetName}: got win=${result.win} pung=${result.pung} kong=${result.kong} chow=${result.chow} ui=${result.uiLayoutOk}`
-        +(pass?'':` — expected win=${!!preset._expectedWin} pung=${!!preset._expectedPung} ui=${uiExpected}`),
+                kong:!!preset._expectedKong,chow:!!preset._expectedChow,uiLayoutOk:uiExpected,passWinnerSeat:expPassSeat>=0?expPassSeat:null}});
+    log(`  ${pass?'✅':'❌'} ${preset._presetName}: got win=${result.win} pung=${result.pung} kong=${result.kong} chow=${result.chow} ui=${result.uiLayoutOk}${passInfo}`
+        +(pass?'':` — expected win=${!!preset._expectedWin} pung=${!!preset._expectedPung}${expPassSeat>=0?' pass→seat'+expPassSeat:''}`)
+        +(result.passWinLabel?` "${result.passWinLabel}"`:''),
         pass?'ok':'err');
     await sleep(600); // gap: game tab polls every 1500ms, give it time to settle
   }
@@ -973,19 +1037,35 @@ setInterval(()=>{
     const raw=localStorage.getItem('mahjongActionLog');
     if(!raw)return;
     const data=JSON.parse(raw);
-    if(Date.now()-data.ts>8000)return;
+    // Only show results matching the last injection (or any recent result within 8s)
+    const idMatch = _lastInjectId && data.injectId && data.injectId===_lastInjectId;
+    const recent = data.ts && (Date.now()-data.ts)<8000;
+    if(!idMatch && !recent)return;
     const rr=document.getElementById('result-row');
     rr.innerHTML='';rr.style.display='flex';
     const results=[
-      {label:'Win',actual:data.win,expected:document.getElementById('exp-win').checked},
-      {label:'Pung',actual:data.pung,expected:document.getElementById('exp-pung').checked},
-      {label:'Kong',actual:data.kong,expected:document.getElementById('exp-kong').checked},
-      {label:'Chow',actual:data.chow,expected:document.getElementById('exp-chow').checked},
+      {label:'Win', actual:data.win,  expected:document.getElementById('exp-win').checked},
+      {label:'Pung',actual:data.pung, expected:document.getElementById('exp-pung').checked},
+      {label:'Kong',actual:data.kong, expected:document.getElementById('exp-kong').checked},
+      {label:'Chow',actual:data.chow, expected:document.getElementById('exp-chow').checked},
     ];
     for(const r of results){
       const pass=r.actual===r.expected;
       const c=document.createElement('div');c.className=`rcard ${pass?'pass':'fail'}`;
       c.innerHTML=`<div class="rl">${r.label}</div><div class="rv ${r.actual?'yes':'no'}">${r.actual?'ON':'OFF'}</div>`;
+      rr.appendChild(c);
+    }
+    // Show pass-winner info card (informational, no expected assertion here)
+    if(data.passWinnerSeat!=null){
+      const seatNames=['You','Right','Top','Left'];
+      const expSeat=parseInt(document.getElementById('exp-pass-winner').value,10);
+      const expFaan=parseInt(document.getElementById('exp-pass-min-faan').value,10)||0;
+      const seatOk=expSeat<0||data.passWinnerSeat===expSeat;
+      const faanOk=expSeat<0||expFaan===0||(data.passWinFaan??0)>=expFaan;
+      const ok=seatOk&&faanOk;
+      const cls=expSeat>=0?(ok?'pass':'fail'):'';
+      const c=document.createElement('div');c.className=`rcard ${cls}`;c.style.background=expSeat<0?'#1a3a4a':'';
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv" style="font-size:9px;color:#8ad4ff;">${seatNames[data.passWinnerSeat]??data.passWinnerSeat} ${data.passWinFaan}f</div>`;
       rr.appendChild(c);
     }
   }catch(e){}
