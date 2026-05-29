@@ -193,7 +193,16 @@ function initUI(game) {
     e.stopPropagation();
     _broadcastWallState();
     if (!_peekWin || _peekWin.closed) {
-      _peekWin = window.open('peek.html', 'mahjong-peek', (() => { const left = window.screenLeft + window.outerWidth; const w = screen.width - left; return `width=${w},height=${screen.height},left=${left},top=0,resizable=yes,scrollbars=yes`; })());
+      _peekWin = window.open('peek.html', 'mahjong-peek', (() => {
+        // window.screenLeft/outerWidth are CSS px; window.open features use physical px on
+        // Windows DPI-scaled displays, so multiply by devicePixelRatio to avoid the popup
+        // landing inside the right edge of the game window.
+        const dpr  = window.devicePixelRatio || 1;
+        const left = Math.round((window.screenLeft + window.outerWidth) * dpr);
+        const w    = Math.max(200, Math.round(screen.width  * dpr) - left);
+        const h    = Math.round(screen.height * dpr);
+        return `width=${w},height=${h},left=${left},top=0,resizable=yes,scrollbars=yes`;
+      })());
     } else {
       _peekWin.focus();
     }

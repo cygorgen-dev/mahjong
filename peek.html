@@ -34,8 +34,8 @@
 
     .pw-tile {
       display: block;
-      width: 38px;
-      height: 54px;
+      width: var(--pw, 34px);
+      height: var(--ph, 49px);
       object-fit: cover;
     }
 
@@ -197,6 +197,16 @@
         document.getElementById('seq').after(banner);
       }
     }
+
+    // Fit ~18 columns per visual row (72 cols → 4 rows); clamp 26–40px wide.
+    function applyTileSize() {
+      const w = Math.max(26, Math.min(40, Math.floor((window.innerWidth - 16) / 18) - 4));
+      const h = Math.round(w * 66 / 46);
+      document.documentElement.style.setProperty('--pw', w + 'px');
+      document.documentElement.style.setProperty('--ph', h + 'px');
+    }
+    applyTileSize();
+    window.addEventListener('resize', applyTileSize);
 
     const bc = new BroadcastChannel('mahjong-wall');
     bc.onmessage = e => render(e.data);
