@@ -16,7 +16,6 @@
       font-size: 12px; font-weight: 600;
     }
 
-    /* 72 column-pair units, wrapped with a visible row gap */
     #seq {
       display: flex;
       flex-wrap: wrap;
@@ -35,16 +34,17 @@
 
     .pw-tile {
       display: block;
-      width: 30px;
-      height: 42px;
+      width: 46px;
+      height: 66px;
       object-fit: cover;
     }
 
     .pw-lbl {
-      font-size: 8px;
+      font-size: 9px;
       font-weight: 700;
       line-height: 1;
       margin-top: 2px;
+      min-height: 11px;
     }
 
     #no-signal { color: #555; padding: 30px; text-align: center; width: 100%; font-size: 13px; }
@@ -55,15 +55,37 @@
   <div id="seq"><div id="no-signal">Waiting for game… click Peek Wall in the main window.</div></div>
 
   <script>
-    function tileSrc(t) {
-      return `img/tiles/${t.suit}_${t.value}.png`;
-    }
+    let _tileImgs = [];   // 144 persistent img elements, indexed by wall position
+    let _lblEls   = [];   // 72 persistent label divs
+    let _initWallId = null;
 
-    function makePeekTile(t) {
-      const img = document.createElement('img');
-      img.className = 'pw-tile';
-      img.src = tileSrc(t);
-      return img;
+    function initGrid(wall) {
+      const seq = document.getElementById('seq');
+      seq.innerHTML = '';
+      _tileImgs = [];
+      _lblEls   = [];
+
+      for (let c = 0; c < 72; c++) {
+        const colWrap = document.createElement('div');
+        colWrap.className = 'pw-col';
+
+        for (const i of [c * 2, c * 2 + 1]) {
+          const t = wall[i];
+          const img = document.createElement('img');
+          img.className = 'pw-tile';
+          img.src = `img/tiles/${t.suit}_${t.value}.png`;
+          _tileImgs[i] = img;
+          colWrap.appendChild(img);
+        }
+
+        const lbl = document.createElement('div');
+        lbl.className = 'pw-lbl';
+        _lblEls[c] = lbl;
+        colWrap.appendChild(lbl);
+        seq.appendChild(colWrap);
+      }
+
+      _initWallId = wall[0].id;
     }
 
     function render(data) {
@@ -75,13 +97,10 @@
       const tailUsed  = (71 - tailCol) * 2 + tailPhase;
       const exhausted = remain === 0;
 
-      // Match drawFromWall skip: if head is at the top of tailCol but tail already took it, advance by 1
       const headSkips = wallIdx % 2 === 0 && Math.floor(wallIdx / 2) === tailCol && tailPhase === 1;
       const effectiveHeadIdx = wallIdx + (headSkips ? 1 : 0);
-      // Match drawFromTail skip: if head took the top of tailCol, tail uses bottom instead
       const effTailPhase = (tailPhase === 0 && tailCol * 2 < wallIdx) ? 1 : tailPhase;
       const effectiveTailIdx = tailCol * 2 + effTailPhase;
-      // Last-tile case: head and tail converge on same index
       const lastTile = !exhausted && effectiveHeadIdx === effectiveTailIdx;
 
       // Stats bar
@@ -108,6 +127,9 @@
         `;
       }
 
+      // Build grid once per game (detect new game by wall[0].id changing)
+      if (_tileImgs.length === 0 || wall[0].id !== _initWallId) initGrid(wall);
+
       function isTailConsumed(i) {
         const c = Math.floor(i / 2);
         const isTop = (i % 2 === 0);
@@ -116,65 +138,55 @@
         return false;
       }
 
-      const seq = document.getElementById('seq');
-      seq.innerHTML = '';
-
+      // Update styles in-place — never recreate img elements so there is no reload flash
       for (let c = 0; c < 72; c++) {
-        const topIdx = c * 2;
-        const botIdx = c * 2 + 1;
-        const colWrap = document.createElement('div');
-        colWrap.className = 'pw-col';
-
-        for (const i of [topIdx, botIdx]) {
+        for (const i of [c * 2, c * 2 + 1]) {
           const isHead     = !exhausted && i === effectiveHeadIdx;
           const isTail     = !exhausted && !lastTile && i === effectiveTailIdx;
           const isBoth     = !exhausted && lastTile && i === effectiveHeadIdx;
           const isHeadUsed = i < wallIdx;
           const isTailUsed = isTailConsumed(i);
 
-          const img = makePeekTile(wall[i]);
+          const img = _tileImgs[i];
+          img.style.opacity    = '';
+          img.style.outline    = '';
+          img.style.boxShadow  = '';
 
           if (isBoth) {
-            img.style.outline = '3px solid #ff4444';
-            img.style.boxShadow = '0 0 8px 3px rgba(255,68,68,0.7)';
+            img.style.outline    = '3px solid #ff4444';
+            img.style.boxShadow  = '0 0 8px 3px rgba(255,68,68,0.7)';
           } else if (isHead) {
-            img.style.outline = '3px solid #ffd34d';
-            img.style.boxShadow = '0 0 7px 2px rgba(255,211,77,0.6)';
+            img.style.outline    = '3px solid #ffd34d';
+            img.style.boxShadow  = '0 0 7px 2px rgba(255,211,77,0.6)';
           } else if (isTail) {
-            img.style.outline = '3px solid #ff9800';
-            img.style.boxShadow = '0 0 7px 2px rgba(255,152,0,0.6)';
+            img.style.outline    = '3px solid #ff9800';
+            img.style.boxShadow  = '0 0 7px 2px rgba(255,152,0,0.6)';
           } else if (exhausted || isHeadUsed) {
-            img.style.opacity = '0.18';
+            img.style.opacity    = '0.18';
           } else if (isTailUsed) {
-            img.style.opacity = '0.22';
-            img.style.outline = '1px solid rgba(255,152,0,0.35)';
+            img.style.opacity    = '0.22';
+            img.style.outline    = '1px solid rgba(255,152,0,0.35)';
           }
-          colWrap.appendChild(img);
         }
 
-        // Column label under the pointer column(s)
-        const isHeadCol = !exhausted && c === Math.floor(effectiveHeadIdx / 2);
-        const isTailColHere = !exhausted && !lastTile && c === Math.floor(effectiveTailIdx / 2);
-        const isBothCol = !exhausted && lastTile && c === Math.floor(effectiveHeadIdx / 2);
-        if (isHeadCol || isTailColHere || isBothCol) {
-          const lbl = document.createElement('div');
-          lbl.className = 'pw-lbl';
-          if (isBothCol) {
-            lbl.style.color = '#ff4444'; lbl.textContent = '▼▲';
-          } else if (isHeadCol && isTailColHere) {
-            lbl.style.color = '#fff'; lbl.textContent = '▼▲';
-          } else if (isHeadCol) {
-            lbl.style.color = '#ffd34d'; lbl.textContent = '▼';
-          } else {
-            lbl.style.color = '#ff9800'; lbl.textContent = '▲';
-          }
-          colWrap.appendChild(lbl);
+        const isHeadCol  = !exhausted && c === Math.floor(effectiveHeadIdx / 2);
+        const isTailColH = !exhausted && !lastTile && c === Math.floor(effectiveTailIdx / 2);
+        const isBothCol  = !exhausted && lastTile && c === Math.floor(effectiveHeadIdx / 2);
+        const lbl = _lblEls[c];
+        if (isBothCol) {
+          lbl.style.color = '#ff4444'; lbl.textContent = '▼▲';
+        } else if (isHeadCol && isTailColH) {
+          lbl.style.color = '#fff';    lbl.textContent = '▼▲';
+        } else if (isHeadCol) {
+          lbl.style.color = '#ffd34d'; lbl.textContent = '▼';
+        } else if (isTailColH) {
+          lbl.style.color = '#ff9800'; lbl.textContent = '▲';
+        } else {
+          lbl.textContent = '';
         }
-
-        seq.appendChild(colWrap);
       }
 
-      // Prominent exhausted banner below tiles — remove stale banner first
+      // Prominent exhausted banner
       const oldBanner = document.getElementById('wall-exhausted-banner');
       if (oldBanner) oldBanner.remove();
       if (exhausted) {
@@ -182,7 +194,7 @@
         banner.id = 'wall-exhausted-banner';
         banner.style.cssText = 'margin-top:12px;padding:10px 18px;background:rgba(255,68,68,0.12);border:2px solid #ff4444;border-radius:8px;text-align:center;font-size:13px;font-weight:700;color:#ff8080;';
         banner.textContent = '🏁 Wall exhausted — no tiles remain. This hand ends in a draw (黃牌).';
-        seq.after(banner);
+        document.getElementById('seq').after(banner);
       }
     }
 
