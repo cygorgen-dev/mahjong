@@ -742,6 +742,7 @@ function injectScenario(state){
   // Always refresh ts and injectId at the moment of actual injection
   const injectTime = Date.now();
   s.ts = injectTime;
+  s.scenario = true;  // required by main.js guard: if (!s.scenario || !s.ts) return
   s.injectId = injectTime + '-' + Math.random().toString(36).slice(2,7);
 
   try{
