@@ -1121,6 +1121,43 @@ const BUILTIN=[
     ].map(t=>({...t,_justDrawn:false})),melds:[],bonus:[],drawnIdx:null}],
     discardTile:{...mk(SUIT.W,'South'),_discardSeat:2},
   },
+  {
+    // CPU2 (top) discards 五萬; human has no claim; CPU1 (right) wins with Mixed One Suit 混一色
+    _presetName:'★ Pass → Right wins (混一色)',
+    _expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
+    _expectedPassWinnerSeat:1,_expectedPassMinFaan:3,
+    phase:'claim',discardFrom:2,dealerSeat:0,roundWind:'East',
+    allPlayers:[
+      {seat:0,drawnIdx:null,melds:[],bonus:[],hand:[
+        // Scattered bamboo + off-suit circles — cannot claim 五萬
+        {suit:SUIT.B,value:1},{suit:SUIT.B,value:2},{suit:SUIT.B,value:3},
+        {suit:SUIT.B,value:4},{suit:SUIT.B,value:5},{suit:SUIT.B,value:6},
+        {suit:SUIT.B,value:7},{suit:SUIT.B,value:8},{suit:SUIT.B,value:9},
+        {suit:SUIT.C,value:2},{suit:SUIT.C,value:4},{suit:SUIT.C,value:6},{suit:SUIT.C,value:8},
+      ].map(t=>({...mk(t.suit,t.value),_justDrawn:false}))},
+      {seat:1,drawnIdx:null,melds:[],bonus:[],hand:[
+        // 1-9 萬 sequences + East pung + lone 五萬 waiting for the pair → Mixed One Suit 混一色
+        {suit:SUIT.K,value:1},{suit:SUIT.K,value:2},{suit:SUIT.K,value:3},
+        {suit:SUIT.K,value:4},{suit:SUIT.K,value:5},{suit:SUIT.K,value:6},
+        {suit:SUIT.K,value:7},{suit:SUIT.K,value:8},{suit:SUIT.K,value:9},
+        {suit:SUIT.W,value:'East'},{suit:SUIT.W,value:'East'},{suit:SUIT.W,value:'East'},
+        {suit:SUIT.K,value:5},
+      ].map(t=>({...mk(t.suit,t.value),_justDrawn:false}))},
+      {seat:2,drawnIdx:null,melds:[],bonus:[],hand:[
+        {suit:SUIT.C,value:1},{suit:SUIT.C,value:2},{suit:SUIT.C,value:3},
+        {suit:SUIT.C,value:4},{suit:SUIT.C,value:5},{suit:SUIT.C,value:6},
+        {suit:SUIT.C,value:7},{suit:SUIT.C,value:8},{suit:SUIT.C,value:9},
+        {suit:SUIT.B,value:1},{suit:SUIT.B,value:2},{suit:SUIT.B,value:3},{suit:SUIT.B,value:4},
+      ].map(t=>({...mk(t.suit,t.value),_justDrawn:false}))},
+      {seat:3,drawnIdx:null,melds:[],bonus:[],hand:[
+        {suit:SUIT.C,value:1},{suit:SUIT.C,value:3},{suit:SUIT.C,value:5},
+        {suit:SUIT.C,value:7},{suit:SUIT.C,value:9},{suit:SUIT.B,value:2},
+        {suit:SUIT.B,value:4},{suit:SUIT.B,value:6},{suit:SUIT.B,value:8},
+        {suit:SUIT.K,value:1},{suit:SUIT.K,value:3},{suit:SUIT.K,value:7},{suit:SUIT.K,value:9},
+      ].map(t=>({...mk(t.suit,t.value),_justDrawn:false}))},
+    ],
+    discardTile:{...mk(SUIT.K,5),_discardSeat:2},
+  },
 ];
 
 function renderPresetListFull(){
