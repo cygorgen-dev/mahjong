@@ -55,6 +55,20 @@
   <div id="seq"><div id="no-signal">Waiting for game… click Peek Wall in the main window.</div></div>
 
   <script>
+    // Snap flush against the game window's right edge, full available height.
+    // Using window.opener means moveTo/resizeTo share the same coordinate space
+    // as the properties we read — no DPR conversion needed.
+    (function() {
+      if (!window.opener) return;
+      try {
+        const op   = window.opener;
+        const left = op.screenLeft + op.outerWidth;
+        const w    = Math.max(300, op.screen.availWidth - left);
+        window.moveTo(left, op.screen.availTop || 0);
+        window.resizeTo(w, op.screen.availHeight);
+      } catch(e) {}
+    })();
+
     let _tileImgs = [];   // 144 persistent img elements, indexed by wall position
     let _lblEls   = [];   // 72 persistent label divs
     let _initWallId = null;
