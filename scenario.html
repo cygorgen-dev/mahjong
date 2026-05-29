@@ -783,6 +783,7 @@ async function verifyScenario(){
       rr.appendChild(c);
     }
     // Pass-winner card
+    const seatNames=['You','Right','Top','Left'];
     if(expPassWinner>=0){
       const gotSeat=data.passWinnerSeat;
       const gotFaan=data.passWinFaan??0;
@@ -790,20 +791,17 @@ async function verifyScenario(){
       const faanOk = expPassMinFaan===0 || gotFaan>=expPassMinFaan;
       const passWin = seatOk && faanOk;
       if(!passWin) allPass=false;
-      const seatNames=['You','Right','Top','Left'];
-      const gotLabel = gotSeat!=null ? `seat ${gotSeat} (${seatNames[gotSeat]??gotSeat}) ${gotFaan}f` : 'none';
+      const seatLabel = gotSeat!=null ? (seatNames[gotSeat]??`S${gotSeat}`) : 'none';
       const c=document.createElement('div');c.className=`rcard ${passWin?'pass':'fail'}`;
-      c.innerHTML=`<div class="rl">Pass→</div><div class="rv ${passWin?'yes':'no'}" style="font-size:9px;">${gotLabel}</div>`;
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv ${passWin?'yes':'no'}">${seatLabel}</div>`
+                 +(gotFaan?`<div class="rl">${gotFaan}f</div>`:'');
       rr.appendChild(c);
-      if(data.passWinLabel){
-        const lc=document.createElement('div');lc.style.cssText='font-size:9px;color:#aaa;margin-top:2px;width:100%;';
-        lc.textContent=data.passWinLabel;rr.appendChild(lc);
-      }
     } else if(data.passWinnerSeat!=null){
-      // Not asserting, but show informational card
-      const seatNames=['You','Right','Top','Left'];
+      // Not asserting — informational card
+      const seatLabel = seatNames[data.passWinnerSeat]??`S${data.passWinnerSeat}`;
       const c=document.createElement('div');c.className='rcard';c.style.background='#1a3a4a';
-      c.innerHTML=`<div class="rl">Pass→</div><div class="rv" style="font-size:9px;color:#8ad4ff;">${seatNames[data.passWinnerSeat]??data.passWinnerSeat} ${data.passWinFaan}f</div>`;
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv" style="color:#8ad4ff;">${seatLabel}</div>`
+                 +(data.passWinFaan?`<div class="rl">${data.passWinFaan}f</div>`:'');
       rr.appendChild(c);
     }
     log(allPass?'✅ All pass!':'❌ Some mismatches — check expected vs actual.',allPass?'ok':'err');
@@ -1065,8 +1063,11 @@ setInterval(()=>{
       const faanOk=expSeat<0||expFaan===0||(data.passWinFaan??0)>=expFaan;
       const ok=seatOk&&faanOk;
       const cls=expSeat>=0?(ok?'pass':'fail'):'';
+      const seatLabel=seatNames[data.passWinnerSeat]??`S${data.passWinnerSeat}`;
       const c=document.createElement('div');c.className=`rcard ${cls}`;c.style.background=expSeat<0?'#1a3a4a':'';
-      c.innerHTML=`<div class="rl">Pass→</div><div class="rv" style="font-size:9px;color:#8ad4ff;">${seatNames[data.passWinnerSeat]??data.passWinnerSeat} ${data.passWinFaan}f</div>`;
+      c.innerHTML=`<div class="rl">Pass→</div>`
+                 +`<div class="rv ${expSeat>=0?(ok?'yes':'no'):''}" ${expSeat<0?'style="color:#8ad4ff;"':''}>${seatLabel}</div>`
+                 +(data.passWinFaan?`<div class="rl">${data.passWinFaan}f</div>`:'');
       rr.appendChild(c);
     }
   }catch(e){}
