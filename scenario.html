@@ -288,6 +288,7 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
       </span>
     </div>
     <div class="result-row" id="result-row" style="display:none;"></div>
+    <div id="pass-detail" style="display:none;font-size:9px;color:#aaa;margin-top:4px;line-height:1.5;word-break:break-word;"></div>
   </div>
 
   <!-- SAVE / LOAD -->
@@ -685,7 +686,16 @@ let _lastInjectId = null, _lastInjectTs = 0;
 document.getElementById('inject-btn').addEventListener('click', ()=>injectScenario());
 document.getElementById('verify-btn').addEventListener('click', ()=>verifyScenario());
 document.getElementById('exp-pass-winner').addEventListener('change', function(){
-  document.getElementById('exp-pass-faan-wrap').style.display = this.value === '-1' ? 'none' : '';
+  const wrap = document.getElementById('exp-pass-faan-wrap');
+  const faanInput = document.getElementById('exp-pass-min-faan');
+  if(this.value === '-1'){
+    wrap.style.display = 'none';
+  } else {
+    wrap.style.display = '';
+    if(!faanInput.value || faanInput.value === '0'){
+      faanInput.value = localStorage.getItem('minFaan') || '2';
+    }
+  }
 });
 
 function buildState(){
@@ -774,7 +784,9 @@ async function verifyScenario(){
       {label:'Chow',actual:data.chow, expected:document.getElementById('exp-chow').checked},
     ];
     const rr=document.getElementById('result-row');
+    const pd=document.getElementById('pass-detail');
     rr.innerHTML='';rr.style.display='flex';
+    pd.style.display='none';pd.textContent='';
     let allPass=true;
     for(const r of results){
       const pass=r.actual===r.expected;if(!pass)allPass=false;
@@ -782,7 +794,7 @@ async function verifyScenario(){
       c.innerHTML=`<div class="rl">${r.label}</div><div class="rv ${r.actual?'yes':'no'}">${r.actual?'ON':'OFF'}</div>`;
       rr.appendChild(c);
     }
-    // Pass-winner card
+    // Pass-winner card + detail line
     const seatNames=['You','Right','Top','Left'];
     if(expPassWinner>=0){
       const gotSeat=data.passWinnerSeat;
@@ -793,16 +805,26 @@ async function verifyScenario(){
       if(!passWin) allPass=false;
       const seatLabel = gotSeat!=null ? (seatNames[gotSeat]??`S${gotSeat}`) : 'none';
       const c=document.createElement('div');c.className=`rcard ${passWin?'pass':'fail'}`;
-      c.innerHTML=`<div class="rl">Pass→</div><div class="rv ${passWin?'yes':'no'}">${seatLabel}</div>`
-                 +(gotFaan?`<div class="rl">${gotFaan}f</div>`:'');
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv ${passWin?'yes':'no'}">${seatLabel}</div>`;
       rr.appendChild(c);
+      // Detail line below cards
+      const expLabel = expPassMinFaan>0 ? `expected ≥${expPassMinFaan}f` : `expected ${seatNames[expPassWinner]??expPassWinner}`;
+      const detailParts = [`Pass→ ${seatLabel} · ${gotFaan}f (${expLabel})`];
+      if(data.passWinLabel) detailParts.push(data.passWinLabel);
+      pd.textContent = detailParts.join(' · ');
+      pd.style.display='block';
+      pd.style.color = passWin ? '#5dde7a' : '#ff6666';
     } else if(data.passWinnerSeat!=null){
-      // Not asserting — informational card
+      // Not asserting — informational card + detail
       const seatLabel = seatNames[data.passWinnerSeat]??`S${data.passWinnerSeat}`;
       const c=document.createElement('div');c.className='rcard';c.style.background='#1a3a4a';
-      c.innerHTML=`<div class="rl">Pass→</div><div class="rv" style="color:#8ad4ff;">${seatLabel}</div>`
-                 +(data.passWinFaan?`<div class="rl">${data.passWinFaan}f</div>`:'');
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv" style="color:#8ad4ff;">${seatLabel}</div>`;
       rr.appendChild(c);
+      const detailParts = [`Pass→ ${seatLabel} · ${data.passWinFaan??0}f`];
+      if(data.passWinLabel) detailParts.push(data.passWinLabel);
+      pd.textContent = detailParts.join(' · ');
+      pd.style.display='block';
+      pd.style.color='#8ad4ff';
     }
     log(allPass?'✅ All pass!':'❌ Some mismatches — check expected vs actual.',allPass?'ok':'err');
   }catch(e){log('❌ '+e.message,'err');}
@@ -1066,8 +1088,7 @@ setInterval(()=>{
       const seatLabel=seatNames[data.passWinnerSeat]??`S${data.passWinnerSeat}`;
       const c=document.createElement('div');c.className=`rcard ${cls}`;c.style.background=expSeat<0?'#1a3a4a':'';
       c.innerHTML=`<div class="rl">Pass→</div>`
-                 +`<div class="rv ${expSeat>=0?(ok?'yes':'no'):''}" ${expSeat<0?'style="color:#8ad4ff;"':''}>${seatLabel}</div>`
-                 +(data.passWinFaan?`<div class="rl">${data.passWinFaan}f</div>`:'');
+                 +`<div class="rv ${expSeat>=0?(ok?'yes':'no'):''}" ${expSeat<0?'style="color:#8ad4ff;"':''}>${seatLabel}</div>`;
       rr.appendChild(c);
     }
   }catch(e){}
@@ -1127,7 +1148,7 @@ const BUILTIN=[
     // CPU2 (top) discards 五萬; human has no claim; CPU1 (right) wins with Mixed One Suit 混一色
     _presetName:'★ Pass → Right wins (混一色)',
     _expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
-    _expectedPassWinnerSeat:1,_expectedPassMinFaan:3,
+    _expectedPassWinnerSeat:1,_expectedPassMinFaan:parseInt(localStorage.getItem('minFaan')||'2',10),
     phase:'claim',discardFrom:2,dealerSeat:0,roundWind:'East',
     allPlayers:[
       {seat:0,drawnIdx:null,melds:[],bonus:[],hand:[
