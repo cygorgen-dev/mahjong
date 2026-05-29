@@ -676,6 +676,7 @@ document.getElementById('clear-all-btn').addEventListener('click',()=>{
   discardTile=null;quickMode=null;chowBuffer=[];
   renderHands();renderDiscardPreview();updateQButtons();updatePaletteHighlight();
   document.getElementById('result-row').style.display='none';
+  document.getElementById('pass-detail').style.display='none';
   setQStatus('Cleared everything.');log('Cleared.','info');
 });
 
@@ -1063,7 +1064,9 @@ setInterval(()=>{
     const recent = data.ts && (Date.now()-data.ts)<8000;
     if(!idMatch && !recent)return;
     const rr=document.getElementById('result-row');
+    const pd=document.getElementById('pass-detail');
     rr.innerHTML='';rr.style.display='flex';
+    pd.style.display='none';pd.textContent='';
     const results=[
       {label:'Win', actual:data.win,  expected:document.getElementById('exp-win').checked},
       {label:'Pung',actual:data.pung, expected:document.getElementById('exp-pung').checked},
@@ -1076,7 +1079,7 @@ setInterval(()=>{
       c.innerHTML=`<div class="rl">${r.label}</div><div class="rv ${r.actual?'yes':'no'}">${r.actual?'ON':'OFF'}</div>`;
       rr.appendChild(c);
     }
-    // Show pass-winner info card (informational, no expected assertion here)
+    // Pass-winner card + detail line
     if(data.passWinnerSeat!=null){
       const seatNames=['You','Right','Top','Left'];
       const expSeat=parseInt(document.getElementById('exp-pass-winner').value,10);
@@ -1090,6 +1093,15 @@ setInterval(()=>{
       c.innerHTML=`<div class="rl">Pass→</div>`
                  +`<div class="rv ${expSeat>=0?(ok?'yes':'no'):''}" ${expSeat<0?'style="color:#8ad4ff;"':''}>${seatLabel}</div>`;
       rr.appendChild(c);
+      // Detail line
+      const faan=data.passWinFaan??0;
+      const detailParts = expSeat>=0
+        ? [`Pass→ ${seatLabel} · ${faan}f (expected ≥${expFaan}f)`]
+        : [`Pass→ ${seatLabel} · ${faan}f`];
+      if(data.passWinLabel) detailParts.push(data.passWinLabel);
+      pd.textContent=detailParts.join(' · ');
+      pd.style.display='block';
+      pd.style.color=expSeat>=0?(ok?'#5dde7a':'#ff6666'):'#8ad4ff';
     }
   }catch(e){}
 },1500);
