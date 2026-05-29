@@ -242,8 +242,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  const parensChk = document.getElementById('show-seat-parens-toggle');
-  if(parensChk) parensChk.addEventListener('change', () => { setShowSeatParens(parensChk.checked); renderAll(); });
+  const dealerSeatSel = document.getElementById('game-dealer-seat');
+  if (dealerSeatSel) dealerSeatSel.addEventListener('change', () => {
+    if (game) { game.dealerSeat = parseInt(dealerSeatSel.value); renderAll(); }
+  });
+  const roundWindSel = document.getElementById('game-round-wind');
+  if (roundWindSel) roundWindSel.addEventListener('change', () => {
+    if (game) { game.roundWind = roundWindSel.value; renderAll(); }
+  });
 
   // CPU skill level dropdowns
   function updateCpuLevels() {
@@ -844,12 +850,6 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let j = 0; j < 2; j++) left.hand.push(T(SUIT.WIND, 'West'));
 
     renderAll();
-    window.addMsg && window.addMsg(
-      '<strong>Demo Overflow 溢</strong>: ' +
-      'Bottom/Top=4 kongs+4 bonus (4th kong+all bonus → hand row). ' +
-      'Right=4 kongs+8 bonus (4th kong+all bonus → hand col). ' +
-      'Left=2 kongs+3 pungs+4 bonus (2 pungs+3 bonus → hand col). Open Hands to see full detail.'
-    );
   });
 
   // ---- Rotate Seats button ----
@@ -1042,6 +1042,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       game.dealerSeat  = s.dealerSeat ?? 0;
+      game.roundWind   = s.roundWind  ?? 'East';
       game.currentSeat = 0;
       game.discardPile = [];
       game.lastResult  = null;
@@ -1097,6 +1098,31 @@ document.addEventListener('DOMContentLoaded', () => {
       const hijacker = game.pendingClaims && game.pendingClaims.length > 0
         ? game.pendingClaims.find(c => c.action === 'win') : null;
       const uiSummary = getHumanHandLayoutSummary();
+
+      // Compute post-PASS winner: which AI player wins if human presses Pass?
+      let passWinnerSeat = null, passWinFaan = null, passWinLabel = null;
+      if (game.phase === PHASE.CLAIM && game.discard && game.pendingClaims && game.pendingClaims.length > 0) {
+        const fromSeat = game.discardSeat ?? 0;
+        const winClaims = game.pendingClaims
+          .filter(c => c.action === 'win')
+          .sort((a, b) => ((a.seat - fromSeat + 4) % 4) - ((b.seat - fromSeat + 4) % 4));
+        if (winClaims.length > 0) {
+          const best = winClaims[0];
+          const pw = game.players[best.seat];
+          if (pw) {
+            const pwCtx = game.makeCtx(best.seat, false);
+            const pwHand = [...pw.hand, game.discard];
+            const minFpw = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
+            const pwResult = canWin(pwHand, pw.melds, pwCtx);
+            if (pwResult.win && pwResult.faan >= minFpw) {
+              passWinnerSeat = best.seat;
+              passWinFaan = pwResult.faan;
+              passWinLabel = pwResult.label;
+            }
+          }
+        }
+      }
+
       localStorage.setItem('mahjongActionLog', JSON.stringify({
         ts: Date.now(),
         injectId: s.injectId ?? null,   // echo back the injection ID for matching
@@ -1108,6 +1134,9 @@ document.addEventListener('DOMContentLoaded', () => {
         winSuppressed: !!(opts._winSuppressed),
         uiLayoutOk: !!uiSummary.uiLayoutOk,
         uiSummary,
+        passWinnerSeat,
+        passWinFaan,
+        passWinLabel,
       }));
     } catch(e) {
       console.error('[Scenario] inject error:', e);

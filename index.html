@@ -9,7 +9,7 @@
 <body>
   <div id="app" class="sidebar-open">
     <header>
-      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span style="font-size:11px;color:#aaa;font-weight:400;">v0526-137</span></h1>
+      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span style="font-size:11px;color:#aaa;font-weight:400;">v0527-313</span></h1>
       <div id="message"></div>
       <div id="info-bar">
         <button id="new-game-btn">New Game</button>
@@ -103,9 +103,23 @@
           <input type="checkbox" id="show-translation-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
           <label for="show-translation-toggle">Show Labels</label>
         </div>
-        <div class="sidebar-check">
-          <input type="checkbox" id="show-seat-parens-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
-          <label for="show-seat-parens-toggle">Show (wind)</label>
+        <div class="sidebar-row">
+          <label class="sb-label">Dealer</label>
+          <select id="game-dealer-seat" class="sb-select" title="Dealer seat for next hand">
+            <option value="0">Seat 0</option>
+            <option value="1">Seat 1</option>
+            <option value="2">Seat 2</option>
+            <option value="3">Seat 3</option>
+          </select>
+        </div>
+        <div class="sidebar-row">
+          <label class="sb-label">Round Wind</label>
+          <select id="game-round-wind" class="sb-select" title="Round wind for next hand">
+            <option value="East">East 東</option>
+            <option value="South">South 南</option>
+            <option value="West">West 西</option>
+            <option value="North">North 北</option>
+          </select>
         </div>
         <div class="sidebar-check">
           <input type="checkbox" id="last-tile-toggle" style="cursor:pointer;accent-color:#ffd34d;" />

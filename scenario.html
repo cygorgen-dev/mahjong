@@ -27,12 +27,16 @@ a.link:hover{text-decoration:underline;}
 .right-col{background:rgba(0,0,0,.35);border-left:1px solid var(--gm);display:flex;flex-direction:column;overflow-y:scroll;height:100%;}
 
 /* ── PALETTE (always visible, top of left col) ── */
-.palette-bar{background:rgba(0,0,0,.4);border-bottom:1px solid var(--gm);padding:8px 10px;flex-shrink:0;}
+.palette-bar{background:rgba(0,0,0,.4);border-bottom:1px solid var(--gm);padding:8px 10px;flex-shrink:0;display:flex;gap:14px;align-items:flex-start;}
 .palette-bar h2{font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
 .palette-bar h2 .hint{font-size:10px;color:var(--dim);font-weight:400;}
 .suit-rows{display:flex;flex-direction:column;gap:4px;}
 .suit-row{display:flex;align-items:center;gap:3px;}
 .suit-lbl{font-size:9px;color:var(--gold);width:44px;flex-shrink:0;font-weight:700;line-height:1.3;}
+.palette-tiles{flex-shrink:0;}
+.palette-actions{flex:1;display:flex;gap:10px;align-items:flex-start;min-width:0;}
+.pa-section{flex:1;min-width:140px;}
+.discard-bar{flex-shrink:0;margin:0 10px 8px;background:rgba(0,0,0,.3);border:1px solid rgba(224,48,48,.4);border-radius:8px;padding:8px;}
 .tile-btn{
   width:var(--tw);height:var(--th);
   background:linear-gradient(180deg,var(--tb),var(--tf));
@@ -41,8 +45,9 @@ a.link:hover{text-decoration:underline;}
   font-size:14px;font-weight:700;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
   box-shadow:1px 1px 0 #2a1a0a;position:relative;color:#111;
-  transition:transform .08s;flex-shrink:0;
+  transition:transform .08s;flex-shrink:0;overflow:hidden;
 }
+.tile-btn img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;padding:1px;}
 .tile-btn:hover{transform:translateY(-3px);box-shadow:1px 4px 4px rgba(0,0,0,.4);}
 .tile-btn .sub{font-size:8px;color:#555;font-family:system-ui;}
 .tile-btn.bamboo{color:#1a7a1a;}.tile-btn.circle{color:#b22222;}.tile-btn.wind{color:#0033aa;}
@@ -73,8 +78,9 @@ a.link:hover{text-decoration:underline;}
   font-size:13px;font-weight:700;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   cursor:pointer;box-shadow:1px 1px 0 #2a1a0a;position:relative;color:#111;
-  transition:transform .08s;flex-shrink:0;
+  transition:transform .08s;flex-shrink:0;overflow:hidden;
 }
+.ht img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;padding:1px;}
 .ht:hover{transform:translateY(-3px);}
 .ht .sub{font-size:8px;color:#555;font-family:system-ui;}
 .ht.bamboo{color:#1a7a1a;}.ht.circle{color:#b22222;}.ht.wind{color:#0033aa;}
@@ -130,7 +136,7 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
 .btn-row{display:flex;gap:4px;flex-wrap:wrap;}
 
 /* Save/Load */
-.preset-list{display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto;}
+.preset-list{display:flex;flex-direction:column;gap:4px;}
 .preset-item{background:rgba(0,0,0,.25);border:1px solid var(--gm);border-radius:5px;padding:6px 8px;display:flex;align-items:center;gap:5px;cursor:pointer;}
 .preset-item:hover{background:rgba(0,0,0,.4);}
 .preset-item .pi-name{flex:1;font-size:12px;font-weight:700;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -139,6 +145,8 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
 .preset-item .pi-del:hover{color:var(--red);}
 .preset-item.builtin{border-color:#0033aa;}
 .preset-item.builtin .pi-name{color:#8ad4ff;}
+.preset-item.just-captured{border-color:#ffd34d;box-shadow:0 0 8px 2px rgba(255,211,77,0.45);}
+.preset-item.just-captured .pi-name{color:#ffd34d;}
 
 /* Regression */
 .reg-row{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;font-size:10px;}
@@ -150,7 +158,7 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
 .reg-fail{background:#5c1a1a;color:#ff6666;}
 
 /* Status */
-.status{font-size:11px;line-height:1.7;max-height:240px;overflow-y:auto;background:rgba(0,0,0,.2);border-radius:4px;padding:6px 8px;}
+.status{font-size:11px;line-height:1.7;overflow-y:auto;background:rgba(0,0,0,.2);border-radius:4px;padding:6px 8px;}
 .status .ok{color:#5dde7a;}.status .warn{color:var(--gold);}.status .err{color:#ff6666;}.status .info{color:#8ad4ff;}
 
 /* Expected */
@@ -183,8 +191,54 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
 
   <!-- PALETTE always visible -->
   <div class="palette-bar">
-    <h2>Tile Palette <span class="hint">— click to add to selected player · or activate a Quick Action first</span></h2>
-    <div class="suit-rows" id="palette"></div>
+    <div class="palette-tiles">
+      <h2>Tile Palette <span class="hint">— click to add to selected player</span></h2>
+      <div class="suit-rows" id="palette"></div>
+    </div>
+    <div class="palette-actions">
+      <div class="pa-section">
+        <div class="rp-title">Quick Actions</div>
+        <div class="qa-grid">
+          <button class="qa qa-pung" id="q-pung" title="Next tile pick → 3 copies as Pung meld">Pung ×3<br>→ Meld</button>
+          <button class="qa qa-kong" id="q-kong" title="Next tile pick → 4 copies as Kong meld">Kong ×4<br>→ Meld</button>
+          <button class="qa qa-chow" id="q-chow" title="Next 3 picks → Chow meld">Chow<br>pick 3</button>
+          <button class="qa qa-draw" id="q-draw" title="Next tile pick → marked as self-drawn 14th tile">Self<br>Draw 🀄</button>
+          <button class="qa qa-bonus" id="q-bonus" title="Next tile pick → bonus (flower/season) tile">Bonus 花<br>tile</button>
+          <button class="qa qa-clear" id="q-clear-player" title="Clear current player's hand">Clear<br>player</button>
+        </div>
+      </div>
+      <div class="pa-section">
+        <div class="rp-title">Game Context</div>
+        <div class="ctx-row"><span class="ctx-lbl">Discard from:</span>
+          <select class="ctx-sel" id="discard-from">
+            <option value="3">CPU3 (3) LEFT</option>
+            <option value="2">CPU2 (2) TOP</option>
+            <option value="1">CPU1 (1) RIGHT</option>
+            <option value="0">You (0)</option>
+          </select>
+        </div>
+        <div class="ctx-row"><span class="ctx-lbl">Phase:</span>
+          <select class="ctx-sel" id="inject-phase">
+            <option value="claim">CLAIM (discard on table)</option>
+            <option value="discard">DISCARD (your turn)</option>
+          </select>
+        </div>
+        <div class="ctx-row"><span class="ctx-lbl">Dealer:</span>
+          <select class="ctx-sel" id="dealer-seat">
+            <option value="0">Seat 0</option><option value="1">Seat 1</option>
+            <option value="2">Seat 2</option><option value="3">Seat 3</option>
+          </select>
+        </div>
+        <div class="ctx-row"><span class="ctx-lbl">Round Wind:</span>
+          <select class="ctx-sel" id="round-wind" title="Round wind for this scenario">
+            <option value="East">East 東</option>
+            <option value="South">South 南</option>
+            <option value="West">West 西</option>
+            <option value="North">North 北</option>
+          </select>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 4 PLAYER HANDS -->
@@ -192,56 +246,24 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
     <!-- filled by JS -->
   </div>
 
+  <!-- REQUIRED DISCARD TILE -->
+  <div class="discard-bar">
+    <div class="pc-header">
+      <span class="pc-name" style="color:#ff8888;">🎯 Required Discard Tile</span>
+      <span class="pc-seat">CLAIM phase</span>
+      <div class="pc-actions">
+        <button class="btn btn-sm btn-green" id="q-set-discard">Select</button>
+      </div>
+    </div>
+    <div class="pc-hand" id="discard-preview">
+      <span class="pc-empty">None — click Select, then pick a tile</span>
+    </div>
+  </div>
+
 </div>
 
 <!-- RIGHT: CONTROLS -->
 <div class="right-col">
-
-  <!-- QUICK ACTIONS -->
-  <div class="rp-section">
-    <div class="rp-title">Quick Actions</div>
-    <div class="qa-grid">
-      <button class="qa qa-pung" id="q-pung" title="Next tile pick → 3 copies as Pung meld">Pung ×3<br>→ Meld</button>
-      <button class="qa qa-kong" id="q-kong" title="Next tile pick → 4 copies as Kong meld">Kong ×4<br>→ Meld</button>
-      <button class="qa qa-chow" id="q-chow" title="Next 3 picks → Chow meld">Chow<br>pick 3</button>
-      <button class="qa qa-draw" id="q-draw" title="Next tile pick → marked as self-drawn 14th tile">Self<br>Draw 🀄</button>
-      <button class="qa qa-bonus" id="q-bonus" title="Next tile pick → bonus (flower/season) tile">Bonus 花<br>tile</button>
-      <button class="qa qa-clear" id="q-clear-player" title="Clear current player's hand">Clear<br>player</button>
-    </div>
-    <div class="qa-status" id="qa-status">Click a player above, then click tiles in the palette.</div>
-  </div>
-
-  <!-- CONTEXT -->
-  <div class="rp-section">
-    <div class="rp-title">Game Context</div>
-    <div class="ctx-row"><span class="ctx-lbl">Discard from:</span>
-      <select class="ctx-sel" id="discard-from">
-        <option value="3">CPU3 (3) LEFT</option>
-        <option value="2">CPU2 (2) TOP</option>
-        <option value="1">CPU1 (1) RIGHT</option>
-        <option value="0">You (0)</option>
-      </select>
-    </div>
-    <div class="ctx-row"><span class="ctx-lbl">Phase:</span>
-      <select class="ctx-sel" id="inject-phase">
-        <option value="claim">CLAIM (discard on table)</option>
-        <option value="discard">DISCARD (your turn)</option>
-      </select>
-    </div>
-    <div class="ctx-row"><span class="ctx-lbl">Dealer:</span>
-      <select class="ctx-sel" id="dealer-seat">
-        <option value="0">You (0)</option><option value="1">CPU1 (1)</option>
-        <option value="2">CPU2 (2)</option><option value="3">CPU3 (3)</option>
-      </select>
-    </div>
-    <div style="margin-top:4px;font-size:10px;color:var(--dim);">Discard tile (click to set):</div>
-    <div class="discard-preview" id="discard-preview">
-      <span style="color:#444;font-size:10px;align-self:center;">None — click a tile below<br>while "Discard" mode active</span>
-    </div>
-    <div style="margin-top:4px;">
-      <button class="btn btn-sm" id="q-set-discard" style="background:rgba(200,0,0,.3);border:1px solid var(--red);color:#ff8888;width:100%;">🎯 Next pick → Discard tile</button>
-    </div>
-  </div>
 
   <!-- EXPECTED -->
   <div class="rp-section">
@@ -251,6 +273,19 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
       <label><input type="checkbox" id="exp-pung"> Pung</label>
       <label><input type="checkbox" id="exp-kong"> Kong</label>
       <label><input type="checkbox" id="exp-chow"> Chow</label>
+    </div>
+    <div class="exp-row" style="margin-top:3px;align-items:center;gap:5px;">
+      <span style="color:#8ad4ff;font-size:10px;white-space:nowrap;">Pass→</span>
+      <select id="exp-pass-winner" style="background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-radius:3px;font-size:10px;padding:1px 2px;">
+        <option value="-1">(no win)</option>
+        <option value="0">You (0)</option>
+        <option value="1">Right (1)</option>
+        <option value="2">Top (2)</option>
+        <option value="3">Left (3)</option>
+      </select>
+      <span id="exp-pass-faan-wrap" style="font-size:10px;color:#aaa;display:none;">
+        ≥<input type="number" id="exp-pass-min-faan" value="0" min="0" max="13" style="width:28px;background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-radius:3px;font-size:10px;padding:1px;">f
+      </span>
     </div>
     <div class="result-row" id="result-row" style="display:none;"></div>
   </div>
@@ -339,9 +374,7 @@ let chowBuffer=[];
 
 function P(s=targetSeat){return players[s];}
 function setQStatus(msg,warn=false){
-  const el=document.getElementById('qa-status');
-  el.textContent=msg;
-  el.style.color=warn?'#ffd34d':'#8ad4ff';
+  log(msg,warn?'warn':'info');
 }
 
 // ── SAVE/LOAD FEEDBACK ────────────────────────────────────────
@@ -388,7 +421,11 @@ function buildPalette(){
       const b=document.createElement('div');
       b.className='tile-btn '+cls(t);
       b.id=`pb-${t.suit}-${t.value}`;
-      b.innerHTML=`<span>${lbl(t)}</span><span class="sub">${sub(t)}</span>`;
+      const img=document.createElement('img');
+      img.src=`img/tiles/${t.suit}_${t.value}.png`;
+      img.alt='';
+      img.onerror=()=>{img.remove();b.innerHTML=`<span>${lbl(t)}</span><span class="sub">${sub(t)}</span>`;};
+      b.appendChild(img);
       b.addEventListener('click',()=>onPalettePick(t.suit,t.value));
       row.appendChild(b);
     }
@@ -555,7 +592,17 @@ function renderHands(){
 function makeTileDiv(t,extraClass,onClick){
   const d=document.createElement('div');
   d.className=(extraClass||'ht')+' '+cls(t);
-  d.innerHTML=`<span class="rx">✕</span><span>${lbl(t)}</span><span class="sub">${sub(t)}</span>`;
+  const rx=document.createElement('span');rx.className='rx';rx.textContent='✕';
+  d.appendChild(rx);
+  const img=document.createElement('img');
+  img.src=`img/tiles/${t.suit}_${t.value}.png`;
+  img.alt='';
+  img.onerror=()=>{
+    img.remove();
+    const s=document.createElement('span');s.textContent=lbl(t);d.appendChild(s);
+    const sb=document.createElement('span');sb.className='sub';sb.textContent=sub(t);d.appendChild(sb);
+  };
+  d.appendChild(img);
   if(onClick)d.addEventListener('click',onClick);
   return d;
 }
@@ -632,13 +679,20 @@ document.getElementById('clear-all-btn').addEventListener('click',()=>{
 });
 
 // ── INJECT ────────────────────────────────────────────────────
+// Track last inject so verify can poll for the matching response
+let _lastInjectId = null, _lastInjectTs = 0;
+
 document.getElementById('inject-btn').addEventListener('click', ()=>injectScenario());
-document.getElementById('verify-btn').addEventListener('click', verifyScenario);
+document.getElementById('verify-btn').addEventListener('click', ()=>verifyScenario());
+document.getElementById('exp-pass-winner').addEventListener('change', function(){
+  document.getElementById('exp-pass-faan-wrap').style.display = this.value === '-1' ? 'none' : '';
+});
 
 function buildState(){
   const phase=document.getElementById('inject-phase').value;
   const discardFrom=parseInt(document.getElementById('discard-from').value);
   const dealerSeat=parseInt(document.getElementById('dealer-seat').value);
+  const roundWind=document.getElementById('round-wind').value;
   const dt=discardTile?{...discardTile,_discardSeat:discardFrom}:null;
 
   const allPlayers=[];
@@ -656,7 +710,7 @@ function buildState(){
 
   const p0=players[0];
   return{
-    ts:Date.now(),scenario:true,phase,dealerSeat,discardFrom,discardTile:dt,
+    ts:Date.now(),scenario:true,phase,dealerSeat,roundWind,discardFrom,discardTile:dt,
     humanHand:p0.hand.map((t,i)=>Object.assign({},t,{_justDrawn:i===p0.drawnIdx})),
     humanMelds:p0.melds.map(m=>({type:m.type,claimed:!!m.claimed,tiles:(m.tiles||[]).map(t=>Object.assign({},t))})),
     humanBonus:(p0.bonus||[]).map(t=>Object.assign({},t)),
@@ -695,23 +749,28 @@ function injectScenario(state){
     localStorage.removeItem('mahjongActionLog');
     const json=JSON.stringify(s);
     localStorage.setItem('mahjongScenario',json);
+    // Remember this injection so verify() can poll for its matching response
+    _lastInjectId = s.injectId;
+    _lastInjectTs = injectTime;
     const seats=s.allPlayers.map(p=>`${SEAT_NAMES[p.seat]}:${p.hand.length}t`).join(', ');
     log(`✅ Injected [${s.injectId.slice(-5)}] — ${seats} | discard:${s.discardTile?lbl(s.discardTile):'none'} | phase:${s.phase}`,'ok');
     return {id: s.injectId, ts: injectTime};
   }catch(e){log('❌ localStorage write failed: '+e.message,'err');console.error('inject error:',e);return false;}
 }
 
-function verifyScenario(){
+async function verifyScenario(){
+  if(!_lastInjectId){log('No injection yet — click Inject first.','warn');return;}
+  log('⏳ Verifying — waiting for game tab…','info');
+  const data = await pollActionLog(_lastInjectId, _lastInjectTs, 7000);
+  if(!data){log('⏱ Timeout — is index.html open? Re-inject and try again.','warn');return;}
   try{
-    const raw=localStorage.getItem('mahjongActionLog');
-    if(!raw){log('No action log — inject first, wait for game to process.','warn');return;}
-    const data=JSON.parse(raw);
-    if(Date.now()-data.ts>15000){log('Action log is stale (>15s). Re-inject.','warn');return;}
+    const expPassWinner = parseInt(document.getElementById('exp-pass-winner').value,10);
+    const expPassMinFaan = parseInt(document.getElementById('exp-pass-min-faan').value,10)||0;
     const results=[
-      {label:'Win',actual:data.win,expected:document.getElementById('exp-win').checked},
-      {label:'Pung',actual:data.pung,expected:document.getElementById('exp-pung').checked},
-      {label:'Kong',actual:data.kong,expected:document.getElementById('exp-kong').checked},
-      {label:'Chow',actual:data.chow,expected:document.getElementById('exp-chow').checked},
+      {label:'Win', actual:data.win,  expected:document.getElementById('exp-win').checked},
+      {label:'Pung',actual:data.pung, expected:document.getElementById('exp-pung').checked},
+      {label:'Kong',actual:data.kong, expected:document.getElementById('exp-kong').checked},
+      {label:'Chow',actual:data.chow, expected:document.getElementById('exp-chow').checked},
     ];
     const rr=document.getElementById('result-row');
     rr.innerHTML='';rr.style.display='flex';
@@ -722,7 +781,31 @@ function verifyScenario(){
       c.innerHTML=`<div class="rl">${r.label}</div><div class="rv ${r.actual?'yes':'no'}">${r.actual?'ON':'OFF'}</div>`;
       rr.appendChild(c);
     }
-    log(allPass?'✅ All pass!':'❌ Some mismatches — check expected vs actual.','ok');
+    // Pass-winner card
+    if(expPassWinner>=0){
+      const gotSeat=data.passWinnerSeat;
+      const gotFaan=data.passWinFaan??0;
+      const seatOk = gotSeat===expPassWinner;
+      const faanOk = expPassMinFaan===0 || gotFaan>=expPassMinFaan;
+      const passWin = seatOk && faanOk;
+      if(!passWin) allPass=false;
+      const seatNames=['You','Right','Top','Left'];
+      const gotLabel = gotSeat!=null ? `seat ${gotSeat} (${seatNames[gotSeat]??gotSeat}) ${gotFaan}f` : 'none';
+      const c=document.createElement('div');c.className=`rcard ${passWin?'pass':'fail'}`;
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv ${passWin?'yes':'no'}" style="font-size:9px;">${gotLabel}</div>`;
+      rr.appendChild(c);
+      if(data.passWinLabel){
+        const lc=document.createElement('div');lc.style.cssText='font-size:9px;color:#aaa;margin-top:2px;width:100%;';
+        lc.textContent=data.passWinLabel;rr.appendChild(lc);
+      }
+    } else if(data.passWinnerSeat!=null){
+      // Not asserting, but show informational card
+      const seatNames=['You','Right','Top','Left'];
+      const c=document.createElement('div');c.className='rcard';c.style.background='#1a3a4a';
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv" style="font-size:9px;color:#8ad4ff;">${seatNames[data.passWinnerSeat]??data.passWinnerSeat} ${data.passWinFaan}f</div>`;
+      rr.appendChild(c);
+    }
+    log(allPass?'✅ All pass!':'❌ Some mismatches — check expected vs actual.',allPass?'ok':'err');
   }catch(e){log('❌ '+e.message,'err');}
 }
 
@@ -743,6 +826,8 @@ document.getElementById('save-preset-btn').addEventListener('click',()=>{
   state._expectedPung=document.getElementById('exp-pung').checked;
   state._expectedKong=document.getElementById('exp-kong').checked;
   state._expectedChow=document.getElementById('exp-chow').checked;
+  state._expectedPassWinnerSeat=parseInt(document.getElementById('exp-pass-winner').value,10);
+  state._expectedPassMinFaan=parseInt(document.getElementById('exp-pass-min-faan').value,10)||0;
   const list=getPresets();
   const existing=list.findIndex(p=>p._presetName===name);
   if(existing>=0)list[existing]=state;
@@ -796,12 +881,17 @@ function loadPreset(preset){
   document.getElementById('inject-phase').value=preset.phase||'claim';
   document.getElementById('discard-from').value=preset.discardFrom??3;
   document.getElementById('dealer-seat').value=preset.dealerSeat??0;
+  document.getElementById('round-wind').value=preset.roundWind??'East';
   if(preset._expectedWin!==undefined){
     document.getElementById('exp-win').checked=preset._expectedWin;
     document.getElementById('exp-pung').checked=preset._expectedPung;
     document.getElementById('exp-kong').checked=preset._expectedKong;
     document.getElementById('exp-chow').checked=preset._expectedChow;
   }
+  const passWinnerSel=document.getElementById('exp-pass-winner');
+  passWinnerSel.value=String(preset._expectedPassWinnerSeat??-1);
+  document.getElementById('exp-pass-min-faan').value=String(preset._expectedPassMinFaan??0);
+  document.getElementById('exp-pass-faan-wrap').style.display=(preset._expectedPassWinnerSeat>=0)?'':'none';
   renderHands();renderDiscardPreview();
   const loadMsg=`Loaded "${preset._presetName}".`;
   setLoadSaveMsg(loadMsg);
@@ -835,17 +925,27 @@ async function runRegression(){
     }
     const uiExpected = !!preset._expectedUiLayout;
     const uiPass = !uiExpected || !!result.uiLayoutOk;
+    const expPassSeat = preset._expectedPassWinnerSeat ?? -1;
+    const expPassFaan = preset._expectedPassMinFaan ?? 0;
+    const passWinOk = expPassSeat < 0
+      ? true
+      : (result.passWinnerSeat === expPassSeat) &&
+        (expPassFaan === 0 || (result.passWinFaan ?? 0) >= expPassFaan);
     const pass=(result.win===!!preset._expectedWin)&&
                (result.pung===!!preset._expectedPung)&&
                (result.kong===!!preset._expectedKong)&&
                (result.chow===!!preset._expectedChow)&&
-               uiPass;
+               uiPass && passWinOk;
+    const passInfo = expPassSeat >= 0
+      ? ` pass→seat${result.passWinnerSeat??'?'}(${result.passWinFaan??0}f)`
+      : (result.passWinnerSeat != null ? ` [pass→seat${result.passWinnerSeat} ${result.passWinFaan}f]` : '');
     results.push({name:preset._presetName,status:pass?'pass':'fail',
-      actual:{win:result.win,pung:result.pung,kong:result.kong,chow:result.chow,uiLayoutOk:!!result.uiLayoutOk},
+      actual:{win:result.win,pung:result.pung,kong:result.kong,chow:result.chow,uiLayoutOk:!!result.uiLayoutOk,passWinnerSeat:result.passWinnerSeat},
       expected:{win:!!preset._expectedWin,pung:!!preset._expectedPung,
-                kong:!!preset._expectedKong,chow:!!preset._expectedChow,uiLayoutOk:uiExpected}});
-    log(`  ${pass?'✅':'❌'} ${preset._presetName}: got win=${result.win} pung=${result.pung} kong=${result.kong} chow=${result.chow} ui=${result.uiLayoutOk}`
-        +(pass?'':` — expected win=${!!preset._expectedWin} pung=${!!preset._expectedPung} ui=${uiExpected}`),
+                kong:!!preset._expectedKong,chow:!!preset._expectedChow,uiLayoutOk:uiExpected,passWinnerSeat:expPassSeat>=0?expPassSeat:null}});
+    log(`  ${pass?'✅':'❌'} ${preset._presetName}: got win=${result.win} pung=${result.pung} kong=${result.kong} chow=${result.chow} ui=${result.uiLayoutOk}${passInfo}`
+        +(pass?'':` — expected win=${!!preset._expectedWin} pung=${!!preset._expectedPung}${expPassSeat>=0?' pass→seat'+expPassSeat:''}`)
+        +(result.passWinLabel?` "${result.passWinLabel}"`:''),
         pass?'ok':'err');
     await sleep(600); // gap: game tab polls every 1500ms, give it time to settle
   }
@@ -937,19 +1037,35 @@ setInterval(()=>{
     const raw=localStorage.getItem('mahjongActionLog');
     if(!raw)return;
     const data=JSON.parse(raw);
-    if(Date.now()-data.ts>8000)return;
+    // Only show results matching the last injection (or any recent result within 8s)
+    const idMatch = _lastInjectId && data.injectId && data.injectId===_lastInjectId;
+    const recent = data.ts && (Date.now()-data.ts)<8000;
+    if(!idMatch && !recent)return;
     const rr=document.getElementById('result-row');
     rr.innerHTML='';rr.style.display='flex';
     const results=[
-      {label:'Win',actual:data.win,expected:document.getElementById('exp-win').checked},
-      {label:'Pung',actual:data.pung,expected:document.getElementById('exp-pung').checked},
-      {label:'Kong',actual:data.kong,expected:document.getElementById('exp-kong').checked},
-      {label:'Chow',actual:data.chow,expected:document.getElementById('exp-chow').checked},
+      {label:'Win', actual:data.win,  expected:document.getElementById('exp-win').checked},
+      {label:'Pung',actual:data.pung, expected:document.getElementById('exp-pung').checked},
+      {label:'Kong',actual:data.kong, expected:document.getElementById('exp-kong').checked},
+      {label:'Chow',actual:data.chow, expected:document.getElementById('exp-chow').checked},
     ];
     for(const r of results){
       const pass=r.actual===r.expected;
       const c=document.createElement('div');c.className=`rcard ${pass?'pass':'fail'}`;
       c.innerHTML=`<div class="rl">${r.label}</div><div class="rv ${r.actual?'yes':'no'}">${r.actual?'ON':'OFF'}</div>`;
+      rr.appendChild(c);
+    }
+    // Show pass-winner info card (informational, no expected assertion here)
+    if(data.passWinnerSeat!=null){
+      const seatNames=['You','Right','Top','Left'];
+      const expSeat=parseInt(document.getElementById('exp-pass-winner').value,10);
+      const expFaan=parseInt(document.getElementById('exp-pass-min-faan').value,10)||0;
+      const seatOk=expSeat<0||data.passWinnerSeat===expSeat;
+      const faanOk=expSeat<0||expFaan===0||(data.passWinFaan??0)>=expFaan;
+      const ok=seatOk&&faanOk;
+      const cls=expSeat>=0?(ok?'pass':'fail'):'';
+      const c=document.createElement('div');c.className=`rcard ${cls}`;c.style.background=expSeat<0?'#1a3a4a':'';
+      c.innerHTML=`<div class="rl">Pass→</div><div class="rv" style="font-size:9px;color:#8ad4ff;">${seatNames[data.passWinnerSeat]??data.passWinnerSeat} ${data.passWinFaan}f</div>`;
       rr.appendChild(c);
     }
   }catch(e){}
@@ -1005,6 +1121,43 @@ const BUILTIN=[
     ].map(t=>({...t,_justDrawn:false})),melds:[],bonus:[],drawnIdx:null}],
     discardTile:{...mk(SUIT.W,'South'),_discardSeat:2},
   },
+  {
+    // CPU2 (top) discards 五萬; human has no claim; CPU1 (right) wins with Mixed One Suit 混一色
+    _presetName:'★ Pass → Right wins (混一色)',
+    _expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
+    _expectedPassWinnerSeat:1,_expectedPassMinFaan:3,
+    phase:'claim',discardFrom:2,dealerSeat:0,roundWind:'East',
+    allPlayers:[
+      {seat:0,drawnIdx:null,melds:[],bonus:[],hand:[
+        // Scattered bamboo + off-suit circles — cannot claim 五萬
+        {suit:SUIT.B,value:1},{suit:SUIT.B,value:2},{suit:SUIT.B,value:3},
+        {suit:SUIT.B,value:4},{suit:SUIT.B,value:5},{suit:SUIT.B,value:6},
+        {suit:SUIT.B,value:7},{suit:SUIT.B,value:8},{suit:SUIT.B,value:9},
+        {suit:SUIT.C,value:2},{suit:SUIT.C,value:4},{suit:SUIT.C,value:6},{suit:SUIT.C,value:8},
+      ].map(t=>({...mk(t.suit,t.value),_justDrawn:false}))},
+      {seat:1,drawnIdx:null,melds:[],bonus:[],hand:[
+        // 1-9 萬 sequences + East pung + lone 五萬 waiting for the pair → Mixed One Suit 混一色
+        {suit:SUIT.K,value:1},{suit:SUIT.K,value:2},{suit:SUIT.K,value:3},
+        {suit:SUIT.K,value:4},{suit:SUIT.K,value:5},{suit:SUIT.K,value:6},
+        {suit:SUIT.K,value:7},{suit:SUIT.K,value:8},{suit:SUIT.K,value:9},
+        {suit:SUIT.W,value:'East'},{suit:SUIT.W,value:'East'},{suit:SUIT.W,value:'East'},
+        {suit:SUIT.K,value:5},
+      ].map(t=>({...mk(t.suit,t.value),_justDrawn:false}))},
+      {seat:2,drawnIdx:null,melds:[],bonus:[],hand:[
+        {suit:SUIT.C,value:1},{suit:SUIT.C,value:2},{suit:SUIT.C,value:3},
+        {suit:SUIT.C,value:4},{suit:SUIT.C,value:5},{suit:SUIT.C,value:6},
+        {suit:SUIT.C,value:7},{suit:SUIT.C,value:8},{suit:SUIT.C,value:9},
+        {suit:SUIT.B,value:1},{suit:SUIT.B,value:2},{suit:SUIT.B,value:3},{suit:SUIT.B,value:4},
+      ].map(t=>({...mk(t.suit,t.value),_justDrawn:false}))},
+      {seat:3,drawnIdx:null,melds:[],bonus:[],hand:[
+        {suit:SUIT.C,value:1},{suit:SUIT.C,value:3},{suit:SUIT.C,value:5},
+        {suit:SUIT.C,value:7},{suit:SUIT.C,value:9},{suit:SUIT.B,value:2},
+        {suit:SUIT.B,value:4},{suit:SUIT.B,value:6},{suit:SUIT.B,value:8},
+        {suit:SUIT.K,value:1},{suit:SUIT.K,value:3},{suit:SUIT.K,value:7},{suit:SUIT.K,value:9},
+      ].map(t=>({...mk(t.suit,t.value),_justDrawn:false}))},
+    ],
+    discardTile:{...mk(SUIT.K,5),_discardSeat:2},
+  },
 ];
 
 function renderPresetListFull(){
@@ -1028,8 +1181,7 @@ function renderPresetListFull(){
   }
   list.forEach((preset,i)=>{
     const item=document.createElement('div');item.className='preset-item';
-    const seats=preset.allPlayers?preset.allPlayers.map(p=>SEAT_NAMES[p.seat]).join('+'):'You';
-    item.innerHTML=`<span class="pi-name">${preset._presetName}</span><span class="pi-info">${seats}·${preset.phase}</span>`;
+    item.innerHTML=`<span class="pi-name">${preset._presetName}</span>`;
     const loadBtn=document.createElement('button');loadBtn.className='btn btn-sm btn-green';loadBtn.textContent='Load';
     loadBtn.addEventListener('click',(e)=>{e.stopPropagation();loadPreset(preset);});
     const delBtn=document.createElement('span');delBtn.className='pi-del';delBtn.textContent='✕';
@@ -1060,9 +1212,24 @@ function loadCapturedState(){
     if(!state||!state.allPlayers)return;
     localStorage.removeItem('mahjongCapturedState');
     loadPreset(state);
-    // Pre-fill the name field
-    document.getElementById('preset-name').value=state._presetName||'';
-    const captureMsg=`📸 Captured state loaded — ${state.allPlayers.length} players, phase:${state.phase}. Review then Save.`;
+    // Auto-save to presets list so it persists and can be reloaded later
+    const name=state._presetName||`Captured ${new Date().toLocaleTimeString()}`;
+    state._presetName=name;
+    const list=getPresets();
+    const existing=list.findIndex(p=>p._presetName===name);
+    if(existing>=0)list[existing]=state;else list.push(state);
+    savePresets(list);
+    renderPresetList();
+    // Highlight and scroll to the newly saved item
+    for(const item of document.querySelectorAll('#preset-list .preset-item')){
+      if(item.querySelector('.pi-name')?.textContent===name){
+        item.classList.add('just-captured');
+        item.scrollIntoView({behavior:'smooth',block:'nearest'});
+        break;
+      }
+    }
+    document.getElementById('preset-name').value='';
+    const captureMsg=`📸 "${name}" saved — see highlighted item above.`;
     setLoadSaveMsg(captureMsg);
     log(captureMsg,'ok');
   }catch(e){log('Capture load failed: '+e.message,'err');}

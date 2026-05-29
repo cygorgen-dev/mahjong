@@ -7,7 +7,6 @@ let _selectedTileId = null;
 let _chowChoices = []; // tiles the player picks for chow
 let _peekWin = null;
 let _wallBC = null;
-let _discardFillOrders = null;
 
 function _broadcastWallState() {
   if (!_game) return;
@@ -258,9 +257,10 @@ function initUI(game) {
     const state = {
       ts: now,
       scenario: true,
-      _presetName: `Captured ${new Date(now).toLocaleTimeString()}`,
+      _presetName: (() => { const d = new Date(now); return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; })(),
       phase: _game.phase === 'discard' ? 'discard' : 'claim',
       dealerSeat: _game.dealerSeat,
+      roundWind: _game.roundWind,
       discardFrom,
       discardTile: discard ? {...discard, _discardSeat: discardFrom} : null,
       allPlayers,
@@ -637,7 +637,12 @@ function renderSeats() {
         const opts = needsRotation
           ? { small: true, seatRotation: seat }
           : { small: true };
-        meldDiv.appendChild(makeTileEl(t, opts));
+        const tEl = makeTileEl(t, opts);
+        if (_game.lastClaimedTile && t.id === _game.lastClaimedTile.id) {
+          const inner = tEl.querySelector('.tile') || tEl;
+          inner.classList.add('last-discard');
+        }
+        meldDiv.appendChild(tEl);
       }
       if (_game.robbingKongSeat === seat && _game.robbingKongTile &&
           meld.type === 'pung' && meld.tiles[0] &&
@@ -920,59 +925,29 @@ function renderSeats() {
   }
 }
 
-function getDiscardFillOrders() {
-  if (_discardFillOrders) return _discardFillOrders;
-  const TW = 48, TH = 70, GAP = 0;
-  const N_COLS = 14, N_ROWS = 7;
-  const PILE_W = 670, PILE_H = 536;
-  const gridW = N_COLS * TW + (N_COLS - 1) * GAP; // 672
-  const gridH = N_ROWS * TH + (N_ROWS - 1) * GAP; // 490
-  const originX = Math.round((PILE_W - gridW) / 2); // -1
-  const originY = Math.round((PILE_H - gridH) / 2); // 23
-  const zones = [[], [], [], []];
-  for (let r = 0; r < N_ROWS; r++) {
-    for (let c = 0; c < N_COLS; c++) {
-      const nr = r / (N_ROWS - 1), nc = c / (N_COLS - 1);
-      let seat;
-      if      (nr < nc && nr < 1 - nc)  seat = 2;
-      else if (nr > nc && nr > 1 - nc)  seat = 0;
-      else if (nc < nr && nc < 1 - nr)  seat = 3;
-      else if (nc > nr && nc > 1 - nr)  seat = 1;
-      else                               seat = (r <= Math.floor((N_ROWS - 1) / 2)) ? 2 : 0;
-      zones[seat].push({ r, c, x: originX + c * (TW + GAP), y: originY + r * (TH + GAP) });
-    }
-  }
-  const cMid = (N_COLS - 1) / 2, rMid = (N_ROWS - 1) / 2;
-  // Seat 0 (bottom): fill from bottom-center inward
-  zones[0].sort((a, b) => b.r - a.r || Math.abs(a.c - cMid) - Math.abs(b.c - cMid));
-  // Seat 2 (top): fill from top-center inward
-  zones[2].sort((a, b) => a.r - b.r || Math.abs(a.c - cMid) - Math.abs(b.c - cMid));
-  // Seat 3 (left): fill from left-center inward
-  zones[3].sort((a, b) => a.c - b.c || Math.abs(a.r - rMid) - Math.abs(b.r - rMid));
-  // Seat 1 (right): fill from right-center inward
-  zones[1].sort((a, b) => b.c - a.c || Math.abs(a.r - rMid) - Math.abs(b.r - rMid));
-  _discardFillOrders = zones;
-  return zones;
-}
-
 function renderDiscard() {
   const el = document.getElementById('discard-pile');
   el.innerHTML = '';
 
-  // During robbing kong: show the kong tile prominently in the center
+  // During robbing kong: show the kong tile prominently in the center,
+  // and show a pending 4th tile on the kong declarer's meld in renderSeats.
+  // Place the kong tile as if it came from the declarer's seat.
   if (_game.robbingKongTile && _game.phase === PHASE.CLAIM) {
     const kt = _game.robbingKongTile;
     const kSeat = _game.robbingKongSeat ?? 0;
+    // Stamp discard position so renderDiscard places it in that seat's zone
     kt._discardSeat = kSeat;
     kt._discardIdxBySeat = 0;
-    const W = 670, H = 536;
-    const TW = 48, TH = 70;
+    // Render it large and centered with a special highlight
+    const W = 668, H = 556;
+    const TW = 46, TH = 66;
     const te = makeTileEl(kt, { small: true });
     te.style.left = ((W - TW) / 2) + 'px';
     te.style.top  = ((H - TH) / 2) + 'px';
     te.classList.add('last-discard');
     te.style.transform = 'scale(1.5)';
     te.style.zIndex = '20';
+    // Label above the tile
     const lbl = document.createElement('div');
     lbl.style.cssText = 'position:absolute;left:50%;transform:translateX(-50%);top:' +
       ((H - TH) / 2 - 22) + 'px;background:rgba(180,60,0,0.92);color:#fff;font-size:11px;' +
@@ -983,17 +958,72 @@ function renderDiscard() {
     return;
   }
 
-  const fillOrders = getDiscardFillOrders();
+  // Discard area dimensions (must match CSS #discard-pile)
+  // Discard area dimensions — inset from wall (matches CSS top:26 left:26 width:668 height:488)
+  const W = 668, H = 556;
+  const TW = 46, TH = 66;
+  const GAP = 3;            // gap between tiles
+
+  // Each seat gets a triangular zone. Tiles are placed in rows/columns
+  // starting near the player's edge and working inward.
+  // The layout never reflows — position is calculated from the tile index.
 
   for (const t of _game.discardPile) {
     const seat = t._discardSeat ?? 0;
-    const idx  = t._discardIdxBySeat ?? 0;
-    const pos  = fillOrders[seat][idx];
-    if (!pos) continue;
+    // Use stable index stamped at discard time — never shifts when tiles are claimed/spliced out
+    const idx = t._discardIdxBySeat ?? 0;
+
+    let x, y;
+
+    if (seat === 0) {
+      // Bottom: 4 rows x 7 cols, stacking upward from bottom edge
+      const cols = 7;
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const totalRowW = cols * TW + (cols - 1) * GAP;
+      const startX = (W - totalRowW) / 2;
+      const startY = H - TH - 4;
+      x = startX + col * (TW + GAP);
+      y = startY - row * (TH + GAP);
+
+    } else if (seat === 2) {
+      // Top: 4 rows x 7 cols, stacking downward from top edge
+      const cols = 7;
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const totalRowW = cols * TW + (cols - 1) * GAP;
+      const startX = (W - totalRowW) / 2;
+      const startY = 4;
+      x = startX + col * (TW + GAP);
+      y = startY + row * (TH + GAP);
+
+    } else if (seat === 3) {
+      // Left: 8 rows x 3 cols — innermost col's right edge aligns with center startX
+      const rows = 8;
+      const row = idx % rows;
+      const col = Math.floor(idx / rows);
+      const totalColH = rows * TH + (rows - 1) * GAP;
+      const startY = (H - totalColH) / 2;
+      const startX = 20;
+      x = startX + col * (TW + GAP);
+      y = startY + row * (TH + GAP);
+
+    } else {
+      // Right (seat 1): 8 rows x 3 cols — innermost col's left edge aligns with center end
+      const rows = 8;
+      const row = idx % rows;
+      const col = Math.floor(idx / rows);
+      const totalColH = rows * TH + (rows - 1) * GAP;
+      const startY = (H - totalColH) / 2;
+      const startX = W - TW - 20;
+      x = startX - col * (TW + GAP);
+      y = startY + row * (TH + GAP);
+    }
+
 
     const te = makeTileEl(t, { small: true });
-    te.style.left = pos.x + 'px';
-    te.style.top  = pos.y + 'px';
+    te.style.left = x + 'px';
+    te.style.top  = y + 'px';
     if (_game.discard && t.id === _game.discard.id) te.classList.add('last-discard');
     el.appendChild(te);
   }
@@ -1134,6 +1164,10 @@ function renderSidebar() {
       tbody.appendChild(tr);
     }
   }
+  const dealerEl = document.getElementById('game-dealer-seat');
+  if (dealerEl) dealerEl.value = _game.dealerSeat;
+  const windEl = document.getElementById('game-round-wind');
+  if (windEl) windEl.value = _game.roundWind;
   const lh = document.getElementById('last-hand');
   if (lh) {
     if (_game.lastResult && _game.lastResult.faan > 0) {
@@ -1381,7 +1415,7 @@ function makeTileEl(t, opts = {}) {
 
   // Rotate tiles for side players — applies to both hidden hand tiles AND face-up meld tiles
   if (rot) {
-    const TW = 50, TH = 72;
+    const TW = 46, TH = 66;
     const wrapper = document.createElement('div');
     wrapper.className = 'tile-rot-wrap';
     wrapper.style.flexShrink = '0';

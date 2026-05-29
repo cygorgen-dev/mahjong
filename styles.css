@@ -12,9 +12,8 @@ body {
 #app {
   display: grid;
   grid-template-columns: 1fr 0px;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto 1fr;
   grid-template-areas: "header sidebar" "table sidebar";
-  align-content: start;
   min-height: 100vh;
   transform-origin: top left;
   transition: grid-template-columns 0.2s ease;
@@ -23,7 +22,7 @@ body {
 header {
   grid-area: header;
   background: #07301a;
-  padding: 4px 14px;
+  padding: 6px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -42,8 +41,8 @@ header .zh { color:#ffd34d; margin-left:6px; font-size:15px; }
 
 /* ONE tile size used everywhere */
 :root {
-  --tw: 50px;
-  --th: 72px;
+  --tw: 46px;
+  --th: 66px;
 }
 
 main#table {
@@ -53,9 +52,8 @@ main#table {
   grid-template-columns: 200px minmax(0,1fr) 200px;
   grid-template-rows: auto auto auto;
   grid-template-areas: ". top ." "left center right" ". bottom .";
-  gap: 0;
-  padding: 0 4px;
-  align-content: start;
+  gap: 2px;
+  padding: 2px 4px;
   overflow: visible;
 }
 .seat { display:flex; flex-direction:column; align-items:center; gap:4px; position:relative; }
@@ -68,7 +66,7 @@ main#table {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
+  gap: 2px;
 }
 .seat-top .h-indicators { display: none !important; }
 .seat-top .h-tile-area  { display: contents; }
@@ -98,7 +96,7 @@ main#table {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
+  gap: 2px;
 }
 .seat-bottom .h-indicators { display: none !important; }
 .seat-bottom .h-tile-area  { display: contents; }
@@ -115,7 +113,6 @@ main#table {
   display: flex; flex-wrap: nowrap; gap: 3px;
   align-items: center;
   justify-content: flex-start;   /* indicators always at left, tiles follow */
-  margin-left: calc(-2 * var(--tw));
   width: 880px; min-width: 880px; /* fixed — never recenters */
   flex-shrink: 0;
 }
@@ -153,7 +150,7 @@ main#table {
 }
 
 /* Hand column: single column of face-down rotated tiles for side players.
-   Each rotated wrapper = 72px wide x 50px tall. Column flex, tiles stack top-to-bottom. */
+   Each rotated wrapper = 66px wide x 46px tall. Column flex, tiles stack top-to-bottom. */
 .seat-left  .hand {
   display: flex;
   flex-direction: column;
@@ -161,7 +158,7 @@ main#table {
   gap: 3px;
   order: 1;
   flex-shrink: 0;
-  width: 72px;
+  width: 66px;
   align-items: center;
 }
 .seat-right .hand {
@@ -171,16 +168,16 @@ main#table {
   gap: 3px;
   order: 2;
   flex-shrink: 0;
-  width: 72px;
+  width: 66px;
   align-items: center;
 }
 
 /* Melds column: stacks vertically for side players.
-   Each meld renders tiles vertically (each rotated tile = 72w x 50h). */
+   Each meld renders tiles vertically (each rotated tile = 66w x 46h). */
 .seat-left  .melds { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 3px; order: 2;
-  align-items: flex-end; justify-content: flex-start; flex-shrink: 0; width: 76px; }
+  align-items: flex-end; justify-content: flex-start; flex-shrink: 0; width: 70px; }
 .seat-right .melds { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 3px; order: 1;
-  align-items: flex-start; justify-content: flex-start; flex-shrink: 0; width: 76px; }
+  align-items: flex-start; justify-content: flex-start; flex-shrink: 0; width: 70px; }
 
 /* Each meld for side players: stack tiles vertically */
 .seat-left  .meld,
@@ -188,7 +185,7 @@ main#table {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: 76px;
+  width: 70px;
   align-items: center;
 }
 
@@ -285,11 +282,11 @@ main#table {
   width: 70px;
   gap: 2px;
 }
-/* Overflow melds/bonus rendered inside the 72px hand column for side players */
+/* Overflow melds/bonus rendered inside the 66px hand column for side players */
 .seat-left  .hand .meld,
-.seat-right .hand .meld { width: 72px; }
+.seat-right .hand .meld { width: 66px; }
 .seat-left  .hand .bonus-tiles,
-.seat-right .hand .bonus-tiles { width: 72px; }
+.seat-right .hand .bonus-tiles { width: 66px; }
 
 /* Overflow melds/bonus in top/bottom hand rows: remove padding and margin so tiles
    align flush with the regular hand tiles in the same row. */
@@ -303,22 +300,19 @@ main#table {
 #center {
   grid-area:center;
   display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-  gap:0; padding:0;
+  gap:6px; padding:4px;
   overflow:visible;
-  align-self: end;
 }
 
-/* DISCARD AREA — inset inside wall margin so wall tiles are always visible.
-   overflow:visible lets side-player tiles (8 rows) extend into the wall ring margin. */
+/* DISCARD AREA — inset inside wall margin so wall tiles are always visible */
 #discard-pile {
   position:absolute;
-  top:46px; left:26px;
-  width:670px; height:536px;
-  --tw: 48px;
-  --th: 70px;
+  top:26px; left:26px;
+  width:668px; height:556px;
   background:rgba(0,0,0,0.18);
   border-radius:8px;
-  overflow:visible;
+  border:1px solid rgba(0,0,0,0.55);
+  overflow:hidden;
   z-index:2;
 }
 #discard-pile .tile {
@@ -435,7 +429,7 @@ main#table { position: relative; }
 .meld { display:flex; gap:3px; padding:2px; background:rgba(0,0,0,0.2); border-radius:4px; }
 
 /* Invisible ghost slots — hold fixed space in CPU seat columns */
-.tile-ghost-rot { width:72px; height:50px; flex-shrink:0; visibility:hidden; }
+.tile-ghost-rot { width:66px; height:46px; flex-shrink:0; visibility:hidden; }
 
 /* WALL RING — SVG behind discard, drawing tile backs in the margins */
 #wall-ring-wrap { position:relative; width:720px; height:608px; flex-shrink:0; }
@@ -500,13 +494,13 @@ main#table { position: relative; }
 
 /* Winner */
 .seat-label.winner { background:#ffd34d; color:#07301a; animation:winner-pulse 0.8s ease-in-out infinite alternate; }
-@keyframes winner-pulse { from{box-shadow:0 0 6px 2px rgba(255,211,77,0.6);} to{box-shadow:0 0 18px 8px rgba(255,211,77,0.95);} }
+@keyframes winner-pulse { from{box-shadow:0 0 6px 2px rgba(160,0,255,0.6);} to{box-shadow:0 0 22px 10px rgba(160,0,255,0.98);} }
 /* Side/top winners reuse the same keyframe — rotation is held by the static CSS transform */
 .seat-left  .seat-label.winner { animation:winner-pulse 0.8s ease-in-out infinite alternate; }
 .seat-right .seat-label.winner { animation:winner-pulse 0.8s ease-in-out infinite alternate; }
 .seat-top   .seat-label.winner { animation:winner-pulse 0.8s ease-in-out infinite alternate; }
 .seat.celebrating { animation:seat-glow 1s ease-in-out infinite alternate; }
-@keyframes seat-glow { from{filter:drop-shadow(0 0 4px rgba(255,211,77,0.4));} to{filter:drop-shadow(0 0 18px rgba(255,211,77,0.95));} }
+@keyframes seat-glow { from{filter:drop-shadow(0 0 4px rgba(160,0,255,0.4));} to{filter:drop-shadow(0 0 20px rgba(160,0,255,0.98));} }
 
 /* Chow picker floats in the empty bottom-left corner, away from the hand */
 #chow-picker {
@@ -665,7 +659,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 
 /* Top/bottom seat labels and wind - positioned at outer edges */
 .seat-top    { position: relative; }
-.seat-bottom { position: relative; }
+.seat-bottom { position: relative; left: -68px; margin-top: -60px; }
 
 /* Side player badge - overlaid on hand column, no flex interference */
 .side-player-badge {
@@ -810,20 +804,18 @@ body.hide-tile-labels .tile-en { display:none !important; }
 .seat-left  .claim-row,
 .seat-right .claim-row { display: none !important; }
 
-/* Label block: same width as a rotated tile (72px wide x 50px tall landscape) */
+/* Label block: same width as a rotated tile (66px wide x 46px tall landscape) */
 .side-hand-label {
-  width: 72px;
-  height: 50px;
+  width: 66px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.65);
+  background: rgba(0,0,0,0.5);
   border-radius: 5px;
+  flex-shrink: 0;
   box-sizing: border-box;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 5;
+  position: relative;
   overflow: hidden;
 }
 .side-hand-label.active { background: #ffd34d; }
@@ -849,10 +841,9 @@ body.hide-tile-labels .tile-en { display:none !important; }
 .side-hand-label .badge-wind { width: 32px; height: 32px; }
 .side-hand-label .dice-display { transform: scale(0.65); transform-origin: center; }
 
-/* Start hand column from top; position:relative lets the label float absolute.
-   gap:0 keeps 13 tiles (13×50=650px) ≈ center height so no dead gap. */
+/* Start hand column from top, not centered vertically */
 .seat-left  .hand,
-.seat-right .hand { align-self: flex-start; gap: 0; position: relative; }
+.seat-right .hand { align-self: flex-start; }
 
 /* With claim-row hidden, re-pack tiles to outer edges */
 .seat-left  { justify-content: flex-start !important; }
@@ -860,8 +851,8 @@ body.hide-tile-labels .tile-en { display:none !important; }
 
 /* Fake tile blocks for wind and dice — same landscape size as rotated tiles */
 .side-hand-fake-tile {
-  width: 72px;
-  height: 50px;
+  width: 66px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;

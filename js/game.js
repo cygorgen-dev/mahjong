@@ -12,10 +12,8 @@ const PHASE = {
 
 const SEAT_NAMES = ['East 東', 'South 南', 'West 西', 'North 北'];
 
-// Returns "CPU1 (East 東)" or "You (East 東)" for log messages
-function playerTag(player, seatWind) {
-  const wind = seatWind || SEAT_NAMES[player.seat];
-  return `${player.name} (${wind})`;
+function playerTag(player) {
+  return `Seat ${player.seat}`;
 }
 
 class Game {
@@ -226,6 +224,7 @@ class Game {
     // Clear the last-discard highlight now that a new tile has been drawn
     this.discard = null;
     this.discardSeat = null;
+    this.lastClaimedTile = null;
 
     // Clear just-drawn highlight from all players before marking the new draw
     for (const player of this.players) {
@@ -267,7 +266,7 @@ class Game {
       }
     } else {
       this.onUpdate('cpu-drew');  // render draw state so just-drawn highlight is visible
-      this._scheduleOrStep(() => this.aiPlay(seat));
+      if (window.AUTO_MODE === 'slow') { this.aiPlay(seat); } else { this._scheduleOrStep(() => this.aiPlay(seat)); }
     }
   }
 
@@ -306,7 +305,7 @@ class Game {
     const p = this.players[seat];
     if (p.isHuman && window.AUTO_MODE) {
       this.onUpdate(updateEvent);
-      this._scheduleOrStep(() => this.aiPlay(seat));
+      if (window.AUTO_MODE === 'slow') { this.aiPlay(seat); } else { this._scheduleOrStep(() => this.aiPlay(seat)); }
     } else if (p.isHuman) {
       this.onUpdate(updateEvent);
     } else {
@@ -340,7 +339,7 @@ class Game {
     }
     const result = canWin(p.hand, p.melds, ctx);
     const minF = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
-    if (result.win && result.faan >= minF) {
+    if (result.win && result.faan >= minF && p.hand.some(t => t._justDrawn)) {
       this.resolveWin(seat, null, result);
       return;
     }
@@ -593,12 +592,15 @@ class Game {
       // Manual mode: wait for human Pass click
     } else {
       // Seat 0 (human or CPU-You) just discarded
+      this.onUpdate('claim-prompt');
       if (claims.length === 0) {
         const next = (fromSeat + 1) % 4;
-        this.onUpdate('claim-prompt');
         this._scheduleOrStep(() => this.startTurn(next));
       } else {
-        this.resolveAIClaims(fromSeat, tile, claims);
+        this._scheduleOrStep(() => {
+          this.claimOptions = null;
+          this.resolveAIClaims(fromSeat, tile, claims);
+        });
       }
     }
   }
@@ -643,7 +645,7 @@ class Game {
     });
     if (claims.length === 0) {
       const next = (fromSeat + 1) % 4;
-      this._scheduleOrStep(() => this.startTurn(next));
+      if (window.AUTO_MODE === 'slow') { this.startTurn(next); } else { this._scheduleOrStep(() => this.startTurn(next)); }
       return;
     }
     const best = claims[0];
@@ -659,7 +661,7 @@ class Game {
       if (!result.win || result.faan < minF) {
         // Faan too low — skip win, treat as pass
         const next = (fromSeat + 1) % 4;
-        this._scheduleOrStep(() => this.startTurn(next));
+        if (window.AUTO_MODE === 'slow') { this.startTurn(next); } else { this._scheduleOrStep(() => this.startTurn(next)); }
         return;
       }
       this.resolveWin(best.seat, fromSeat, result);
@@ -760,6 +762,9 @@ class Game {
     // Remove discard from discard pile
     const dIdx = this.discardPile.findIndex(t => t.id === tile.id);
     if (dIdx !== -1) this.discardPile.splice(dIdx, 1);
+    this.lastClaimedTile = tile;
+    // Clear stale just-drawn highlights — startTurn won't fire for this cycle
+    for (const pl of this.players) for (const t of pl.hand) t._justDrawn = false;
 
     if (action === 'pung') {
       const pair = p.hand.filter(t => sameType(t, tile)).slice(0, 2);
