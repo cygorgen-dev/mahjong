@@ -202,12 +202,6 @@ function initUI(game) {
     e.stopPropagation();
     if (_peekWin && !_peekWin.closed) _peekWin.close();
   });
-  document.getElementById('force-exhaust-btn')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (!_game) return;
-    _game.wallIdx = Math.max(_game.wallIdx, 2 * (_game.tailCol + 1) - _game.tailPhase);
-    _broadcastWallState();
-  });
 
   // Draggable peek panel
   (function() {
