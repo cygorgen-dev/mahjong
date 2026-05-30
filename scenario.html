@@ -741,7 +741,7 @@ function injectScenario(state){
     `seat${i}: hand=${p.hand.length} melds=${p.melds.length} bonus=${p.bonus.length}`
   ));
 
-  if(s.phase==='claim'&&!s.discardTile){
+  if(s.phase==='claim'&&!s.discardTile&&!s._robbingKong){
     log('⚠ CLAIM needs a discard tile — activate "Next pick → Discard tile" then click a tile.','warn');return false;
   }
   if(!s.allPlayers||s.allPlayers.length===0){
@@ -1192,6 +1192,52 @@ const BUILTIN=[
       ].map(t=>({...mk(t.suit,t.value),_justDrawn:false}))},
     ],
     discardTile:{...mk(SUIT.K,5),_discardSeat:2},
+  },
+  {
+    // CPU1 (right) upgrades 4-Bamboo pung→kong; CPU3 (left) is waiting on 4-Bam and robs it.
+    // East is round wind (dealerSeat=0). CPU3 hand: East pung (1f) + concealed + no flowers + robbed kong (+1) = 4f.
+    _presetName:'★ Rob Kong Win — CPU3 robs 搶槓胡',
+    _expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
+    _expectedPassWinnerSeat:3,_expectedPassMinFaan:2,
+    _robbingKong:true,robbingKongSeat:1,
+    robbingKongTile:mk(SUIT.B,4),
+    robbingKongTiles:[mk(SUIT.B,4),mk(SUIT.B,4),mk(SUIT.B,4),mk(SUIT.B,4)],
+    robbingKongPungIdx:0,
+    phase:'claim',discardFrom:1,dealerSeat:0,roundWind:'East',discardTile:null,
+    allPlayers:[
+      {seat:0,drawnIdx:null,melds:[],bonus:[],hand:[
+        // Scattered dud — cannot win on 4-Bam
+        mk(SUIT.K,1),mk(SUIT.K,3),mk(SUIT.K,5),mk(SUIT.K,7),mk(SUIT.K,9),
+        mk(SUIT.C,2),mk(SUIT.C,4),mk(SUIT.C,6),mk(SUIT.C,8),
+        mk(SUIT.B,1),mk(SUIT.B,3),mk(SUIT.B,5),mk(SUIT.B,7),
+      ].map(t=>({...t,_justDrawn:false}))},
+      {seat:3,drawnIdx:null,melds:[],bonus:[],hand:[
+        // East×3 (round wind pung 1f) + two circle chows + North pair + Bam 2-3 waiting for 4
+        mk(SUIT.W,'East'),mk(SUIT.W,'East'),mk(SUIT.W,'East'),
+        mk(SUIT.C,4),mk(SUIT.C,5),mk(SUIT.C,6),
+        mk(SUIT.C,7),mk(SUIT.C,8),mk(SUIT.C,9),
+        mk(SUIT.B,2),mk(SUIT.B,3),
+        mk(SUIT.W,'North'),mk(SUIT.W,'North'),
+      ].map(t=>({...t,_justDrawn:false}))},
+    ],
+  },
+  {
+    // CPU1 (right) upgrades 4-Bamboo pung→kong; nobody else can win — kong completes normally.
+    // All seats get dud hands. Expected: no claim options for human (win/pung/kong/chow all false).
+    _presetName:'★ Kong Completes — nobody robs 槓完',
+    _expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
+    _robbingKong:true,robbingKongSeat:1,
+    robbingKongTile:mk(SUIT.B,4),
+    robbingKongTiles:[mk(SUIT.B,4),mk(SUIT.B,4),mk(SUIT.B,4),mk(SUIT.B,4)],
+    robbingKongPungIdx:0,
+    phase:'claim',discardFrom:1,dealerSeat:0,roundWind:'East',discardTile:null,
+    allPlayers:[
+      {seat:0,drawnIdx:null,melds:[],bonus:[],hand:[
+        mk(SUIT.K,1),mk(SUIT.K,3),mk(SUIT.K,5),mk(SUIT.K,7),mk(SUIT.K,9),
+        mk(SUIT.C,2),mk(SUIT.C,4),mk(SUIT.C,6),mk(SUIT.C,8),
+        mk(SUIT.B,1),mk(SUIT.B,3),mk(SUIT.B,5),mk(SUIT.B,7),
+      ].map(t=>({...t,_justDrawn:false}))},
+    ],
   },
 ];
 

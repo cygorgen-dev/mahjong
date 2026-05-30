@@ -364,7 +364,12 @@ function initUI(game) {
       if (_game.phase === PHASE.DISCARD) {
         _game._scheduleOrStep(() => _game.aiPlay(0));
       } else if (_game.phase === PHASE.CLAIM) {
-        _game._scheduleOrStep(() => _game.aiPlay(0));
+        if (_game.claimOptions && _game.claimOptions.robbingKong) {
+          if (_game.claimOptions.win) _game.humanClaim('win', null);
+          else _game.humanPass();
+        } else {
+          _game._scheduleOrStep(() => _game.aiPlay(0));
+        }
       }
       renderAll(); return;
     }
@@ -940,35 +945,6 @@ function renderSeats() {
 function renderDiscard() {
   const el = document.getElementById('discard-pile');
   el.innerHTML = '';
-
-  // During robbing kong: show the kong tile prominently in the center,
-  // and show a pending 4th tile on the kong declarer's meld in renderSeats.
-  // Place the kong tile as if it came from the declarer's seat.
-  if (_game.robbingKongTile && _game.phase === PHASE.CLAIM) {
-    const kt = _game.robbingKongTile;
-    const kSeat = _game.robbingKongSeat ?? 0;
-    // Stamp discard position so renderDiscard places it in that seat's zone
-    kt._discardSeat = kSeat;
-    kt._discardIdxBySeat = 0;
-    // Render it large and centered with a special highlight
-    const W = 668, H = 556;
-    const TW = 46, TH = 66;
-    const te = makeTileEl(kt, { small: true });
-    te.style.left = ((W - TW) / 2) + 'px';
-    te.style.top  = ((H - TH) / 2) + 'px';
-    te.classList.add('last-discard');
-    te.style.transform = 'scale(1.5)';
-    te.style.zIndex = '20';
-    // Label above the tile
-    const lbl = document.createElement('div');
-    lbl.style.cssText = 'position:absolute;left:50%;transform:translateX(-50%);top:' +
-      ((H - TH) / 2 - 22) + 'px;background:rgba(180,60,0,0.92);color:#fff;font-size:11px;' +
-      'font-weight:800;padding:2px 8px;border-radius:4px;white-space:nowrap;z-index:21;';
-    lbl.textContent = `🀄 ${seatName(kSeat)} upgrading → Kong`;
-    el.appendChild(lbl);
-    el.appendChild(te);
-    return;
-  }
 
   // Discard area dimensions (must match CSS #discard-pile)
   // Discard area dimensions — inset from wall (matches CSS top:26 left:26 width:668 height:488)

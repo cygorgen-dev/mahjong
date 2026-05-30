@@ -459,6 +459,16 @@ class Game {
         this.phase = PHASE.CLAIM;
         this.addLog(`${playerTag(p)} declares Kong 槓 ${tileMain(t)} — can be robbed!`);
         this.onUpdate('claim-prompt');
+        if (window.AUTO_MODE) {
+          this._scheduleOrStep(() => {
+            if (this.robbingKongSeat === null) return;
+            if (this.claimOptions && this.claimOptions.win) {
+              this.humanClaim('win', null);
+            } else {
+              this.humanPass();
+            }
+          });
+        }
         return;
       }
     }

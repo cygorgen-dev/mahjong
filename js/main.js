@@ -824,6 +824,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     game.currentSeat = kongSeat;
     game.discardSeat = kongSeat;
+    game.phase = PHASE.CLAIM;
 
     renderAll();
 
@@ -842,6 +843,107 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextVariant = _robVariants[_robVariantIdx];
     const nextLabel = { A:'Human 搶槓', B:'AI 搶槓', C:'Both 搶槓', D:'Nobody 搶槓' };
     document.getElementById('demo-rob-btn').textContent = `Demo Rob: ${nextLabel[nextVariant]}`;
+  });
+
+  // ---- Test: Rob Win 搶槓胡 — CPU1 upgrades pung→kong, CPU3 robs and wins ----
+  document.getElementById('test-rob-win-btn')?.addEventListener('click', (e) => { e.stopPropagation();
+    let _tid = 9000;
+    const T = (suit, value) => ({ id: _tid++, suit, value, _justDrawn: false });
+
+    // Suppress auto-advance during reset so startTurn(0) doesn't queue a stray aiPlay
+    const origSchedule = game._scheduleOrStep.bind(game);
+    game._scheduleOrStep = () => {};
+    game.reset();
+    game._scheduleOrStep = origSchedule;
+
+    // after reset: roundWind='East', dealerSeat=0
+    const kongTile = T(SUIT.BAMBOO, 4);
+    const pungTiles = [T(SUIT.BAMBOO,4), T(SUIT.BAMBOO,4), T(SUIT.BAMBOO,4)];
+
+    // CPU1 (seat 1): pung of 4-Bam in melds, 4th tile in hand
+    const cpu1 = game.players[1];
+    cpu1.melds = [
+      { type:'pung', claimed:true, tiles: pungTiles },
+      { type:'chow', claimed:true, tiles:[T(SUIT.CHAR,7),T(SUIT.CHAR,8),T(SUIT.CHAR,9)] },
+    ];
+    cpu1.hand = [
+      kongTile,
+      T(SUIT.CHAR,1),T(SUIT.CHAR,2),T(SUIT.CHAR,3),
+      T(SUIT.CHAR,4),T(SUIT.CHAR,5),T(SUIT.CHAR,6),
+      T(SUIT.BAMBOO,1),
+    ];
+    cpu1.bonus = [];
+
+    // CPU3 (seat 3): waiting on 4-Bam. East pung = round wind = 1f, +1 robbed = 2f total
+    const cpu3 = game.players[3];
+    cpu3.melds = [];
+    cpu3.hand = [
+      T(SUIT.WIND,'East'), T(SUIT.WIND,'East'), T(SUIT.WIND,'East'), // pung East (round wind 1f)
+      T(SUIT.CIRCLE,4), T(SUIT.CIRCLE,5), T(SUIT.CIRCLE,6),
+      T(SUIT.CIRCLE,7), T(SUIT.CIRCLE,8), T(SUIT.CIRCLE,9),
+      T(SUIT.BAMBOO,2), T(SUIT.BAMBOO,3),   // waiting for 4-Bam!
+      T(SUIT.WIND,'North'), T(SUIT.WIND,'North'),  // pair
+    ];
+    cpu3.bonus = [];
+
+    // Human and CPU2: dud hands (cannot rob)
+    const makeDud = () => { const h=[]; for(let j=0;j<13;j++) h.push(T(SUIT.CHAR,(j%9)+1)); return h; };
+    game.players[0].hand = makeDud(); game.players[0].melds = []; game.players[0].bonus = [];
+    game.players[2].hand = makeDud(); game.players[2].melds = []; game.players[2].bonus = [];
+
+    game.discardPile = []; game.discard = null; game.discardSeat = null;
+    game.claimOptions = null; game.pendingClaims = [];
+    game.currentSeat = 1;
+    game.phase = PHASE.DISCARD;
+
+    addMsg('<strong>Test: Rob Win</strong> — CPU1 (seat 1) upgrades 4-Bamboo pung→Kong. CPU3 (seat 3) is waiting on 4-Bam and can rob it (East pung + Robbed Kong = 2 faan). <em>HUMAN mode: click Pass to let CPU3 rob and win.</em>');
+    renderAll();
+    game.doSelfKong(1, [kongTile, ...pungTiles]);
+    renderAll();
+  });
+
+  // ---- Test: Kong Completes 槓完 — CPU1 upgrades pung→kong, nobody robs, game continues ----
+  document.getElementById('test-kong-done-btn')?.addEventListener('click', (e) => { e.stopPropagation();
+    let _tid = 9500;
+    const T = (suit, value) => ({ id: _tid++, suit, value, _justDrawn: false });
+
+    const origSchedule = game._scheduleOrStep.bind(game);
+    game._scheduleOrStep = () => {};
+    game.reset();
+    game._scheduleOrStep = origSchedule;
+
+    const kongTile = T(SUIT.BAMBOO, 4);
+    const pungTiles = [T(SUIT.BAMBOO,4), T(SUIT.BAMBOO,4), T(SUIT.BAMBOO,4)];
+
+    // CPU1 (seat 1): pung of 4-Bam in melds, 4th tile in hand
+    const cpu1 = game.players[1];
+    cpu1.melds = [
+      { type:'pung', claimed:true, tiles: pungTiles },
+      { type:'chow', claimed:true, tiles:[T(SUIT.CHAR,7),T(SUIT.CHAR,8),T(SUIT.CHAR,9)] },
+    ];
+    cpu1.hand = [
+      kongTile,
+      T(SUIT.CHAR,1),T(SUIT.CHAR,2),T(SUIT.CHAR,3),
+      T(SUIT.CHAR,4),T(SUIT.CHAR,5),T(SUIT.CHAR,6),
+      T(SUIT.BAMBOO,1),
+    ];
+    cpu1.bonus = [];
+
+    // All others: dud hands — nobody can rob
+    const makeDud = () => { const h=[]; for(let j=0;j<13;j++) h.push(T(SUIT.CHAR,(j%9)+1)); return h; };
+    game.players[0].hand = makeDud(); game.players[0].melds = []; game.players[0].bonus = [];
+    game.players[2].hand = makeDud(); game.players[2].melds = []; game.players[2].bonus = [];
+    game.players[3].hand = makeDud(); game.players[3].melds = []; game.players[3].bonus = [];
+
+    game.discardPile = []; game.discard = null; game.discardSeat = null;
+    game.claimOptions = null; game.pendingClaims = [];
+    game.currentSeat = 1;
+    game.phase = PHASE.DISCARD;
+
+    addMsg('<strong>Test: Kong Completes</strong> — CPU1 (seat 1) upgrades 4-Bamboo pung→Kong. Nobody can rob. Kong completes immediately: CPU1 draws a replacement tile, discards, and the game continues.');
+    renderAll();
+    game.doSelfKong(1, [kongTile, ...pungTiles]);
+    renderAll();
   });
 
   // ---- Demo Overflow 溢: extreme side-player layouts to verify claim-column capping ----
@@ -1111,7 +1213,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const human = game.players[0];
 
-      if (s.phase === 'claim') {
+      if (s._robbingKong) {
+        // Robbing-kong scenario: a CPU player upgrades pung→kong, others may rob
+        const kongSeat = s.robbingKongSeat ?? 1;
+        const kongTile = s.robbingKongTile ? { ...s.robbingKongTile } : null;
+        game.robbingKongSeat     = kongSeat;
+        game.robbingKongTile     = kongTile;
+        game.robbingKongTiles    = (s.robbingKongTiles || []).map(t => ({...t}));
+        game.robbingKongPungIdx  = s.robbingKongPungIdx ?? 0;
+        game.discard = null;
+        game.discardSeat = kongSeat;
+
+        let humanCanRob = false;
+        const aiRobbers = [];
+        const minFRob = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
+        if (kongTile) {
+          // Check human
+          const hCtx = game.makeCtx(0, false); hCtx.robbedKong = true;
+          const hRes = canWin([...human.hand, kongTile], human.melds, hCtx);
+          if (hRes.win && hRes.faan >= minFRob) humanCanRob = hRes;
+          // Check AIs
+          for (let i = 1; i <= 3; i++) {
+            const s2 = (kongSeat + i) % 4;
+            if (s2 === 0) continue;
+            const ap = game.players[s2];
+            const aCtx = game.makeCtx(s2, false); aCtx.robbedKong = true;
+            const aRes = canWin([...ap.hand, kongTile], ap.melds, aCtx);
+            if (aRes.win && aRes.faan >= minFRob) aiRobbers.push({ seat: s2, result: aRes });
+          }
+          // Counter-clockwise priority
+          const hDiff = (0 - kongSeat + 4) % 4;
+          if (humanCanRob) {
+            const closerAI = aiRobbers.find(r => ((r.seat - kongSeat + 4) % 4) < hDiff);
+            if (closerAI) humanCanRob = false;
+          }
+          aiRobbers.sort((a, b) => ((a.seat - kongSeat + 4) % 4) - ((b.seat - kongSeat + 4) % 4));
+        }
+
+        if (humanCanRob || aiRobbers.length > 0) {
+          game.claimOptions  = { win: humanCanRob, pung: false, kong: false, chow: false, robbingKong: true };
+          game.pendingClaims = aiRobbers.map(r => ({ seat: r.seat, action: 'win', result: r.result }));
+          game.phase = PHASE.CLAIM;
+        } else {
+          game.claimOptions  = null;
+          game.pendingClaims = [];
+          game.phase = PHASE.DISCARD; // nobody can rob — no pause
+        }
+      } else if (s.phase === 'claim') {
         game.phase = 'claim';
         const discardSeat = s.discardFrom ?? 1;
         game.discardSeat = discardSeat;
@@ -1163,7 +1311,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Compute post-PASS winner: which AI player wins if human presses Pass?
       let passWinnerSeat = null, passWinFaan = null, passWinLabel = null;
-      if (game.phase === PHASE.CLAIM && game.discard && game.pendingClaims && game.pendingClaims.length > 0) {
+      if (game.phase === PHASE.CLAIM && game.robbingKongSeat !== null && game.pendingClaims.length > 0) {
+        // Robbing-kong: best pending robber wins on pass
+        const minFpw = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
+        const robbers = game.pendingClaims.filter(c => c.action === 'win' && c.result?.faan >= minFpw);
+        if (robbers.length > 0) {
+          passWinnerSeat = robbers[0].seat;
+          passWinFaan    = robbers[0].result.faan;
+          passWinLabel   = robbers[0].result.label;
+        }
+      } else if (game.phase === PHASE.CLAIM && game.discard && game.pendingClaims && game.pendingClaims.length > 0) {
         const fromSeat = game.discardSeat ?? 0;
         const winClaims = game.pendingClaims
           .filter(c => c.action === 'win')
