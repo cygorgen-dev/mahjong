@@ -110,19 +110,20 @@ function onGameUpdate(event) {
       const sl = document.getElementById('sprint-status-label');
       if (sl) sl.textContent = `H${window._sprintDone}/${window._sprintTarget} — running…`;
       renderAll();
+      const delay = window._sprintDisplayMs ?? 1500;
       if (window._sprintDone < window._sprintTarget) {
         setTimeout(() => {
           if (window.AUTO_MODE !== 'sprint') return; // user cancelled
           window._clearTileCache?.();
           game.nextDeal();
-        }, 800);
+        }, delay);
       } else {
         setTimeout(() => {
           window._setAutoMode?.(null);
           const sl2 = document.getElementById('sprint-status-label');
           if (sl2) sl2.textContent = `✅ Done — ${window._sprintDone} hands`;
           renderAll();
-        }, 800);
+        }, delay);
       }
     }
     // skip render for all non-terminal events

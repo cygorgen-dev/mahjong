@@ -9,7 +9,7 @@
 <body>
   <div id="app" class="sidebar-open">
     <header>
-      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0530-346</span></h1>
+      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0530-348</span></h1>
       <div id="message"></div>
       <div id="info-bar">
         <button id="new-game-btn">New Game</button>
@@ -217,6 +217,17 @@
           <input type="number" id="sprint-count-input" min="1" max="5000" value="50" class="sb-input" style="width:52px;" title="Number of hands to sprint" />
           <button id="sprint-fast-btn" style="font-size:12px;padding:2px 8px;background:#1a5a3a;color:#5dde7a;border:1px solid #2a7a4a;border-radius:4px;cursor:pointer;font-weight:700;" title="Run N hands instantly — auto-advance after each">🚀 Fast</button>
           <button id="sprint-browse-btn" style="font-size:12px;padding:2px 8px;background:#1a3a5a;color:#7dffff;border:1px solid #2a5a8a;border-radius:4px;cursor:pointer;font-weight:700;" title="Run each hand instantly, pause after each to examine logs and board">🔍 Browse</button>
+        </div>
+        <div class="sidebar-row" style="margin-top:2px;align-items:center;gap:4px;">
+          <label class="sb-label" style="color:#777;font-size:9px;">show for</label>
+          <select id="sprint-display-ms" class="sb-select" style="font-size:10px;" title="How long each hand result stays visible before auto-advancing (Fast sprint only)">
+            <option value="500">0.5 s</option>
+            <option value="800">0.8 s</option>
+            <option value="1500" selected>1.5 s</option>
+            <option value="2000">2 s</option>
+            <option value="3000">3 s</option>
+            <option value="5000">5 s</option>
+          </select>
         </div>
         <div id="sprint-status-label" style="font-size:11px;color:#aaa;margin-top:3px;min-height:14px;"></div>
       </div>
