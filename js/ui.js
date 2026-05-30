@@ -176,9 +176,10 @@ function initUI(game) {
 
   function _sprintStart(mode) {
     const n = parseInt(document.getElementById('sprint-count-input')?.value, 10) || 50;
-    window._sprintTarget = Math.max(1, Math.min(5000, n));
-    window._sprintDone   = 0;
-    window._sprintLog    = [];
+    window._sprintTarget    = Math.max(1, Math.min(5000, n));
+    window._sprintDone      = 0;
+    window._sprintLog       = [];
+    window._sprintStartScores = _game ? _game.players.map(p => p.score) : null;
     setAutoMode(mode);
     if (_game) {
       _tileElCache.clear();
@@ -1234,15 +1235,49 @@ function renderSprintLog() {
   const names     = log[0]?.scores?.map(s => s.name) ?? ['You','CPU1','CPU2','CPU3'];
   const lastScores = log[log.length - 1]?.scores ?? [];
 
-  const wSummary = names.map((n, i) =>
-    `<span style="color:${SPRINT_COLORS[i]}">${n}:${wins[i]}w</span>`).join(' ');
-  statsEl.innerHTML =
-    `<b>H${done}/${target}</b> — ${wSummary} Draw:${drawCount} · Avg ${avgFaan}f` +
-    (lastScores.length >= 4
-      ? `<br>Scores: ${lastScores.map((s, i) =>
-          `<span style="color:${s.score < 0 ? '#ff6666' : SPRINT_COLORS[i]}">${s.score}</span>`
-        ).join(' | ')}`
-      : '');
+  const drawRate   = log.length > 0 ? Math.round(drawCount / log.length * 100) : 0;
+  const startSc    = window._sprintStartScores ?? null;
+
+  let statsHtml = `<b>H${done}/${target}</b>`;
+  if (drawCount > 0) statsHtml += ` · ${drawCount} draw${drawCount > 1 ? 's' : ''} (${drawRate}%)`;
+  statsHtml += ` · Avg ${avgFaan}f`;
+
+  // Per-player table: name | W | W% | ΔPts | AvgF | Best
+  statsHtml += `<table style="width:100%;font-size:9px;font-family:'Courier New',monospace;` +
+    `border-collapse:collapse;margin-top:5px;line-height:1.7;">` +
+    `<tr style="color:#444;"><td></td>` +
+    `<td title="Wins">W</td><td title="Win rate">W%</td>` +
+    `<td title="Score delta over all hands">ΔPts</td>` +
+    `<td title="Average faan per win">AvgF</td>` +
+    `<td title="Best single hand faan">Best</td></tr>`;
+
+  names.forEach((name, i) => {
+    const w        = wins[i];
+    const winPct   = log.length > 0 ? Math.round(w / log.length * 100) : 0;
+    const delta    = startSc && lastScores[i]
+      ? lastScores[i].score - startSc[i]
+      : log.reduce((s, e) => s + (e.scores[i]?.delta ?? 0), 0);
+    const dStr     = delta >= 0 ? `+${delta}` : `${delta}`;
+    const dColor   = delta > 0 ? '#5dde7a' : delta < 0 ? '#ff6666' : '#777';
+    const pwins    = log.filter(e => e.winnerSeat === i);
+    const pAvg     = pwins.length > 0
+      ? (pwins.reduce((s, e) => s + e.faan, 0) / pwins.length).toFixed(1) + 'f'
+      : '—';
+    const best     = pwins.length > 0 ? Math.max(...pwins.map(e => e.faan)) : 0;
+    const bestStr  = best > 0 ? `${best}f` : '—';
+    const bestCol  = best >= 6 ? '#ffd34d' : '#777';
+    const nc       = lastScores[i]?.score < 0 ? '#ff4444' : SPRINT_COLORS[i];
+    statsHtml += `<tr>` +
+      `<td style="color:${nc};font-weight:700;">${name.slice(0, 4)}</td>` +
+      `<td>${w}</td>` +
+      `<td style="color:#666;">${winPct}%</td>` +
+      `<td style="color:${dColor};">${dStr}</td>` +
+      `<td>${pAvg}</td>` +
+      `<td style="color:${bestCol};">${bestStr}</td>` +
+      `</tr>`;
+  });
+  statsHtml += `</table>`;
+  statsEl.innerHTML = statsHtml;
 
   // Per-hand rows — most recent first, only re-render if count changed
   if (bodyEl.dataset.count === String(log.length)) return; // nothing new

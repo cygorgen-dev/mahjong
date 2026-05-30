@@ -84,7 +84,7 @@ function _sprintRecordHand() {
   const r = game.lastResult;
   const prev = window._sprintLog.length > 0
     ? window._sprintLog[window._sprintLog.length - 1].scores
-    : null;
+    : window._sprintStartScores?.map((score, i) => ({ score, name: game?.players[i]?.name ?? '' })) ?? null;
   const scores = game.players.map((p, i) => ({
     name: p.name,
     score: p.score,
