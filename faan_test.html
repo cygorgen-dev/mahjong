@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Faan Regression Tests</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Segoe UI", system-ui, sans-serif; background: #07301a; color: #f0f0f0; padding: 14px; font-size: 12px; }
+h1   { color: #ffd34d; font-size: 15px; margin-bottom: 8px; }
+h2   { color: #ffd34d; font-size: 11px; margin: 14px 0 3px; padding: 3px 7px;
+       background: rgba(255,211,77,.07); border-left: 3px solid #ffd34d; }
+/* Options bar */
+.opts { display:flex; gap:14px; flex-wrap:wrap; align-items:center;
+        background:#05200f; border:1px solid #1a5c2a; border-radius:6px;
+        padding:8px 12px; margin-bottom:10px; font-size:11px; }
+.opts strong { color:#ffd34d; }
+.opts label { display:flex; align-items:center; gap:5px; cursor:pointer; color:#ccc; }
+.opts select { background:#0b3d1f; color:#fff; border:1px solid #2a8b4e;
+               border-radius:3px; padding:2px 4px; font-size:11px; }
+.opts .note  { color:#777; font-size:10px; border-left:1px solid #2a4a2a; padding-left:10px; }
+/* Summary */
+.summary { font-size:13px; font-weight:700; padding:6px 12px; border-radius:5px;
+           display:inline-block; margin-bottom:2px; }
+.summary.all-pass { background:#1a5c2a; color:#5dde7a; }
+.summary.has-fail  { background:#5c1a1a; color:#ff6666; }
+/* Tables */
+table { border-collapse:collapse; width:100%; margin-bottom:2px; }
+th  { background:#05200f; color:#ffd34d; padding:4px 8px; text-align:left;
+      font-size:10px; position:sticky; top:0; }
+td  { padding:4px 8px; border-bottom:1px solid #1a3d28; vertical-align:top; }
+tr.pass td:first-child { border-left:3px solid #5dde7a; }
+tr.fail td:first-child { border-left:3px solid #e03030; }
+tr.skip td { opacity:.45; }
+tr.skip td:first-child { border-left:3px solid #555; }
+.badge { display:inline-block; font-size:9px; font-weight:800;
+         padding:1px 5px; border-radius:3px; }
+.badge.pass { background:#1a5c2a; color:#5dde7a; }
+.badge.fail { background:#5c1a1a; color:#ff6666; }
+.badge.skip { background:#333; color:#888; }
+.name { font-weight:700; font-size:11px; }
+.opt-tag { font-size:9px; color:#8ad4ff; background:rgba(138,212,255,.1);
+           padding:1px 5px; border-radius:3px; margin-left:4px; }
+.got  { color:#ffd34d; }
+.exp  { color:#8ad4ff; }
+.lbl  { color:#888; font-size:10px; word-break:break-word; max-width:350px; }
+.note-text { color:#556; font-size:10px; }
+</style>
+</head>
+<body>
+<h1>Faan Regression Tests</h1>
+
+<!-- ── Live option controls ─────────────────────────────────── -->
+<div class="opts">
+  <strong>Test options:</strong>
+
+  <label>
+    Max Faan cap
+    <select id="opt-max-faan">
+      <option value="0" selected>0 (no cap — test default)</option>
+      <option value="7">7 (game default)</option>
+      <option value="13">13</option>
+    </select>
+  </label>
+
+  <label>
+    <input type="checkbox" id="opt-seven-pairs"> Seven Pairs enabled
+  </label>
+
+  <label>
+    <input type="checkbox" id="opt-last-tile"> Last Tile 海底 enabled
+  </label>
+
+  <span class="note">
+    MIN_FAAN is enforced by the game engine, not by canWin() — no effect on these tests.<br>
+    LAST_TILE_WIN (game.js) only controls whether the game <em>sets</em> ctx.lastTile;
+    scoring tests set ctx.lastTile directly.
+  </span>
+</div>
+
+<div id="summary" class="summary">Running…</div>
+<span id="counts" style="font-size:11px;color:#aaa;margin-left:8px;"></span>
+<button id="rerun-btn" style="margin-left:10px;background:#1a6b3a;color:#fff;border:1px solid #2a8b4e;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;">↻ Re-run</button>
+
+<script src="js/tiles.js"></script>
+<script src="js/scoring.js"></script>
+<script>
+// ── Tile factories ────────────────────────────────────────────────────────────
+let _id = 80000;
+const B  = v => ({ id:_id++, suit:SUIT.BAMBOO, value:v });
+const C  = v => ({ id:_id++, suit:SUIT.CIRCLE,  value:v });
+const K  = v => ({ id:_id++, suit:SUIT.CHAR,    value:v });
+const W  = v => ({ id:_id++, suit:SUIT.WIND,    value:v });
+const D  = v => ({ id:_id++, suit:SUIT.DRAGON,  value:v });
+const Fl = v => ({ id:_id++, suit:SUIT.FLOWER,  value:v });
+const Se = v => ({ id:_id++, suit:SUIT.SEASON,  value:v });
+const rep = (fn, n) => Array.from({length:n}, fn);
+
+// ── Meld factories ────────────────────────────────────────────────────────────
+const cpung = tFn  => { const x=tFn(); return { type:'pung', claimed:true,  tiles:[x,{...x,id:_id++},{...x,id:_id++}] }; };
+const cchow = (a,b,c) =>               ({ type:'chow', claimed:true,  tiles:[a,b,c] });
+
+// ── Context helpers ───────────────────────────────────────────────────────────
+// NEUTRAL base: West seat / North round avoids accidental seat-wind bonus on most test hands.
+// bonusTiles:[]  → No Flowers (+1f)
+// No claimed melds (melds:[]) → canWin sets ctx.concealed=true (+1f)
+const BASE = { selfDraw:false, seatWind:'West', roundWind:'North', bonusTiles:[] };
+const SD   = { ...BASE, selfDraw:true };
+// A bonus tile that does NOT match West seat (Fl(1) = South's flower)
+const HFL  = ctx => ({ ...ctx, bonusTiles:[Fl(1)] });
+
+// ── Test suite definition ─────────────────────────────────────────────────────
+// Each test: { name, hand, melds, ctx, expWin, expFaan, note, globals, requires }
+//   globals  : object of window globals to set for this test (restored after)
+//   requires : 'seven-pairs' | 'last-tile' | null  (skip if option not active)
+//   expFaan  : expected faan AFTER capFaan() — so it depends on MAX_FAAN
+
+const groups = [];
+let gCur;
+const G = name => { gCur = { name, tests:[] }; groups.push(gCur); };
+const T = (name, hand, melds, ctx, expWin, expFaan, note='', globals={}, requires=null) =>
+  gCur.tests.push({ name, hand, melds, ctx, expWin, expFaan, note, globals, requires });
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Common Hand 平胡 (1f) — all four sets are chows');
+// ════════════════════════════════════════════════════════════════════════════
+
+T('Pure Common Hand → 3f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), B(5),B(5)],
+  [], BASE, true, 3, 'CH(1)+NF(1)+Conc(1)');
+
+T('Common Hand + Self Draw → 4f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), B(5),B(5)],
+  [], SD, true, 4, 'CH(1)+SD(1)+NF(1)+Conc(1)');
+
+T('Honor pair OK in Common Hand (Cantonese rule) → 3f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), W('East'),W('East')],
+  [], BASE, true, 3, 'CH(1)+NF(1)+Conc(1); Cantonese 平胡 has no number-pair restriction');
+
+T('Pung present → Common Hand does NOT apply → 2f',
+  [...rep(()=>B(1),3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), B(5),B(5)],
+  [], BASE, true, 2, 'No CH; NF(1)+Conc(1)');
+
+T('Bug fix: Mixed Suit + Common Hand + Self Draw via claimed chow → 5f',
+  [B(4),B(5),B(6), B(7),B(8),B(9), B(1),B(2),B(3), W('East'),W('East')],
+  [cchow(B(1),B(2),B(3))],
+  HFL(SD), true, 5,
+  'CH(1)+MOS(3)+SD(1); claimed chow→no Conc; has bonus tile→no NF');
+
+// ════════════════════════════════════════════════════════════════════════════
+G('All Triplets 對對胡 (3f) — all four sets are pungs/kongs');
+// ════════════════════════════════════════════════════════════════════════════
+
+T('All Triplets → 5f',
+  [...rep(()=>B(1),3), ...rep(()=>K(2),3), ...rep(()=>C(3),3), ...rep(()=>B(4),3), K(5),K(5)],
+  [], BASE, true, 5, 'AT(3)+NF(1)+Conc(1)');
+
+T('All Triplets + Self Draw → 6f',
+  [...rep(()=>B(1),3), ...rep(()=>K(2),3), ...rep(()=>C(3),3), ...rep(()=>B(4),3), K(5),K(5)],
+  [], SD, true, 6, 'AT(3)+SD(1)+NF(1)+Conc(1)');
+
+T('All Triplets, claimed pung → no Conc, no NF → 3f',
+  [...rep(()=>K(2),3), ...rep(()=>C(3),3), ...rep(()=>B(4),3), K(5),K(5)],
+  [cpung(()=>B(1))],
+  HFL(BASE), true, 3, 'AT(3); claimed→no Conc; has bonus→no NF');
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Dragon Pungs: Red(1f) / Green(1f) / White(1f); Small Dragons 小三元(5f); Big Dragons 大三元(8f)');
+// ════════════════════════════════════════════════════════════════════════════
+// Note: code gives individual dragon pung bonus AND Small/Big Dragon bonus.
+
+T('Dragon pung – Red → 3f',
+  [...rep(()=>D('red'),3), B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(5),C(5)],
+  [], BASE, true, 3, 'DP_red(1)+NF(1)+Conc(1)');
+
+T('Dragon pung – Green → 3f',
+  [...rep(()=>D('green'),3), B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(5),C(5)],
+  [], BASE, true, 3, 'DP_green(1)+NF(1)+Conc(1)');
+
+T('Dragon pung – White → 3f',
+  [...rep(()=>D('white'),3), B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(5),C(5)],
+  [], BASE, true, 3, 'DP_white(1)+NF(1)+Conc(1)');
+
+// 2 dragon pungs + dragon pair → Small Dragons(5) + individual DP×2 + MOS(bamboo+dragons)(3)
+T('Small Dragons 小三元 → 12f',
+  [...rep(()=>D('red'),3), ...rep(()=>D('green'),3), B(1),B(2),B(3), B(4),B(5),B(6), D('white'),D('white')],
+  [], BASE, true, 12, 'DP_red(1)+DP_green(1)+SmDragon(5)+MOS(3)+NF(1)+Conc(1)');
+
+// 3 dragon pungs → Big Dragons(8) + individual DP×3 + MOS(bamboo+dragons)(3)
+T('Big Dragons 大三元 → 16f',
+  [...rep(()=>D('red'),3), ...rep(()=>D('green'),3), ...rep(()=>D('white'),3), B(1),B(2),B(3), B(5),B(5)],
+  [], BASE, true, 16, 'DP_red(1)+DP_green(1)+DP_white(1)+BigDragon(8)+MOS(3)+NF(1)+Conc(1)');
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Wind Pungs: seat(+1f) / round(+1f); Small Winds 小四喜(6f); Big Winds 大四喜(13f)');
+// ════════════════════════════════════════════════════════════════════════════
+
+T('Seat wind match only → 3f',
+  [...rep(()=>W('East'),3), B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(5),C(5)],
+  [], { ...BASE, seatWind:'East', roundWind:'South' }, true, 3,
+  'SeatWind_East(1)+NF(1)+Conc(1)');
+
+T('Round wind match only → 3f',
+  [...rep(()=>W('East'),3), B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(5),C(5)],
+  [], { ...BASE, seatWind:'West', roundWind:'East' }, true, 3,
+  'RoundWind_East(1)+NF(1)+Conc(1)');
+
+T('Seat + Round both match → 4f',
+  [...rep(()=>W('East'),3), B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(5),C(5)],
+  [], { ...BASE, seatWind:'East', roundWind:'East' }, true, 4,
+  'Seat(1)+Round(1)+NF(1)+Conc(1)');
+
+T('Wind pung, no match → 2f',
+  [...rep(()=>W('West'),3), B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(5),C(5)],
+  [], { ...BASE, seatWind:'East', roundWind:'East' }, true, 2,
+  'No wind bonus; NF(1)+Conc(1)');
+
+// Small Winds: 3 wind pungs (E,S,W) + wind pair (N); pair is not a pung → no round-wind pung
+// seat=West → W(West) pung gives +1f; MOS from bamboo chow + wind honors
+T('Small Winds 小四喜 → 12f',
+  [...rep(()=>W('East'),3), ...rep(()=>W('South'),3), ...rep(()=>W('West'),3), B(1),B(2),B(3), W('North'),W('North')],
+  [], { ...BASE, seatWind:'West', roundWind:'North' }, true, 12,
+  'SmWinds(6)+SeatWest(1)+MOS(3)+NF(1)+Conc(1); W(North) is pair not pung→no round bonus');
+
+// Big Winds: 4 wind pungs + bamboo pair; seat=West(+1) round=North(+1); MOS from bamboo pair
+// Raw = AT(3)+BigWinds(13)+Seat(1)+Round(1)+MOS(3)+NF(1)+Conc(1) = 23f
+// Displayed faan depends on MAX_FAAN cap (set by options panel)
+T('Big Winds 大四喜 → 23f',
+  [...rep(()=>W('East'),3), ...rep(()=>W('South'),3), ...rep(()=>W('West'),3), ...rep(()=>W('North'),3), B(5),B(5)],
+  [], { ...BASE, seatWind:'West', roundWind:'North' },
+  true, 23,
+  'AT(3)+BigWinds(13)+Seat(1)+Round(1)+MOS(3)+NF(1)+Conc(1)=23; canWin returns actual faan');
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Suit bonuses: Mixed One Suit 混一色(3f) / Pure One Suit 清一色(7f) / All Honors 字一色(10f)');
+// ════════════════════════════════════════════════════════════════════════════
+
+T('Mixed One Suit – chows → 6f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), B(7),B(8),B(9), B(1),B(2),B(3), W('East'),W('East')],
+  [], BASE, true, 6, 'CH(1)+MOS(3)+NF(1)+Conc(1)');
+
+T('Mixed One Suit – pungs → 8f',
+  [...rep(()=>K(1),3), ...rep(()=>K(3),3), ...rep(()=>K(5),3), ...rep(()=>K(7),3), W('East'),W('East')],
+  [], BASE, true, 8, 'AT(3)+MOS(3)+NF(1)+Conc(1)');
+
+T('Pure One Suit – chows → 10f',
+  [B(1),B(2),B(3), B(3),B(4),B(5), B(5),B(6),B(7), B(7),B(8),B(9), B(4),B(4)],
+  [], BASE, true, 10, 'CH(1)+POS(7)+NF(1)+Conc(1)');
+
+T('Pure One Suit – pungs → 12f',
+  [...rep(()=>B(1),3), ...rep(()=>B(3),3), ...rep(()=>B(5),3), ...rep(()=>B(7),3), B(9),B(9)],
+  [], BASE, true, 12, 'AT(3)+POS(7)+NF(1)+Conc(1)');
+
+// All Honors: seat=West → W(West) pung gives seat(+1f); no Small Winds (pairIsWind=false)
+T('All Honors 字一色 → 17f',
+  [...rep(()=>W('East'),3), ...rep(()=>W('South'),3), ...rep(()=>W('West'),3), ...rep(()=>D('red'),3), D('green'),D('green')],
+  [], { ...BASE, seatWind:'West', roundWind:'North' }, true, 17,
+  'AT(3)+AH(10)+DP_red(1)+SeatWest(1)+NF(1)+Conc(1)');
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Bonus tiles: No Flowers(1f) / Own Flower/Season(1f) / Complete sets(+1f) / 7-8 tiles');
+// ════════════════════════════════════════════════════════════════════════════
+// Hand used for bonus tests: B123 B456 K789 C234 + B5 B5  (4 chows, no suit bonus)
+
+T('No Flowers 無花 (bonusTiles=[]) → +1f baseline → 3f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(2),C(3),C(4), B(5),B(5)],
+  [], BASE, true, 3, 'CH(1)+NF(1)+Conc(1)');
+
+T('Own Flower 正花 (seat=East, Fl[0]=East flower) → 3f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(2),C(3),C(4), B(5),B(5)],
+  [], { ...BASE, seatWind:'East', bonusTiles:[Fl(0)] }, true, 3,
+  'CH(1)+OwnFlower(1)+Conc(1); has bonus→no NF');
+
+T('Own Season 正季 (seat=East, Se[0]=East season) → 3f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(2),C(3),C(4), B(5),B(5)],
+  [], { ...BASE, seatWind:'East', bonusTiles:[Se(0)] }, true, 3,
+  'CH(1)+OwnSeason(1)+Conc(1)');
+
+T('Non-own flower (no own-flower bonus) → 2f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(2),C(3),C(4), B(5),B(5)],
+  [], { ...BASE, seatWind:'East', bonusTiles:[Fl(1)] }, true, 2,
+  'CH(1)+Conc(1); Fl(1)=South flower, seat=East→no own match; has bonus→no NF');
+
+T('All 4 Flowers 百花齊放 (+1f) → 4f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(2),C(3),C(4), B(5),B(5)],
+  [], { ...BASE, seatWind:'East', bonusTiles:[Fl(0),Fl(1),Fl(2),Fl(3)] }, true, 4,
+  'CH(1)+OwnFlower(1)+All4Flowers(+1)+Conc(1)');
+
+T('All 4 Seasons 四季如春 (+1f) → 4f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(2),C(3),C(4), B(5),B(5)],
+  [], { ...BASE, seatWind:'East', bonusTiles:[Se(0),Se(1),Se(2),Se(3)] }, true, 4,
+  'CH(1)+OwnSeason(1)+All4Seasons(+1)+Conc(1)');
+
+// 7 bonus tiles: 3f flat + hand CH(1); own-flower/NF/Conc skipped
+T('7 Bonus Tiles 七花齊放 → 4f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(2),C(3),C(4), B(5),B(5)],
+  [], { ...BASE, seatWind:'East', bonusTiles:[Fl(0),Fl(1),Fl(2),Fl(3),Se(0),Se(1),Se(2)] },
+  true, 4, '7Bonus(3)+hand_CH(1); own-flower/NF/Conc skipped in 7-tile path');
+
+// 8 bonus tiles: 13f flat + hand CH(1) = 14f
+T('8 Bonus Tiles 八仙過海 → 14f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(2),C(3),C(4), B(5),B(5)],
+  [], { ...BASE, seatWind:'East', bonusTiles:[Fl(0),Fl(1),Fl(2),Fl(3),Se(0),Se(1),Se(2),Se(3)] },
+  true, 14, '8Bonus(13)+hand_CH(1)',
+  { MAX_FAAN: 0 });
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Context bonuses: Concealed(1f) / Robbed Kong(1f) / Heavenly / Earthly / Last Tile');
+// ════════════════════════════════════════════════════════════════════════════
+
+T('Concealed (no claimed melds → +1f) → 3f',
+  [...rep(()=>D('red'),3), B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(5),C(5)],
+  [], BASE, true, 3, 'DP_red(1)+NF(1)+Conc(1)');
+
+T('Not concealed (claimed pung → no Conc) → 2f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(7),K(8),K(9), C(5),C(5)],
+  [cpung(()=>D('red'))],
+  BASE, true, 2, 'DP_red(1)+NF(1); claimed pung→Conc=false');
+
+T('Robbed Kong 搶槓胡 (+1f) → 4f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), B(5),B(5)],
+  [], { ...BASE, robbedKong:true }, true, 4,
+  'CH(1)+RobbedKong(1)+NF(1)+Conc(1)');
+
+// Heavenly/Earthly/Last Tile → max faan (13 when MAX_FAAN=0)
+T('Heavenly Hand 天胡 → 13f (MAX_FAAN=0)',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), B(5),B(5)],
+  [], { ...BASE, heavenlyHand:true }, true, 13,
+  'Heavenly Hand → max faan (13 when uncapped)', { MAX_FAAN:0 });
+
+T('Earthly Hand 地胡 → 13f (MAX_FAAN=0)',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), B(5),B(5)],
+  [], { ...BASE, earthlyHand:true }, true, 13,
+  'Earthly Hand → max faan', { MAX_FAAN:0 });
+
+// Last Tile: ctx.lastTile is set by game.js only when LAST_TILE_WIN=true.
+// Scoring just checks ctx.lastTile — we test both states directly.
+T('Last Tile 海底撈月 (ctx.lastTile=true) → 13f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), B(5),B(5)],
+  [], { ...BASE, lastTile:true }, true, 13,
+  'ctx.lastTile=true → max faan; game.js only sets this flag when LAST_TILE_WIN is ON',
+  { MAX_FAAN:0 }, 'last-tile');
+
+T('Last Tile option OFF → ctx.lastTile not set → normal scoring → 3f',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), B(5),B(5)],
+  [], { ...BASE, lastTile:false }, true, 3,
+  'ctx.lastTile=false → CH(1)+NF(1)+Conc(1)=3f; game never sets lastTile when option OFF');
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Seven Pairs 七對子 (4f base) — option-dependent (USE_SEVEN_PAIRS)');
+// ════════════════════════════════════════════════════════════════════════════
+
+T('Seven Pairs, option ON → 5f',
+  [B(1),B(1), B(3),B(3), B(5),B(5), B(7),B(7), B(9),B(9), W('East'),W('East'), K(1),K(1)],
+  [], BASE, true, 5,
+  'SevenPairs(4)+Conc(1); No-Flowers not in 7-pairs path',
+  { USE_SEVEN_PAIRS:true }, 'seven-pairs');
+
+T('Seven Pairs + Self Draw, option ON → 6f',
+  [B(1),B(1), B(3),B(3), B(5),B(5), B(7),B(7), B(9),B(9), W('East'),W('East'), K(1),K(1)],
+  [], SD, true, 6,
+  'SevenPairs(4)+SD(1)+Conc(1)',
+  { USE_SEVEN_PAIRS:true }, 'seven-pairs');
+
+
+T('Seven Pairs, option OFF → no win (not recognized as valid hand)',
+  [B(1),B(1), B(3),B(3), B(5),B(5), B(7),B(7), B(9),B(9), W('East'),W('East'), K(1),K(1)],
+  [], BASE, false, null,
+  'USE_SEVEN_PAIRS=false → seven pairs not a valid hand; no other decomposition possible',
+  { USE_SEVEN_PAIRS:false });
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Thirteen Orphans 十三么 (13f hardcoded)');
+// ════════════════════════════════════════════════════════════════════════════
+
+T('Thirteen Orphans → 13f',
+  [B(1),B(9), C(1),C(9), K(1),K(9), W('East'),W('South'),W('West'),W('North'), D('red'),D('green'),D('white'), D('white')],
+  [], BASE, true, 13, 'Thirteen Orphans 十三么; canWin returns actual 13f regardless of MAX_FAAN');
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Combinations');
+// ════════════════════════════════════════════════════════════════════════════
+
+T('Pure One Suit + Common Hand + Self Draw → 11f',
+  [B(1),B(2),B(3), B(3),B(4),B(5), B(5),B(6),B(7), B(7),B(8),B(9), B(4),B(4)],
+  [], SD, true, 11, 'CH(1)+POS(7)+SD(1)+NF(1)+Conc(1)');
+
+T('Mixed One Suit + All Triplets + Self Draw → 9f',
+  [...rep(()=>K(1),3), ...rep(()=>K(3),3), ...rep(()=>K(5),3), ...rep(()=>K(7),3), W('East'),W('East')],
+  [], SD, true, 9, 'AT(3)+MOS(3)+SD(1)+NF(1)+Conc(1)');
+
+// Dragon + wind pung in same hand
+T('Dragon pung + Seat+Round wind pung + Mixed One Suit → 8f',
+  [...rep(()=>D('red'),3), ...rep(()=>W('East'),3), K(1),K(2),K(3), K(4),K(5),K(6), K(5),K(5)],
+  [], { ...BASE, seatWind:'East', roundWind:'East' }, true, 8,
+  'DP_red(1)+SeatEast(1)+RoundEast(1)+MOS(3)+NF(1)+Conc(1)');
+
+T('Small Dragons + Mixed One Suit + Own Flower → 12f',
+  [...rep(()=>D('red'),3), ...rep(()=>D('green'),3), B(1),B(2),B(3), B(4),B(5),B(6), D('white'),D('white')],
+  [], { ...BASE, seatWind:'South', bonusTiles:[Fl(1)] }, true, 12,
+  'DP_red(1)+DP_green(1)+SmDragon(5)+MOS(3)+OwnFlower(1)+Conc(1)');
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Payout (calcPayout): MAX_FAAN caps points, not reported faan');
+// calcPayout(faan, selfDraw) — faan here is the raw count from canWin()
+// ════════════════════════════════════════════════════════════════════════════
+// Tests use a custom runner below; add them as plain objects.
+// Format: { name, faan, selfDraw, maxFaan, expPayout }
+const payoutTests = [
+  // selfDraw=false (discard win): payout = faanToPoints(min(faan,maxF)) * 4
+  { name:'3f discard, no cap (MAX_FAAN=0)',  faan:3, selfDraw:false, maxFaan:0,  expPayout:32  }, // 8*4
+  { name:'7f discard, no cap',              faan:7, selfDraw:false, maxFaan:0,  expPayout:192 }, // 48*4
+  { name:'23f discard, capped at 7',        faan:23,selfDraw:false, maxFaan:7,  expPayout:192 }, // same as 7f
+  { name:'3f self-draw, no cap',            faan:3, selfDraw:true,  maxFaan:0,  expPayout:16  }, // 8*2
+  { name:'23f self-draw, capped at 7',      faan:23,selfDraw:true,  maxFaan:7,  expPayout:96  }, // 48*2
+  { name:'5f self-draw, capped at 3',       faan:5, selfDraw:true,  maxFaan:3,  expPayout:16  }, // 8*2 (3f cap)
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+G('Non-wins');
+// ════════════════════════════════════════════════════════════════════════════
+
+T('Gap in sequence → no win',
+  [B(1),B(2),B(4), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), W('East'),W('East')],
+  [], BASE, false, null, 'B1-B2-B4 has a gap; decompose returns []');
+
+T('5 sets, no pair → no win',
+  [B(1),B(2),B(3), B(4),B(5),B(6), K(1),K(2),K(3), C(7),C(8),C(9), B(7),B(8),B(9)],
+  [], BASE, false, null, 'No pair found; decompose requires exactly 4 sets + 1 pair');
+
+// ════════════════════════════════════════════════════════════════════════════
+// RUNNER
+// ════════════════════════════════════════════════════════════════════════════
+
+function readOptions() {
+  return {
+    MAX_FAAN:       parseInt(document.getElementById('opt-max-faan').value, 10),
+    USE_SEVEN_PAIRS: document.getElementById('opt-seven-pairs').checked,
+    LAST_TILE_WIN:  document.getElementById('opt-last-tile').checked,
+  };
+}
+
+function runAll() {
+  _id = 80000; // reset tile IDs for deterministic runs
+  const uiOpts = readOptions();
+
+  // Apply panel options as globals
+  window.MAX_FAAN       = uiOpts.MAX_FAAN;
+  window.USE_SEVEN_PAIRS = uiOpts.USE_SEVEN_PAIRS;
+  window.LAST_TILE_WIN  = uiOpts.LAST_TILE_WIN;
+
+  let totalPass = 0, totalFail = 0, totalSkip = 0;
+
+  // Remove existing output
+  document.querySelectorAll('h2, table').forEach(el => el.remove());
+
+  for (const grp of groups) {
+    const h2 = document.createElement('h2');
+    h2.textContent = grp.name;
+    document.body.appendChild(h2);
+
+    const tbl = document.createElement('table');
+    tbl.innerHTML =
+      '<thead><tr>' +
+      '<th style="width:290px">Test</th>' +
+      '<th style="width:46px">Result</th>' +
+      '<th style="width:46px">Got</th>' +
+      '<th style="width:60px">Expected</th>' +
+      '<th>Label · Notes</th>' +
+      '</tr></thead>';
+    const tbody = document.createElement('tbody');
+
+    for (const tc of grp.tests) {
+      // Apply per-test global overrides, saving panel values
+      const saved = {};
+      for (const [k, v] of Object.entries(tc.globals)) {
+        saved[k] = window[k];
+        window[k] = v;
+      }
+
+      // Skip if option requirement not met by panel
+      const skipReason =
+        (tc.requires === 'seven-pairs' && !uiOpts.USE_SEVEN_PAIRS && !('USE_SEVEN_PAIRS' in tc.globals)) ? 'Seven Pairs OFF'
+        : (tc.requires === 'last-tile'   && !uiOpts.LAST_TILE_WIN   && !('LAST_TILE_WIN'   in tc.globals)) ? 'Last Tile OFF'
+        : null;
+
+      let ok, gotStr, badge, rowCls;
+
+      if (skipReason) {
+        totalSkip++;
+        gotStr = 'skip'; badge = 'skip'; rowCls = 'skip'; ok = true; // don't count as fail
+      } else {
+        const result = canWin(tc.hand, tc.melds, { ...tc.ctx });
+        const winOk  = result.win === tc.expWin;
+        const faanOk = tc.expFaan === null ? true : result.faan === tc.expFaan;
+        ok = winOk && faanOk;
+        ok ? totalPass++ : totalFail++;
+        gotStr = result.win ? result.faan + 'f' : 'no win';
+        badge  = ok ? 'pass' : 'fail';
+        rowCls = ok ? 'pass' : 'fail';
+      }
+
+      // Restore globals
+      for (const [k, v] of Object.entries(saved)) window[k] = v;
+
+      const expStr = tc.expFaan !== null ? tc.expFaan + 'f' : (tc.expWin ? 'win' : 'no win');
+      const optTag = Object.keys(tc.globals).map(k => `${k}=${tc.globals[k]}`).join(' ');
+      const tr = document.createElement('tr');
+      tr.className = rowCls;
+      tr.innerHTML =
+        `<td class="name">${tc.name}` +
+          (optTag ? `<span class="opt-tag">${optTag}</span>` : '') +
+        `</td>` +
+        `<td><span class="badge ${badge}">${badge.toUpperCase()}</span></td>` +
+        `<td class="got">${skipReason || gotStr}</td>` +
+        `<td class="exp">${skipReason ? '—' : expStr}</td>` +
+        `<td class="lbl">${skipReason ? `<em>${skipReason}</em>` : (tc.note || '—')}</td>`;
+      tbody.appendChild(tr);
+    }
+    tbl.appendChild(tbody);
+    document.body.appendChild(tbl);
+  }
+
+  // ── Payout tests (calcPayout) ─────────────────────────────────────────────
+  {
+    const h2 = document.createElement('h2');
+    h2.textContent = 'Payout (calcPayout): MAX_FAAN caps points, not reported faan';
+    document.body.appendChild(h2);
+    const tbl = document.createElement('table');
+    tbl.innerHTML =
+      '<thead><tr>' +
+      '<th style="width:310px">Test</th>' +
+      '<th style="width:46px">Result</th>' +
+      '<th style="width:60px">Got</th>' +
+      '<th style="width:60px">Expected</th>' +
+      '<th>Notes</th>' +
+      '</tr></thead>';
+    const tbody = document.createElement('tbody');
+    for (const pt of payoutTests) {
+      window.MAX_FAAN = pt.maxFaan;
+      const got = calcPayout(pt.faan, pt.selfDraw);
+      const ok  = got === pt.expPayout;
+      ok ? totalPass++ : totalFail++;
+      const tr = document.createElement('tr');
+      tr.className = ok ? 'pass' : 'fail';
+      tr.innerHTML =
+        `<td class="name">${pt.name}</td>` +
+        `<td><span class="badge ${ok?'pass':'fail'}">${ok?'PASS':'FAIL'}</span></td>` +
+        `<td class="got">${got}</td>` +
+        `<td class="exp">${pt.expPayout}</td>` +
+        `<td class="lbl">${pt.faan}f × ${pt.selfDraw?'2(SD)':'4(disc)'} pts; MAX_FAAN=${pt.maxFaan||'∞'}</td>`;
+      tbody.appendChild(tr);
+    }
+    tbl.appendChild(tbody);
+    document.body.appendChild(tbl);
+  }
+
+  // Restore panel globals
+  window.MAX_FAAN        = uiOpts.MAX_FAAN;
+  window.USE_SEVEN_PAIRS  = uiOpts.USE_SEVEN_PAIRS;
+  window.LAST_TILE_WIN   = uiOpts.LAST_TILE_WIN;
+
+  const sumEl = document.getElementById('summary');
+  const cntEl = document.getElementById('counts');
+  sumEl.textContent = `${totalPass}/${totalPass+totalFail} passed`;
+  sumEl.className = 'summary ' + (totalFail === 0 ? 'all-pass' : 'has-fail');
+  cntEl.textContent = `${totalFail} failing · ${totalSkip} skipped`;
+}
+
+document.getElementById('rerun-btn').addEventListener('click', runAll);
+document.getElementById('opt-max-faan').addEventListener('change', runAll);
+document.getElementById('opt-seven-pairs').addEventListener('change', runAll);
+document.getElementById('opt-last-tile').addEventListener('change', runAll);
+
+runAll();
+</script>
+</body>
+</html>

@@ -100,17 +100,18 @@ function canWin(hand14, melds, ctx) {
   // Strip bonus from hand
   const hand = hand14.filter(t => !isBonus(t));
 
+  // Concealed if all melds are unclaimed or are concealed kongs.
+  // Set early so Seven Pairs and other special paths can use it.
+  if (ctx) ctx.concealed = melds.every(m => !m.claimed || m.concealed);
+
   // Check special hands
   const sevenPairsEnabled = (typeof USE_SEVEN_PAIRS !== 'undefined') ? USE_SEVEN_PAIRS : true;
   if (sevenPairsEnabled && melds.length === 0 && isSevenPairs(hand)) {
     const f = calcFaanSevenPairs(hand, ctx);
-    const rawFaan = f.total;
-    const cappedFaan = capFaan(rawFaan);
-    return { win: true, faan: cappedFaan, label: f.label, special: '7pairs' };
+    return { win: true, faan: f.total, label: f.label, special: '7pairs' };
   }
   if (melds.length === 0 && isThirteenOrphans(hand)) {
-    const cappedFaan = capFaan(13);
-    return { win: true, faan: cappedFaan, label: 'Thirteen Orphans 十三么', special: '13orphans' };
+    return { win: true, faan: 13, label: 'Thirteen Orphans 十三么', special: '13orphans' };
   }
   if (ctx.firstDraw && melds.length === 0) {
     // Heavenly/Earthly handled by game logic
@@ -136,17 +137,13 @@ function canWin(hand14, melds, ctx) {
       }
       if (best7) { handFaan = best7.total; handLabel = best7.label; }
     }
-    const totalFaan = capFaan(bonusBaseFaan + handFaan);
+    const totalFaan = bonusBaseFaan + handFaan;
     const fullLabel = handLabel ? `${bonusLabel}, ${handLabel}` : bonusLabel;
     return { win: true, faan: totalFaan, label: fullLabel, special: 'bonus-win' };
   }
 
   // Concealed kongs don't break concealed hand status
   const effectiveMelds = melds.map(m => m.concealed ? { ...m, claimed: false } : m);
-  if (ctx) {
-    // Override concealed flag: concealed if all melds are either not claimed or are concealed kongs
-    ctx.concealed = melds.every(m => !m.claimed || m.concealed);
-  }
   const decomps = decompose(hand, effectiveMelds);
   if (decomps.length === 0) return { win: false };
 
@@ -157,8 +154,7 @@ function canWin(hand14, melds, ctx) {
     if (!best || f.total > best.total) best = { ...f, decomp: d };
   }
   if (!best) return { win: false, faan: 0, label: '' };
-  const cappedFaan = capFaan(best.total);
-  return { win: true, faan: cappedFaan, label: best.label, decomp: best.decomp };
+  return { win: true, faan: best.total, label: best.label, decomp: best.decomp };
 }
 
 function calcFaanSevenPairs(hand, ctx) {
@@ -177,9 +173,8 @@ function calcFaan(decomp, hand, ctx) {
   const pungs = sets.filter(s => s.type === 'pung' || s.type === 'kong');
   const chows = sets.filter(s => s.type === 'chow');
 
-  // --- Common Hand (平胡): all chows + pair not a honor
-  const pairIsNumber = pair && [SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR].includes(pair.tiles[0].suit);
-  if (chows.length === 4 && pairIsNumber && !ctx.selfDraw) {
+  // --- Common Hand (平胡): all four sets are chows (no pair restriction in Cantonese rules)
+  if (chows.length === 4) {
     faan += 1; labels.push('Common Hand 平胡 (1f)');
   }
 

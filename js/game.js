@@ -812,7 +812,7 @@ class Game {
     this.phase = PHASE.END;
     const p = this.players[winnerSeat];
     const selfDraw = loserSeat === null;
-    const base = faanToPoints(result.faan);
+    const base = faanToPoints(capFaan(result.faan));
     this.addLog(`🏆 ${playerTag(this.players[winnerSeat])} WINS! ${result.faan} faan — ${result.label}`);
 
     // Save pre-win scores NOW so shareState() can compute correct deltas
