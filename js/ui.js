@@ -73,34 +73,36 @@ function initUI(game) {
   const btnFast  = document.getElementById('auto-btn-fast');
 
   function setAutoMode(mode) {
-    // mode: null/'human' = manual, 'slow', 'fast'
-    window.AUTO_MODE = (mode === 'slow' || mode === 'fast') ? mode : null;
+    const isSprint = mode === 'sprint' || mode === 'sprint_slow';
+    window.AUTO_MODE = (mode === 'slow' || mode === 'fast' || isSprint) ? mode : null;
     window.AUTO_USER_LEVEL = parseInt(autoLevelSel?.value, 10) || 1;
 
-    // Update button active states
+    // Update button active states (sprint has no persistent button)
     [btnHuman, btnSlow, btnFast].forEach(b => b?.classList.remove('active-mode'));
     if (!window.AUTO_MODE) btnHuman?.classList.add('active-mode');
     else if (mode === 'slow') btnSlow?.classList.add('active-mode');
     else if (mode === 'fast') btnFast?.classList.add('active-mode');
 
     const active = !!window.AUTO_MODE;
-    if (autoLevelRow) autoLevelRow.style.display = ''; // always visible
+    if (autoLevelRow) autoLevelRow.style.display = '';
     if (autoStatus) {
-      autoStatus.style.display = active ? '' : 'none';
+      autoStatus.style.display = (active && !isSprint) ? '' : 'none';
       autoStatus.textContent = mode === 'fast'
         ? 'Fast: auto plays — click Pass 通 at hand end.'
         : mode === 'slow' ? 'Slow: step-by-step.' : '';
     }
 
-    // Cancel any autorun when returning to Human
-    if (!window.AUTO_MODE) {
+    // Cancel any autorun when returning to Human (or starting sprint)
+    if (!window.AUTO_MODE || isSprint) {
       if (window._autorunTimer) { clearTimeout(window._autorunTimer); window._autorunTimer = null; }
-      window._autorunLeft = 0;
-      delete window._autorunPrevMode;
-      const ainp = document.getElementById('autorun-count');
-      if (ainp) ainp.value = '0';
-      const albl = document.getElementById('autorun-label');
-      if (albl) albl.textContent = '';
+      if (!isSprint) {
+        window._autorunLeft = 0;
+        delete window._autorunPrevMode;
+        const ainp = document.getElementById('autorun-count');
+        if (ainp) ainp.value = '0';
+        const albl = document.getElementById('autorun-label');
+        if (albl) albl.textContent = '';
+      }
     }
     // If switching TO manual while game is waiting on human, just let them continue
     if (!window.AUTO_MODE && _game) {
@@ -120,8 +122,9 @@ function initUI(game) {
     }
   }
 
-  // Expose for tickAutorun (which lives outside initUI closure)
+  // Expose for tickAutorun and sprint (which live outside initUI closure)
   window._setAutoMode = setAutoMode;
+  window._clearTileCache = () => _tileElCache.clear();
 
   btnHuman?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -169,6 +172,34 @@ function initUI(game) {
   autoLevelSel?.addEventListener('change', (e) => {
     e.stopPropagation();
     window.AUTO_USER_LEVEL = parseInt(e.target.value, 10) || 1;
+  });
+
+  function _sprintStart(mode) {
+    const n = parseInt(document.getElementById('sprint-count-input')?.value, 10) || 50;
+    window._sprintTarget = Math.max(1, Math.min(5000, n));
+    window._sprintDone   = 0;
+    window._sprintLog    = [];
+    setAutoMode(mode);
+    if (_game) {
+      _tileElCache.clear();
+      _game.nextDeal();   // runs synchronously in sprint — entire first hand completes here
+      renderAll();
+    }
+  }
+
+  document.getElementById('sprint-fast-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation(); _sprintStart('sprint');
+  });
+  document.getElementById('sprint-browse-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation(); _sprintStart('sprint_slow');
+  });
+  document.getElementById('sprint-clear-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window._sprintLog  = [];
+    window._sprintDone = 0;
+    const sl = document.getElementById('sprint-status-label');
+    if (sl) sl.textContent = '';
+    document.getElementById('sprint-log-section').style.display = 'none';
   });
 
   document.getElementById('new-game-btn').addEventListener('click', (e) => {
@@ -357,6 +388,15 @@ function initUI(game) {
     }
     if (_game.phase === PHASE.END) {
       if (window._autorunTimer) { clearTimeout(window._autorunTimer); window._autorunTimer = null; }
+      if (window.AUTO_MODE === 'sprint_slow') {
+        if (window._sprintDone >= window._sprintTarget) {
+          window._setAutoMode(null);
+          const sl = document.getElementById('sprint-status-label');
+          if (sl) sl.textContent = `✅ Done — ${window._sprintDone} hands`;
+          renderAll(); return;
+        }
+        _tileElCache.clear(); _game.nextDeal(); renderAll(); return;
+      }
       _tileElCache.clear(); _game.nextDeal(); renderAll(); return;
     }
     // Auto mode: hand this turn over to CPU-You
@@ -1168,7 +1208,69 @@ function renderSidebar() {
   if (logEl) {
     logEl.innerHTML = _game.log.slice(0, 30).map(e => `<div class="entry">${e}</div>`).join('');
   }
+  renderSprintLog();
 }
+
+function renderSprintLog() {
+  const section = document.getElementById('sprint-log-section');
+  const statsEl = document.getElementById('sprint-stats');
+  const bodyEl  = document.getElementById('sprint-log-body');
+  if (!section || !statsEl || !bodyEl) return;
+
+  const log = window._sprintLog || [];
+  if (log.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  // Aggregate stats
+  const wins = [0, 0, 0, 0];
+  let drawCount = 0, totalFaan = 0, winCount = 0;
+  for (const e of log) {
+    if (e.winnerSeat >= 0) { wins[e.winnerSeat]++; totalFaan += e.faan; winCount++; }
+    else drawCount++;
+  }
+  const avgFaan   = winCount > 0 ? (totalFaan / winCount).toFixed(1) : '—';
+  const done      = window._sprintDone ?? log.length;
+  const target    = window._sprintTarget ?? 50;
+  const names     = log[0]?.scores?.map(s => s.name) ?? ['You','CPU1','CPU2','CPU3'];
+  const lastScores = log[log.length - 1]?.scores ?? [];
+
+  const wSummary = names.map((n, i) =>
+    `<span style="color:${SPRINT_COLORS[i]}">${n}:${wins[i]}w</span>`).join(' ');
+  statsEl.innerHTML =
+    `<b>H${done}/${target}</b> — ${wSummary} Draw:${drawCount} · Avg ${avgFaan}f` +
+    (lastScores.length >= 4
+      ? `<br>Scores: ${lastScores.map((s, i) =>
+          `<span style="color:${s.score < 0 ? '#ff6666' : SPRINT_COLORS[i]}">${s.score}</span>`
+        ).join(' | ')}`
+      : '');
+
+  // Per-hand rows — most recent first, only re-render if count changed
+  if (bodyEl.dataset.count === String(log.length)) return; // nothing new
+  bodyEl.dataset.count = String(log.length);
+
+  const rows = [...log].reverse();
+  bodyEl.innerHTML = rows.map(e => {
+    const win    = e.winnerSeat >= 0;
+    const wColor = win ? SPRINT_COLORS[e.winnerSeat] : '#666';
+    const wName  = (e.winnerName ?? 'Draw').slice(0, 5);
+    const faanStr = win ? `${e.faan}f` : '—';
+    const lbl    = (e.label ?? '').replace(/\s*\(\d+\)/g, '').slice(0, 26);
+    const sc     = (e.scores ?? []).map((s, i) => {
+      const c = s.score < 0 ? '#ff4444' : (e.winnerSeat === i ? SPRINT_COLORS[i] : '#777');
+      const bust = s.score < 0 ? '💀' : '';
+      return `<span style="color:${c}">${s.score}${bust}</span>`;
+    }).join(' ');
+    return `<div style="padding:2px 0;border-bottom:1px solid #111;">` +
+      `<span style="color:#444">${String(e.hand).padStart(3)} </span>` +
+      `<span style="color:${wColor};font-weight:700;display:inline-block;width:38px;">${wName}</span>` +
+      `<span style="color:#666;display:inline-block;width:20px;">${faanStr}</span> ` +
+      `<span style="color:#444" title="${e.label ?? ''}">${lbl}</span>` +
+      `<br><span style="padding-left:44px;font-size:9px;">${sc}</span>` +
+      `</div>`;
+  }).join('');
+}
+
+const SPRINT_COLORS = ['#ffd34d', '#7dffff', '#aaffaa', '#ffaaff'];
 
 // ---- Graphical tile face renderers (Bamboo & Circle) --------
 

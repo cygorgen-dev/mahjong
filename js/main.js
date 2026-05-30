@@ -74,7 +74,78 @@ let START_POINTS = parseInt(localStorage.getItem('startPoints') ?? '2000', 10);
 
 let game = null;
 
+// ---- Sprint state (shared with ui.js via window) ----
+window._sprintLog    = [];
+window._sprintDone   = 0;
+window._sprintTarget = 50;
+
+function _sprintRecordHand() {
+  if (!game) return;
+  const r = game.lastResult;
+  const prev = window._sprintLog.length > 0
+    ? window._sprintLog[window._sprintLog.length - 1].scores
+    : null;
+  const scores = game.players.map((p, i) => ({
+    name: p.name,
+    score: p.score,
+    delta: prev ? p.score - prev[i].score : 0,
+  }));
+  window._sprintLog.push({
+    hand:       window._sprintDone + 1,
+    winnerSeat: r?.winner ?? -1,
+    winnerName: r?.winner >= 0 ? (game.players[r.winner]?.name ?? `Seat ${r.winner}`) : 'Draw',
+    faan:       r?.faan ?? 0,
+    label:      r?.label ?? '',
+    draw:       (r?.winner ?? -1) === -1,
+    scores,
+  });
+}
+
 function onGameUpdate(event) {
+  // ---- Sprint (fast): skip renders during hand; render + auto-advance at end ----
+  if (window.AUTO_MODE === 'sprint') {
+    if (event === 'win' || event === 'draw') {
+      _sprintRecordHand();
+      window._sprintDone++;
+      const sl = document.getElementById('sprint-status-label');
+      if (sl) sl.textContent = `H${window._sprintDone}/${window._sprintTarget} — running…`;
+      renderAll();
+      if (window._sprintDone < window._sprintTarget) {
+        setTimeout(() => {
+          if (window.AUTO_MODE !== 'sprint') return; // user cancelled
+          window._clearTileCache?.();
+          game.nextDeal();
+        }, 800);
+      } else {
+        setTimeout(() => {
+          window._setAutoMode?.(null);
+          const sl2 = document.getElementById('sprint-status-label');
+          if (sl2) sl2.textContent = `✅ Done — ${window._sprintDone} hands`;
+          renderAll();
+        }, 800);
+      }
+    }
+    // skip render for all non-terminal events
+    return;
+  }
+
+  // ---- Sprint Browse: compute synchronously, render all, wait for user Pass ----
+  if (window.AUTO_MODE === 'sprint_slow') {
+    if (event === 'win' || event === 'draw') {
+      _sprintRecordHand();
+      window._sprintDone++;
+      const sl = document.getElementById('sprint-status-label');
+      if (window._sprintDone < window._sprintTarget) {
+        if (sl) sl.textContent = `H${window._sprintDone}/${window._sprintTarget} — click Pass to continue`;
+      } else {
+        if (sl) sl.textContent = `H${window._sprintDone}/${window._sprintTarget} — click Pass to end`;
+      }
+    }
+    renderAll();   // always render so board is examinable
+    saveGameState();
+    return;
+  }
+
   renderAll();
   if (game) {
     game.shareState();

@@ -287,6 +287,8 @@ class Game {
       this._queueAutoStep(fn);  // gate ALL players behind Pass click
     } else if (window.AUTO_MODE === 'fast') {
       setTimeout(fn, window.AUTO_FAST_DELAY ?? 180); // fast but still visible
+    } else if (window.AUTO_MODE === 'sprint' || window.AUTO_MODE === 'sprint_slow') {
+      fn(); // synchronous — entire hand computes in one call stack, no delay
     } else {
       setTimeout(fn, 700);  // normal manual-mode timing
     }
