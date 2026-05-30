@@ -567,8 +567,10 @@ function aiClaimDecisionScheme(seat, hand, melds, discard, seatDiff, ctx, scheme
 // ---- DISPATCHER: routes to correct level ----
 
 function aiChooseDiscardByLevel(seat, hand, melds, discardPile, allPlayers) {
-  if (seat === 0 && (typeof USER_SCHEME !== 'undefined') && USER_SCHEME)
-    return aiChooseDiscardScheme(seat, hand, melds, discardPile, allPlayers, USER_SCHEME);
+  const scheme = seat === 0
+    ? ((typeof USER_SCHEME !== 'undefined') ? USER_SCHEME : null)
+    : (window.CPU_SCHEMES?.[seat] ?? null);
+  if (scheme) return aiChooseDiscardScheme(seat, hand, melds, discardPile, allPlayers, scheme);
   const level = getLevel(seat);
   if (level === 4) return aiChooseDiscardLevel4(seat, hand, melds, discardPile, allPlayers);
   if (level === 3) return aiChooseDiscardExpert(hand, melds, discardPile);
@@ -577,8 +579,10 @@ function aiChooseDiscardByLevel(seat, hand, melds, discardPile, allPlayers) {
 }
 
 function aiClaimDecisionByLevel(seat, hand, melds, discard, seatDiff, ctx, discardPile, allPlayers) {
-  if (seat === 0 && (typeof USER_SCHEME !== 'undefined') && USER_SCHEME)
-    return aiClaimDecisionScheme(seat, hand, melds, discard, seatDiff, ctx, USER_SCHEME);
+  const scheme = seat === 0
+    ? ((typeof USER_SCHEME !== 'undefined') ? USER_SCHEME : null)
+    : (window.CPU_SCHEMES?.[seat] ?? null);
+  if (scheme) return aiClaimDecisionScheme(seat, hand, melds, discard, seatDiff, ctx, scheme);
   const level = getLevel(seat);
   if (level === 4) return aiClaimDecisionLevel4(seat, hand, melds, discard, seatDiff, ctx, discardPile, allPlayers);
   if (level === 3) return aiClaimDecisionExpert(hand, melds, discard, seatDiff, ctx, discardPile);

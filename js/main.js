@@ -384,7 +384,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // CPU scheme dropdowns (cpu1-scheme, cpu2-scheme, cpu3-scheme) — UI only for now
+  // CPU scheme dropdowns — populate and wire
+  function updateCpuSchemes() {
+    if (typeof SCHEMES === 'undefined') return;
+    const schemeById = id => SCHEMES.find(s => s.id === id) || null;
+    window.CPU_SCHEMES_BY_NAME = {
+      CPU1: schemeById(document.getElementById('cpu1-scheme')?.value),
+      CPU2: schemeById(document.getElementById('cpu2-scheme')?.value),
+      CPU3: schemeById(document.getElementById('cpu3-scheme')?.value),
+    };
+    // Eagerly sync seat-indexed array for any currently-seated CPUs
+    if (!window.CPU_SCHEMES) window.CPU_SCHEMES = [null, null, null, null];
+    if (game) {
+      for (const p of game.players) {
+        if (!p.isHuman && window.CPU_SCHEMES_BY_NAME[p.name] !== undefined) {
+          window.CPU_SCHEMES[p.seat] = window.CPU_SCHEMES_BY_NAME[p.name];
+        }
+      }
+    }
+  }
+
   if (typeof SCHEMES !== 'undefined') {
     ['cpu1-scheme', 'cpu2-scheme', 'cpu3-scheme'].forEach(id => {
       const sel = document.getElementById(id);
@@ -396,7 +415,15 @@ document.addEventListener('DOMContentLoaded', () => {
         opt.title = sc.desc;
         sel.appendChild(opt);
       });
+      sel.addEventListener('change', () => {
+        updateCpuSchemes();
+        const cpuName = id.replace('-scheme', '').toUpperCase(); // cpu1 → CPU1
+        const schemeName = sel.value
+          ? (SCHEMES.find(s => s.id === sel.value)?.name ?? sel.value) : 'Level AI';
+        if (game) game.addLog(`⚙ ${cpuName} scheme → ${schemeName}`);
+      });
     });
+    updateCpuSchemes(); // initialise with defaults (all null → Level AI)
   }
 
   // CPU skill level dropdowns

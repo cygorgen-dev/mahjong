@@ -327,12 +327,20 @@ class Game {
   }
 
   aiPlay(seat) {
-    // Refresh CPU_LEVELS by current seat from name-based levels
+    // Refresh CPU_LEVELS and CPU_SCHEMES by current seat from name-based maps
     if (typeof CPU_LEVELS !== 'undefined' && typeof window !== 'undefined' &&
         window.CPU_LEVELS_BY_NAME) {
       for (const pl of this.players) {
         if (!pl.isHuman && window.CPU_LEVELS_BY_NAME[pl.name] !== undefined) {
           CPU_LEVELS[pl.seat] = window.CPU_LEVELS_BY_NAME[pl.name];
+        }
+      }
+    }
+    if (window.CPU_SCHEMES_BY_NAME) {
+      if (!window.CPU_SCHEMES) window.CPU_SCHEMES = [null, null, null, null];
+      for (const pl of this.players) {
+        if (!pl.isHuman && window.CPU_SCHEMES_BY_NAME[pl.name] !== undefined) {
+          window.CPU_SCHEMES[pl.seat] = window.CPU_SCHEMES_BY_NAME[pl.name];
         }
       }
     }
