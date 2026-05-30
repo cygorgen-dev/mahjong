@@ -185,10 +185,10 @@ class Game {
         if (isBonus(player.hand[i])) {
           const b = player.hand.splice(i, 1)[0];
           player.bonus.push(b);
-          this.addLog(`${player.name} bonus ${tileMain(b)} → replacement`);
+          this.addLog(`${playerTag(player)} bonus ${tileMain(b)} → replacement`);
           const newTile = this.drawFromTail(); // bonus replacement from tail
           if (newTile) {
-            this.addLog(`${player.name} bonus replacement: ${tileMain(newTile)}`);
+            this.addLog(`${playerTag(player)} bonus replacement: ${tileMain(newTile)}`);
             for (const t of player.hand) t._justDrawn = false;
             newTile._justDrawn = true;
             if (player.isHuman) {
@@ -197,7 +197,7 @@ class Game {
               player.hand.push(newTile);
             }
           } else {
-            this.addLog(`${player.name} bonus replacement: wall exhausted`);
+            this.addLog(`${playerTag(player)} bonus replacement: wall exhausted`);
           }
           found = true;
         }
@@ -742,7 +742,7 @@ class Game {
         const ctx = this.makeCtx(0, false);
         ctx.robbedKong = true;
         const result = canWin(handWith, hp.melds, ctx);
-        this.addLog(`You rob the Kong! 搶槓胡`);
+        this.addLog(`${playerTag(this.players[0])} robs the Kong! 搶槓胡`);
         this.robbingKongSeat = null;
         this.robbingKongTile = null;
         this.robbingKongTiles = null;
@@ -883,7 +883,7 @@ class Game {
     // Add as concealed kong meld (concealed:true marks it)
     p.melds.unshift({ type: 'kong', tiles, concealed: true, claimed: false });
         this.handActionCount++;
-    this.addLog(`You declare Concealed Kong 暗槓 ${tileMain(t)}`);
+    this.addLog(`${playerTag(p)} declares Concealed Kong 暗槓 ${tileMain(t)}`);
     // Draw replacement tile
     const repl = this.drawFromTail()  // kong replacement from tail wall;
     if (!repl) {
