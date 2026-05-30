@@ -489,7 +489,11 @@ class Game {
       this.addLog(`${playerTag(p)} kong replacement: ${tileMain(repl)}`);
       this._addDrawnTile(p, repl); this.replaceBonus(p);
     } else {
-      this.addLog(`${playerTag(p)} kong replacement: wall exhausted`);
+      this.addLog(`${playerTag(p)} kong replacement: wall exhausted — exhausted draw 黃牌!`);
+      this.phase = PHASE.END;
+      this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+      this.onUpdate('draw');
+      return;
     }
     this._checkHandCount(seat, 14 - 3 * p.melds.length, 'after-kong');
     this.phase = PHASE.DISCARD;
@@ -806,7 +810,11 @@ class Game {
         this.addLog(`${playerTag(this.players[seat])} kong replacement: ${tileMain(repl)}`);
         this._addDrawnTile(p, repl); this.replaceBonus(p);
       } else {
-        this.addLog(`${playerTag(this.players[seat])} kong replacement: wall exhausted`);
+        this.addLog(`${playerTag(this.players[seat])} kong replacement: wall exhausted — exhausted draw 黃牌!`);
+        this.phase = PHASE.END;
+        this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+        this.onUpdate('draw');
+        return;
       }
     } else if (action === 'chow') {
       const fromHand = chowTiles ? chowTiles.filter(t => t.id !== tile.id) : findChowWith(p.hand, tile).filter(t => t !== tile);
@@ -991,6 +999,8 @@ class Game {
       const msg = `⚠ Hand count error [${context}]: ${p.name} has ${h} tiles${extra}, ${p.melds.length} melds — expected ${expected}`;
       console.error(msg);
       this.addLog(msg);
+      this.lastValidationError = msg;
+      this.onUpdate('validation-error');
     }
   }
 

@@ -81,6 +81,22 @@ function onGameUpdate(event) {
     saveGameState();
   }
 
+  if (event === 'validation-error' && game?.lastValidationError) {
+    // Kill auto-run so the error isn't buried in a long run
+    if (window._autorunTimer) { clearTimeout(window._autorunTimer); window._autorunTimer = null; }
+    window._autorunLeft = 0;
+    const _ainp = document.getElementById('autorun-count');
+    if (_ainp) _ainp.value = 0;
+    const _albl = document.getElementById('autorun-label');
+    if (_albl) _albl.textContent = '';
+    if (window._autorunPrevMode !== undefined) {
+      setAutoMode(window._autorunPrevMode);
+      delete window._autorunPrevMode;
+    }
+    _showValidationErrorBanner(game.lastValidationError);
+    return;
+  }
+
   // Fast auto-mode status
   if (window.AUTO_MODE) {
     const sta = document.getElementById('auto-status');
@@ -173,6 +189,23 @@ function restoreGameState() {
     game.log = s.log || [];
     return true;
   } catch(e) { return false; }
+}
+
+function _showValidationErrorBanner(msg) {
+  let b = document.getElementById('validation-error-banner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'validation-error-banner';
+    b.style.cssText = 'position:fixed;top:52px;left:50%;transform:translateX(-50%);' +
+      'background:#5a0808;color:#fff;border:2px solid #ff4040;border-radius:8px;' +
+      'padding:12px 20px 10px;font-size:13px;font-weight:700;z-index:9999;' +
+      'box-shadow:0 4px 24px rgba(255,0,0,0.55);text-align:center;max-width:640px;white-space:pre-wrap;';
+    document.body.appendChild(b);
+  }
+  b.innerHTML = `<div style="margin-bottom:8px;">🛑 AUTO-RUN PAUSED — HAND COUNT ERROR<br><span style="font-weight:400;font-size:12px;">${msg}</span></div>` +
+    `<button onclick="document.getElementById('validation-error-banner').style.display='none'" ` +
+    `style="padding:4px 18px;background:#ff4040;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:700;font-size:12px;">Dismiss</button>`;
+  b.style.display = 'block';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
