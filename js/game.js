@@ -131,7 +131,7 @@ class Game {
       p.melds = [];
       p.bonus = [];
       for (let i = 0; i < 13; i++) p.hand.push(this.drawFromWall());
-      this.replaceBonus(p);
+      if (!this.replaceBonus(p)) return;
     }
     this.currentSeat = this.dealerSeat;
     this.phase = PHASE.DRAW;
@@ -195,12 +195,17 @@ class Game {
               player.hand.push(newTile);
             }
           } else {
-            this.addLog(`${playerTag(player)} bonus replacement: wall exhausted`);
+            this.addLog(`${playerTag(player)} bonus replacement: wall exhausted — hand ended 黃牌!`);
+            this.phase = PHASE.END;
+            this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+            this.onUpdate('draw');
+            return false;
           }
           found = true;
         }
       }
     }
+    return true;
   }
 
   // Helper: add a newly drawn tile — leftmost + highlighted for human, appended for CPU
@@ -239,7 +244,7 @@ class Game {
     this._drewLastTile = (this.wallRemaining() === 0);
     this.addLog(`${playerTag(p)} draws ${tileMain(drawn)}`);
     this._addDrawnTile(p, drawn);
-    this.replaceBonus(p);
+    if (!this.replaceBonus(p)) return;
     this._checkHandCount(seat, 14 - 3 * p.melds.length, 'after-draw');
 
     // Track whether this is the dealer's very first draw (for Heavenly Hand)
@@ -487,7 +492,7 @@ class Game {
     const repl = this.drawFromTail()  // kong replacement from tail wall;
     if (repl) {
       this.addLog(`${playerTag(p)} kong replacement: ${tileMain(repl)}`);
-      this._addDrawnTile(p, repl); this.replaceBonus(p);
+      this._addDrawnTile(p, repl); if (!this.replaceBonus(p)) return;
     } else {
       this.addLog(`${playerTag(p)} kong replacement: wall exhausted — exhausted draw 黃牌!`);
       this.phase = PHASE.END;
@@ -808,7 +813,7 @@ class Game {
       const repl = this.drawFromTail()  // kong replacement from tail wall;
       if (repl) {
         this.addLog(`${playerTag(this.players[seat])} kong replacement: ${tileMain(repl)}`);
-        this._addDrawnTile(p, repl); this.replaceBonus(p);
+        this._addDrawnTile(p, repl); if (!this.replaceBonus(p)) return;
       } else {
         this.addLog(`${playerTag(this.players[seat])} kong replacement: wall exhausted — exhausted draw 黃牌!`);
         this.phase = PHASE.END;
@@ -901,7 +906,7 @@ class Game {
     }
     this.addLog(`${playerTag(p)} kong replacement: ${tileMain(repl)}`);
     this._addDrawnTile(p, repl);
-    this.replaceBonus(p);
+    if (!this.replaceBonus(p)) return;
     this._drewLastTile = (this.wallRemaining() === 0);
         // Check win after replacement draw
     const ctx = this.makeCtx(0, true);
