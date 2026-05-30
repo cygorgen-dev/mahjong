@@ -1277,6 +1277,33 @@ function renderSprintLog() {
       `</tr>`;
   });
   statsHtml += `</table>`;
+
+  // Sparkline — score trajectory per player using block chars ▁▂▃▄▅▆▇█
+  if (log.length >= 2) {
+    const BLOCKS = '▁▂▃▄▅▆▇█';
+    // Sample to ≤45 points so the line fits the sidebar width
+    const step      = log.length <= 45 ? 1 : Math.ceil(log.length / 45);
+    const sampled   = log.filter((_, idx) => idx % step === 0);
+    const allScores = names.flatMap((_, i) => sampled.map(e => e.scores[i]?.score ?? 0));
+    const sMin      = Math.min(...allScores);
+    const sMax      = Math.max(...allScores);
+    const sRange    = sMax - sMin || 1;
+
+    statsHtml += `<div style="margin-top:6px;font-family:'Courier New',monospace;font-size:8px;line-height:1.6;white-space:nowrap;">`;
+    statsHtml += `<div style="color:#333;font-size:7px;margin-bottom:1px;">score trend ▸</div>`;
+    names.forEach((name, i) => {
+      const line = sampled.map(e => {
+        const sc  = e.scores[i]?.score ?? sMin;
+        const idx = Math.round((sc - sMin) / sRange * 7);
+        return BLOCKS[Math.max(0, Math.min(7, idx))];
+      }).join('');
+      const nc = (lastScores[i]?.score ?? 0) < 0 ? '#ff4444' : SPRINT_COLORS[i];
+      statsHtml += `<div><span style="color:${nc};display:inline-block;width:26px;">${name.slice(0,3)}</span>` +
+        `<span style="color:${nc};">${line}</span></div>`;
+    });
+    statsHtml += `</div>`;
+  }
+
   statsEl.innerHTML = statsHtml;
 
   // Per-hand rows — most recent first, only re-render if count changed
