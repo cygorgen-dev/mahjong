@@ -59,6 +59,8 @@ class Game {
     this.dealerFirstDiscard = false; // true after dealer's very first discard (for Earthly Hand)
     this.handActionCount = 0;        // counts any claim/kong action (for Heavenly/Earthly detection)
     this.log = [];
+    const ver = (typeof document !== 'undefined' && document.getElementById('game-version-tag')?.textContent) || '?';
+    this.addLog(`=== New game ${ver} ===`);
     this.lastResult = null;
     this.lastCheckFaan = 0;
     this.robbingKongSeat = null;    // seat of kong declarer when rob-check is pending
