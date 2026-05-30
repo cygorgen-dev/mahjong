@@ -235,6 +235,7 @@ class Game {
     this._drewLastTile = (this.wallRemaining() === 0);
     this._addDrawnTile(p, drawn);
     this.replaceBonus(p);
+    this._checkHandCount(seat, 14 - 3 * p.melds.length, 'after-draw');
 
     // Track whether this is the dealer's very first draw (for Heavenly Hand)
     this._isFirstDealerDraw = (seat === this.dealerSeat && this.handActionCount === 0 && !this.dealerFirstDiscard);
@@ -480,6 +481,7 @@ class Game {
     // Draw replacement tile
     const repl = this.drawFromTail()  // kong replacement from tail wall;
     if (repl) { this._addDrawnTile(p, repl); this.replaceBonus(p); }
+    this._checkHandCount(seat, 14 - 3 * p.melds.length, 'after-kong');
     this.phase = PHASE.DISCARD;
     this._actForSeat(seat);
   }
@@ -521,6 +523,7 @@ class Game {
       this._earthlyPossible = false;
     }
     this.handActionCount++;
+    this._checkHandCount(seat, 13 - 3 * p.melds.length, 'after-discard');
     this.phase = PHASE.CLAIM;
     this.processClaims(seat, tile);
   }
@@ -803,6 +806,7 @@ class Game {
     this.phase = PHASE.DISCARD;
     this.currentSeat = seat;
     this.handActionCount++;
+    this._checkHandCount(seat, 14 - 3 * p.melds.length, 'after-claim');
 
     if (p.isHuman) this._revealConcealedKongs(p);
     this._actForSeat(seat);
@@ -951,7 +955,7 @@ class Game {
         lastHand: (this.lastResult && this.lastResult.winner >= 0)
           ? `${this.players[this.lastResult.winner]?.name} — ${this.lastResult.faan} faan. ${this.lastResult.label}`
           : (this.lastResult && this.lastResult.winner === -1 ? 'Draw 黃牌' : '—'),
-        log: this.log.slice(0, 50),
+        log: this.log,
       };
       localStorage.setItem('mahjongSharedState', JSON.stringify(state));
     } catch(e) {}
@@ -959,7 +963,17 @@ class Game {
 
   addLog(msg) {
     this.log.unshift(msg);
-    if (this.log.length > 60) this.log.pop();
+  }
+
+  // Invariant: hand.length === 13 - 3*melds (waiting) or 14 - 3*melds (after draw/claim)
+  _checkHandCount(seat, expected, context) {
+    const p = this.players[seat];
+    const h = p.hand.length;
+    if (h !== expected) {
+      const msg = `⚠ Hand count error [${context}]: ${p.name} has ${h} tiles, ${p.melds.length} melds — expected ${expected}`;
+      console.error(msg);
+      this.addLog(msg);
+    }
   }
 
   /**
