@@ -383,9 +383,192 @@ function aiClaimDecisionExpert(hand, melds, discard, seatDiff, ctx, discardPile)
   return null;
 }
 
+// ============================================================
+// SCHEME HELPERS
+// ============================================================
+
+// Returns true if the clone of `discard` found in `remaining` is part of
+// a complete set (chow or pung) within that remaining hand.
+// Used by 'if-own-flower' to allow claiming when it creates a net new group.
+function _cloneFormsGroup(remaining, discard) {
+  const safe = remaining.filter(t => !isBonus(t));
+  const clone = safe.find(t => sameType(t, discard));
+  if (!clone) return false;
+  const others = safe.filter(t => t !== clone);
+  const s = clone.suit, n = clone.value;
+  // Pung: two more of the same type
+  if (others.filter(t => sameType(t, clone)).length >= 2) return true;
+  // Chow: clone appears in at least one complete sequence within remaining
+  if ([SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR].includes(s)) {
+    const has = v => others.some(t => t.suit === s && t.value === v);
+    if (n >= 3 && has(n-2) && has(n-1)) return true;   // clone is high end
+    if (n >= 2 && n <= 8 && has(n-1) && has(n+1)) return true;  // clone in middle
+    if (n <= 7 && has(n+1) && has(n+2)) return true;   // clone is low end
+  }
+  return false;
+}
+
+// ============================================================
+// SCHEME EXECUTOR — drives YOU seat using a SCHEMES entry
+// ============================================================
+
+function aiChooseDiscardScheme(seat, hand, melds, discardPile, allPlayers, scheme) {
+  const safe = hand.filter(t => !isBonus(t));
+  const s = scheme.discard;
+
+  // --- Seven Pairs mode ---
+  if (s.pursue === 'seven-pairs') {
+    const counts = countMap(safe);
+    let best = null, bestScore = -Infinity;
+    for (const t of safe) {
+      const cnt = counts[t.suit + '|' + t.value] || 0;
+      const score = cnt === 1 ? 10 : cnt === 2 ? -5 : -10;
+      if (score > bestScore) { bestScore = score; best = t; }
+    }
+    return best || safe[safe.length - 1];
+  }
+
+  // --- Pure Suit mode ---
+  const allT = [...safe, ...melds.flatMap(m => m.tiles)];
+  let targetSuit = s.suitLock;
+  if (!targetSuit && (s.pursue === 'pure-suit')) {
+    const sc = {};
+    for (const t of allT) {
+      if ([SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR].includes(t.suit))
+        sc[t.suit] = (sc[t.suit] || 0) + 1;
+    }
+    const dom = Object.entries(sc).sort((a, b) => b[1] - a[1])[0];
+    if (dom) targetSuit = dom[0];
+  }
+  if (targetSuit) {
+    const offSuit = safe.filter(t => t.suit !== targetSuit);
+    if (offSuit.length > 0)
+      return offSuit.sort((a, b) => tileSortKey(a) - tileSortKey(b))[0];
+  }
+
+  // --- Pung-Heavy mode: extra bonus for keeping pairs/trips, penalise isolated tiles ---
+  const pungBonus = s.pursue === 'pung-heavy' ? 6 : 0;
+
+  // --- Speed / Pung-Heavy: scored discard ---
+  const opModels = s.safetyLevel > 0
+    ? buildOpponentModels(seat, allPlayers, discardPile) : null;
+
+  let bestDiscard = null, bestScore = -Infinity;
+  const counts = countMap(safe);
+  for (let i = 0; i < safe.length; i++) {
+    const t = safe[i];
+    const without = [...safe.slice(0, i), ...safe.slice(i + 1)];
+    let score = evalHand(without, melds);
+
+    // Honour & terminal penalties (configurable)
+    if (t.suit === SUIT.WIND || t.suit === SUIT.DRAGON)
+      score += (s.honorPenalty ?? 1);
+    if ([SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR].includes(t.suit) &&
+        (t.value === 1 || t.value === 9))
+      score += (s.terminalPenalty ?? 0.5);
+
+    // Pung-heavy: reward keeping pairs/trips (penalise discarding them)
+    if (pungBonus) {
+      const cnt = counts[t.suit + '|' + t.value] || 0;
+      if (cnt === 1) score += pungBonus;   // isolated → discard sooner
+      if (cnt >= 2)  score -= pungBonus;   // pair/trip → keep
+    }
+
+    // Safety weight
+    if (opModels && s.safetyLevel > 0) {
+      const risk = tileRiskScore(t, seat, opModels);
+      score -= risk * s.safetyLevel * 2;
+    }
+
+    if (score > bestScore) { bestScore = score; bestDiscard = t; }
+  }
+  return bestDiscard || safe[safe.length - 1];
+}
+
+function aiClaimDecisionScheme(seat, hand, melds, discard, seatDiff, ctx, scheme) {
+  const s = scheme.claim;
+  const winCtx = { ...ctx, selfDraw: false };
+  const handWith = [...hand, discard];
+  const result = canWin(handWith, melds, winCtx);
+  const minF = Math.max(
+    (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 0,
+    s.winMinFaan || 0
+  );
+
+  // Always try to win
+  if (result.win && result.faan >= minF) return 'win';
+
+  // Kong
+  if (s.kong && hand.filter(t => sameType(t, discard)).length === 3) return 'kong';
+
+  // Guard: don't break concealed tenpai
+  if (s.protectConcealed) {
+    if (getTenpaiTiles(hand, melds).length > 0 && melds.length === 0) return null;
+  }
+
+  // Guard: don't break Seven Pairs path
+  if (s.protectSevenPairs) {
+    const pairCount = Object.values(countMap(hand)).filter(c => c >= 2).length;
+    if (pairCount >= 4 && melds.length === 0) return null;
+  }
+
+  // Pung
+  if (s.pung !== 'never' && hand.filter(t => sameType(t, discard)).length >= 2) {
+    if (s.pung === 'always') return 'pung';
+    const newMeld = { type: 'pung', tiles: [discard, discard, discard] };
+    const without = removeFromHandN(hand, discard, 2);
+    const waits = getTenpaiTiles(without, [...melds, newMeld]);
+    if (s.pung === 'if-tenpai' && waits.length > 0) return 'pung';
+    if (s.pung === 'if-useful') {
+      const handScore = evalHand(without, [...melds, newMeld]);
+      if (waits.length > 0 || melds.length >= 2 || handScore > 10) return 'pung';
+    }
+  }
+
+  // Chow
+  if (s.chow !== 'never' && seatDiff === 1 &&
+      [SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR].includes(discard.suit)) {
+    const chowMeld = findChowWith(hand, discard);
+    if (chowMeld) {
+      if (s.chow === 'always') return 'chow';
+      const fromHand = chowMeld.filter(t => t !== discard);
+      const remaining = removeFromHandList(hand, fromHand);
+      const newMelds = [...melds, { type: 'chow', tiles: chowMeld }];
+      const waits = getTenpaiTiles(remaining, newMelds);
+      if (s.chow === 'if-tenpai' && waits.length > 0) return 'chow';
+      if (s.chow === 'if-useful') {
+        const handScore = evalHand(remaining, newMelds);
+        if (waits.length > 0 || melds.length >= 2 || handScore > 15) return 'chow';
+      }
+      if (s.chow === 'if-own-flower') {
+        // Condition 1: no bonus tiles at all, OR player holds their seat's own flower/season
+        const seatIdx = WINDS.indexOf(ctx.seatWind);
+        const bonus = ctx.bonusTiles || [];
+        const hasOwnBonus = bonus.length === 0 ||
+          bonus.some(b => b.value === seatIdx);
+        if (!hasOwnBonus) return null;
+        // Condition 2: if the remaining hand contains a clone of the claimed tile,
+        // the internal sequence already existed — claiming is pointless UNLESS
+        // the clone itself forms a new complete group in the remaining hand.
+        // e.g. 234455 + claim 2 → remaining 2455: clone 2 has no group → SKIP
+        // e.g. 12345  + claim 3 → remaining 345:  clone 3 forms [3,4,5] → OK
+        const cloneInRemaining = remaining.some(
+          t => !isBonus(t) && sameType(t, discard)
+        );
+        if (cloneInRemaining && !_cloneFormsGroup(remaining, discard)) return null;
+        return 'chow';
+      }
+    }
+  }
+
+  return null;
+}
+
 // ---- DISPATCHER: routes to correct level ----
 
 function aiChooseDiscardByLevel(seat, hand, melds, discardPile, allPlayers) {
+  if (seat === 0 && (typeof USER_SCHEME !== 'undefined') && USER_SCHEME)
+    return aiChooseDiscardScheme(seat, hand, melds, discardPile, allPlayers, USER_SCHEME);
   const level = getLevel(seat);
   if (level === 4) return aiChooseDiscardLevel4(seat, hand, melds, discardPile, allPlayers);
   if (level === 3) return aiChooseDiscardExpert(hand, melds, discardPile);
@@ -394,6 +577,8 @@ function aiChooseDiscardByLevel(seat, hand, melds, discardPile, allPlayers) {
 }
 
 function aiClaimDecisionByLevel(seat, hand, melds, discard, seatDiff, ctx, discardPile, allPlayers) {
+  if (seat === 0 && (typeof USER_SCHEME !== 'undefined') && USER_SCHEME)
+    return aiClaimDecisionScheme(seat, hand, melds, discard, seatDiff, ctx, USER_SCHEME);
   const level = getLevel(seat);
   if (level === 4) return aiClaimDecisionLevel4(seat, hand, melds, discard, seatDiff, ctx, discardPile, allPlayers);
   if (level === 3) return aiClaimDecisionExpert(hand, melds, discard, seatDiff, ctx, discardPile);

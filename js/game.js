@@ -58,9 +58,6 @@ class Game {
     this.firstDraw = true;
     this.dealerFirstDiscard = false; // true after dealer's very first discard (for Earthly Hand)
     this.handActionCount = 0;        // counts any claim/kong action (for Heavenly/Earthly detection)
-    this.log = [];
-    const ver = (typeof document !== 'undefined' && document.getElementById('game-version-tag')?.textContent) || '?';
-    this.addLog(`=== New game ${ver} ===`);
     this.lastResult = null;
     this.lastCheckFaan = 0;
     this.robbingKongSeat = null;    // seat of kong declarer when rob-check is pending
@@ -68,6 +65,7 @@ class Game {
     this.robbingKongTiles = null;   // all 4 kong tiles
     this.robbingKongPungIdx = null; // index of pung in melds being upgraded
 
+    this._initLog('New Game');
     this.deal();
   }
 
@@ -986,9 +984,11 @@ class Game {
   // Invariant: hand.length === 13 - 3*melds (waiting) or 14 - 3*melds (after draw/claim)
   _checkHandCount(seat, expected, context) {
     const p = this.players[seat];
-    const h = p.hand.length;
+    const bonusInHand = p.hand.filter(t => isBonus(t)).length;
+    const h = p.hand.length - bonusInHand;
     if (h !== expected) {
-      const msg = `⚠ Hand count error [${context}]: ${p.name} has ${h} tiles, ${p.melds.length} melds — expected ${expected}`;
+      const extra = bonusInHand > 0 ? ` (+${bonusInHand} bonus not yet moved)` : '';
+      const msg = `⚠ Hand count error [${context}]: ${p.name} has ${h} tiles${extra}, ${p.melds.length} melds — expected ${expected}`;
       console.error(msg);
       this.addLog(msg);
     }
@@ -1091,6 +1091,39 @@ class Game {
     this.claimOptions = null; this.claimSeat = null; this.pendingClaims = [];
     this.firstDraw = true; this.dealerFirstDiscard = false; this.handActionCount = 0; this.lastResult = null;
     this.phase = PHASE.IDLE;
+    this._initLog('Next Hand');
     this.deal();
+  }
+
+  redeal() {
+    try { localStorage.removeItem('mahjongPrevScores'); } catch(e) {}
+    const savedPlayers = this.players.map(p => ({ score: p.score, name: p.name, isHuman: p.isHuman }));
+    this.wall = buildWall();
+    this.wallIdx = 0;
+    this.tailCol = 71;
+    this.tailPhase = 0;
+    this.players = WINDS.map((wind, i) => ({
+      seat: i, wind, hand: [], melds: [], bonus: [],
+      score: savedPlayers[i].score,
+      name: savedPlayers[i].name,
+      isHuman: savedPlayers[i].isHuman,
+      lastDiscard: null,
+    }));
+    this.discard = null; this.discardSeat = null; this.discardPile = [];
+    this.claimOptions = null; this.claimSeat = null; this.pendingClaims = [];
+    this.robbingKongSeat = null; this.robbingKongTile = null;
+    this.robbingKongTiles = null; this.robbingKongPungIdx = null;
+    this.firstDraw = true; this.dealerFirstDiscard = false; this.handActionCount = 0; this.lastResult = null;
+    this.lastCheckFaan = 0;
+    this.phase = PHASE.IDLE;
+    this._initLog('New Hand');
+    this.deal();
+  }
+
+  _initLog(label) {
+    const ver = (typeof document !== 'undefined' && document.getElementById('game-version-tag')?.textContent) || '?';
+    this.log = [];
+    this.log.push(`=== ${label}: Seat ${this.dealerSeat} dealer, ${this.roundWind} round ===`);
+    this.log.push(ver);
   }
 }

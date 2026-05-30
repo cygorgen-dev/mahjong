@@ -9,16 +9,12 @@
 <body>
   <div id="app" class="sidebar-open">
     <header>
-      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0529-328</span></h1>
+      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0529-330</span></h1>
       <div id="message"></div>
       <div id="info-bar">
         <button id="new-game-btn">New Game</button>
+        <button id="new-hand-btn" style="background:#2a5a8a;color:#ffd34d;border:1px solid #ffd34d;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">New Hand</button>
         <a href="score.html" target="_blank" id="score-btn" style="background:#1a6b3a;color:#ffd34d;border:1px solid #ffd34d;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;text-decoration:none;font-size:12px;">Score 📊</a>
-        <button id="rules-btn" style="background:#ffd34d;color:#07301a;border:0;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">Rules</button>
-        <button id="hint-btn" style="background:#1a1a6b;color:#ffd34d;border:2px solid #ffd34d;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">Hint 💡</button>
-        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#ffd34d;cursor:pointer;white-space:nowrap;">
-          <input type="checkbox" id="always-hint-toggle" style="cursor:pointer;accent-color:#ffd34d;width:14px;height:14px;" />Always Hint
-        </label>
         <button id="settings-toggle-btn" style="background:#444;color:#ffd34d;border:1px solid #ffd34d;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">⚙️ Settings</button>
       </div>
     </header>
@@ -71,18 +67,22 @@
 
     <aside id="sidebar">
       <div class="sidebar-section">
-        <div class="sidebar-heading">⚙️ Settings</div>
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
+          <button id="rules-btn" style="background:#ffd34d;color:#07301a;border:0;padding:3px 8px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">Rules</button>
+          <button id="hint-btn" style="background:#1a1a6b;color:#ffd34d;border:2px solid #ffd34d;padding:3px 8px;border-radius:4px;font-weight:600;cursor:pointer;font-size:12px;">Hint 💡</button>
+          <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ffd34d;cursor:pointer;white-space:nowrap;">
+            <input type="checkbox" id="always-hint-toggle" style="cursor:pointer;accent-color:#ffd34d;width:13px;height:13px;" />ON
+          </label>
+        </div>
         <div class="sidebar-row">
           <label class="sb-label">Min Faan</label>
-          <select id="min-faan-select" class="sb-select">
+          <select id="min-faan-select" class="sb-select" style="max-width:58px;">
             <option value="0">0</option><option value="1">1</option>
             <option value="2" selected>2</option><option value="3">3</option>
             <option value="4">4</option><option value="5">5</option>
           </select>
-        </div>
-        <div class="sidebar-row">
-          <label class="sb-label">Max Faan</label>
-          <select id="max-faan-select" class="sb-select">
+          <label class="sb-label" style="margin-left:4px;">Max</label>
+          <select id="max-faan-select" class="sb-select" style="max-width:68px;">
             <option value="0">∞</option><option value="4">4</option>
             <option value="5">5</option><option value="6">6</option>
             <option value="7" selected>7</option><option value="8">8</option>
@@ -94,14 +94,6 @@
         <div class="sidebar-row">
           <label class="sb-label">Start Pts</label>
           <input type="number" id="start-points-input" value="2000" min="100" step="100" class="sb-input" />
-        </div>
-        <div class="sidebar-check">
-          <input type="checkbox" id="seven-pairs-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
-          <label for="seven-pairs-toggle">7 Pairs 七對子</label>
-        </div>
-        <div class="sidebar-check">
-          <input type="checkbox" id="show-translation-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
-          <label for="show-translation-toggle">Show Labels</label>
         </div>
         <div class="sidebar-row">
           <label class="sb-label">Dealer</label>
@@ -126,8 +118,16 @@
           <label for="last-tile-toggle">Last Tile 海底</label>
         </div>
         <div class="sidebar-check">
+          <input type="checkbox" id="seven-pairs-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
+          <label for="seven-pairs-toggle">7 Pairs 七對子</label>
+        </div>
+        <div class="sidebar-check">
           <input type="checkbox" id="open-hands-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
           <label for="open-hands-toggle" title="Show all CPU hands face-up. With Level 4, also shows AI groupings.">Open Hands 明牌</label>
+        </div>
+        <div class="sidebar-check">
+          <input type="checkbox" id="show-translation-toggle" style="cursor:pointer;accent-color:#ffd34d;" />
+          <label for="show-translation-toggle">Show Labels</label>
         </div>
       </div>
       <div class="sidebar-section">
@@ -172,6 +172,12 @@
               <option value="3" title="Prizes concealed hands, safety-aware, only claims when near tenpai">🔴 Expert</option><option value="4" title="Opponent-aware: reads suit hoarding, defensive when anyone near tenpai">🔥 Master</option>
             </select>
           </div>
+        </div>
+        <div class="sidebar-row" id="user-scheme-row">
+          <label class="sb-label" style="color:#aaa;">Scheme</label>
+          <select id="user-scheme-select" class="sb-select" title="Override level AI with a custom strategy scheme (auto mode only)">
+            <option value="">— Level AI —</option>
+          </select>
         </div>
       </div>
       <div class="sidebar-section">
@@ -293,6 +299,7 @@
   <script src="js/tiles.js"></script>
   <script src="js/scoring.js"></script>
   <script src="js/ai.js"></script>
+  <script src="js/schemes.js"></script>
   <script src="js/game.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>

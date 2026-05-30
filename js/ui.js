@@ -183,6 +183,18 @@ function initUI(game) {
     if (ltChk) { ltChk.checked = false; window.LAST_TILE_WIN = false; }
     _game.reset(); renderAll();
   });
+
+  document.getElementById('new-hand-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (window._autorunTimer) { clearTimeout(window._autorunTimer); window._autorunTimer = null; }
+    window._autorunLeft = 0;
+    const ainp = document.getElementById('autorun-count');
+    if (ainp) ainp.value = '0';
+    try { sessionStorage.removeItem('mahjongGameState'); } catch(e2) {}
+    _tileElCache.clear();
+    _game.redeal(); renderAll();
+  });
+
   document.getElementById('tiles-btn').addEventListener('click', (e) => {
     e.stopPropagation();
     populateTileGallery();

@@ -244,12 +244,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const dealerSeatSel = document.getElementById('game-dealer-seat');
   if (dealerSeatSel) dealerSeatSel.addEventListener('change', () => {
-    if (game) { game.dealerSeat = parseInt(dealerSeatSel.value); renderAll(); }
+    if (game) {
+      game.dealerSeat = parseInt(dealerSeatSel.value);
+      game.addLog(`⚙ Dealer → Seat ${game.dealerSeat}`);
+      game.shareState();
+      renderAll();
+    }
   });
   const roundWindSel = document.getElementById('game-round-wind');
   if (roundWindSel) roundWindSel.addEventListener('change', () => {
-    if (game) { game.roundWind = roundWindSel.value; renderAll(); }
+    if (game) {
+      game.roundWind = roundWindSel.value;
+      game.addLog(`⚙ Round wind → ${game.roundWind}`);
+      game.shareState();
+      renderAll();
+    }
   });
+
+  // User scheme dropdown — populated from schemes.js SCHEMES array
+  const schemeSel = document.getElementById('user-scheme-select');
+  if (schemeSel && typeof SCHEMES !== 'undefined') {
+    SCHEMES.forEach(sc => {
+      const opt = document.createElement('option');
+      opt.value = sc.id;
+      opt.textContent = sc.name;
+      opt.title = sc.desc;
+      schemeSel.appendChild(opt);
+    });
+    schemeSel.addEventListener('change', () => {
+      const chosen = SCHEMES.find(sc => sc.id === schemeSel.value) || null;
+      USER_SCHEME = chosen;
+      const label = chosen ? chosen.name : 'Level AI';
+      if (game) game.addLog(`⚙ YOU scheme → ${label}`);
+      if (game) game.shareState();
+    });
+  }
 
   // CPU skill level dropdowns
   function updateCpuLevels() {

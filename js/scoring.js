@@ -111,7 +111,7 @@ function canWin(hand14, melds, ctx) {
     return { win: true, faan: f.total, label: f.label, special: '7pairs' };
   }
   if (melds.length === 0 && isThirteenOrphans(hand)) {
-    return { win: true, faan: 13, label: 'Thirteen Orphans 十三么', special: '13orphans' };
+    return { win: true, faan: 13, label: 'Thirteen Orphans', special: '13orphans' };
   }
   if (ctx.firstDraw && melds.length === 0) {
     // Heavenly/Earthly handled by game logic
@@ -122,8 +122,8 @@ function canWin(hand14, melds, ctx) {
   if (ctxBonusTiles.length >= 7) {
     const bonusBaseFaan = ctxBonusTiles.length >= 8 ? 13 : 3;
     const bonusLabel = ctxBonusTiles.length >= 8
-      ? 'Eight Bonus Tiles 八仙過海 (13f)'
-      : 'Seven Bonus Tiles 七花齊放 (3f)';
+      ? 'Eight Bonus Tiles (13)'
+      : 'Seven Bonus Tiles (3)';
     // Still score the hand normally (All Triplets, wind pungs, dragons, self-draw, etc.)
     // but skip the per-tile bonus scoring (no own-flower/season on top of the flat rate)
     const decomps7 = decompose(hand, melds);
@@ -159,9 +159,9 @@ function canWin(hand14, melds, ctx) {
 
 function calcFaanSevenPairs(hand, ctx) {
   let total = 4; // base for seven pairs
-  const labels = ['Seven Pairs 七對子 (4f)'];
-  if (ctx.selfDraw) { total += 1; labels.push('Self Draw +1'); }
-  if (ctx.concealed) { total += 1; labels.push('Concealed +1'); }
+  const labels = ['Seven Pairs (4)'];
+  if (ctx.selfDraw) { total += 1; labels.push('Self Draw (1)'); }
+  if (ctx.concealed) { total += 1; labels.push('Concealed (1)'); }
   return { total, label: labels.join(', ') };
 }
 
@@ -175,17 +175,17 @@ function calcFaan(decomp, hand, ctx) {
 
   // --- Common Hand (平胡): all four sets are chows (no pair restriction in Cantonese rules)
   if (chows.length === 4) {
-    faan += 1; labels.push('Common Hand 平胡 (1f)');
+    faan += 1; labels.push('Common Hand (1)');
   }
 
   // --- All Triplets (對對胡): all pungs/kongs
-  if (pungs.length === 4) { faan += 3; labels.push('All Triplets 對對胡 (3f)'); }
+  if (pungs.length === 4) { faan += 3; labels.push('All Triplets (3)'); }
 
   // --- Dragon pungs
   for (const p of pungs) {
     if (p.tiles[0].suit === SUIT.DRAGON) {
       faan += 1;
-      labels.push(`Dragon Pung ${DRAGON_ZH[p.tiles[0].value]} (1f)`);
+      labels.push(`${DRAGON_EN[p.tiles[0].value]} Dragon (1)`);
     }
   }
 
@@ -193,8 +193,8 @@ function calcFaan(decomp, hand, ctx) {
   for (const p of pungs) {
     if (p.tiles[0].suit === SUIT.WIND) {
       const w = p.tiles[0].value;
-      if (w === ctx.seatWind) { faan += 1; labels.push(`Seat Wind Pung ${w} (1f)`); }
-      if (w === ctx.roundWind) { faan += 1; labels.push(`Round Wind Pung ${w} (1f)`); }
+      if (w === ctx.seatWind) { faan += 1; labels.push(`Seat Wind ${w} (1)`); }
+      if (w === ctx.roundWind) { faan += 1; labels.push(`Round Wind ${w} (1)`); }
     }
   }
 
@@ -215,27 +215,27 @@ function calcFaan(decomp, hand, ctx) {
   const hasHonors = handSuits.has(SUIT.WIND) || handSuits.has(SUIT.DRAGON);
   const numSuits = [...handSuits].filter(s => [SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR].includes(s));
   if (numSuits.length === 1 && !hasHonors) {
-    faan += 7; labels.push('Pure One Suit 清一色 (7f)');
+    faan += 7; labels.push('Pure Suit (7)');
   } else if (numSuits.length === 1 && hasHonors) {
-    faan += 3; labels.push('Mixed One Suit 混一色 (3f)');
+    faan += 3; labels.push('Mixed Suit (3)');
   }
 
   // --- All Honors (字一色)
   if (numSuits.length === 0 && hasHonors) {
-    faan += 10; labels.push('All Honors 字一色 (10f)');
+    faan += 10; labels.push('All Honors (10)');
   }
 
   // --- Small / Big Dragons
   const dragonPungSet = new Set(pungs.filter(p => p.tiles[0].suit === SUIT.DRAGON).map(p => p.tiles[0].value));
   const pairIsDragon = pair && pair.tiles[0].suit === SUIT.DRAGON;
-  if (dragonPungSet.size === 2 && pairIsDragon) { faan += 5; labels.push('Small Dragons 小三元 (5f)'); }
-  else if (dragonPungSet.size === 3) { faan += 8; labels.push('Big Dragons 大三元 (8f)'); }
+  if (dragonPungSet.size === 2 && pairIsDragon) { faan += 5; labels.push('Small Dragons (5)'); }
+  else if (dragonPungSet.size === 3) { faan += 8; labels.push('Big Dragons (8)'); }
 
   // --- Small / Big Winds
   const windPungSet = new Set(pungs.filter(p => p.tiles[0].suit === SUIT.WIND).map(p => p.tiles[0].value));
   const pairIsWind = pair && pair.tiles[0].suit === SUIT.WIND;
-  if (windPungSet.size === 3 && pairIsWind) { faan += 6; labels.push('Small Winds 小四喜 (6f)'); }
-  else if (windPungSet.size === 4) { faan += 13; labels.push('Big Winds 大四喜 (13f)'); }
+  if (windPungSet.size === 3 && pairIsWind) { faan += 6; labels.push('Small Winds (6)'); }
+  else if (windPungSet.size === 4) { faan += 13; labels.push('Big Winds (13)'); }
 
   // --- No flowers / No seasons bonus (無花 1f)
   // Winning with zero bonus tiles scores 1 faan in HK rules.
@@ -243,7 +243,7 @@ function calcFaan(decomp, hand, ctx) {
   const bonusTiles = ctx.bonusTiles ?? null;
   if (bonusTiles !== null) {
     if (bonusTiles.length === 0) {
-      faan += 1; labels.push('No Flowers 無花 (1f)');
+      faan += 1; labels.push('No Flowers (1)');
     }
 
     // --- Bonus flowers/seasons
@@ -252,43 +252,43 @@ function calcFaan(decomp, hand, ctx) {
       const idx = b.value;
       if (idx === seatIdx) {
         faan += 1;
-        if (b.suit === SUIT.FLOWER) labels.push(`Own Flower ${FLOWER_ZH[idx]} 正花 (1f)`);
-        if (b.suit === SUIT.SEASON) labels.push(`Own Season ${SEASON_ZH[idx]} 正季 (1f)`);
+        if (b.suit === SUIT.FLOWER) labels.push(`Own Flower ${FLOWER_EN[idx]} (1)`);
+        if (b.suit === SUIT.SEASON) labels.push(`Own Season ${SEASON_EN[idx]} (1)`);
       }
     }
 
     // --- Complete set of 4 Flowers or 4 Seasons (+1f per complete set)
     const flowerCount  = bonusTiles.filter(b => b.suit === SUIT.FLOWER).length;
     const seasonCount  = bonusTiles.filter(b => b.suit === SUIT.SEASON).length;
-    if (flowerCount === 4) { faan += 1; labels.push('All 4 Flowers 百花齊放 (+1f)'); }
-    if (seasonCount === 4) { faan += 1; labels.push('All 4 Seasons 四季如春 (+1f)'); }
+    if (flowerCount === 4) { faan += 1; labels.push('All 4 Flowers (+1)'); }
+    if (seasonCount === 4) { faan += 1; labels.push('All 4 Seasons (+1)'); }
   }
-  
+
   // --- Self draw (自摸)
-  if (ctx.selfDraw) { faan += 1; labels.push('Self Draw 自摸 (1f)'); }
+  if (ctx.selfDraw) { faan += 1; labels.push('Self Draw (1)'); }
 
   // --- Fully concealed (門清)
-  if (ctx.concealed) { faan += 1; labels.push('Concealed 門清 (1f)'); }
+  if (ctx.concealed) { faan += 1; labels.push('Concealed (1)'); }
 
   // --- Robbed the Kong (搶槓胡)
-  if (ctx.robbedKong) { faan += 1; labels.push('Robbed the Kong 搶槓胡 (+1f)'); }
+  if (ctx.robbedKong) { faan += 1; labels.push('Robbed Kong (+1)'); }
 
   // --- Heavenly Hand 天胡 (dealer self-draw on first tile)
   if (ctx.heavenlyHand) {
     const max = (typeof MAX_FAAN !== 'undefined' && MAX_FAAN > 0) ? MAX_FAAN : 13;
-    return { total: max, label: `Heavenly Hand 天胡 (${max}f)` };
+    return { total: max, label: `Heavenly Hand (${max})` };
   }
 
   // --- Earthly Hand 地胡 (non-dealer wins on dealer's first discard)
   if (ctx.earthlyHand) {
     const max = (typeof MAX_FAAN !== 'undefined' && MAX_FAAN > 0) ? MAX_FAAN : 13;
-    return { total: max, label: `Earthly Hand 地胡 (${max}f)` };
+    return { total: max, label: `Earthly Hand (${max})` };
   }
 
   // --- Last Tile 海底撈月 (self-draw on last wall tile)
   if (ctx.lastTile) {
     const max = (typeof MAX_FAAN !== 'undefined' && MAX_FAAN > 0) ? MAX_FAAN : 13;
-    return { total: max, label: `Last Tile 海底撈月 (${max}f)` };
+    return { total: max, label: `Last Tile (${max})` };
   }
 
   return { total: faan, label: labels.join(', ') || 'Chicken Hand' };
