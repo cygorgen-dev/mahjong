@@ -384,6 +384,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // CPU scheme dropdowns (cpu1-scheme, cpu2-scheme, cpu3-scheme) — UI only for now
+  if (typeof SCHEMES !== 'undefined') {
+    ['cpu1-scheme', 'cpu2-scheme', 'cpu3-scheme'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      SCHEMES.forEach(sc => {
+        const opt = document.createElement('option');
+        opt.value = sc.id;
+        opt.textContent = sc.name;
+        opt.title = sc.desc;
+        sel.appendChild(opt);
+      });
+    });
+  }
+
   // CPU skill level dropdowns
   function updateCpuLevels() {
     const l1 = parseInt(document.getElementById('cpu1-level')?.value || '1');

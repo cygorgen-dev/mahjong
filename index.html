@@ -9,7 +9,7 @@
 <body>
   <div id="app" class="sidebar-open">
     <header>
-      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0530-338</span></h1>
+      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0530-340</span></h1>
       <div id="message"></div>
       <div id="info-bar">
         <button id="new-game-btn">New Game</button>
@@ -142,6 +142,12 @@
             </select>
           </div>
         </div>
+        <div class="sidebar-row" style="margin-top:-2px;">
+          <label class="sb-label" style="color:#555;font-size:9px;">scheme</label>
+          <select id="cpu1-scheme" class="sb-select" style="font-size:10px;" title="Strategy scheme for CPU1 — overrides Level AI when set">
+            <option value="">— Level AI —</option>
+          </select>
+        </div>
         <div class="sidebar-row">
           <label class="sb-label">CPU 2</label>
           <div style="display:flex;align-items:center;gap:6px;">
@@ -152,6 +158,12 @@
             </select>
           </div>
         </div>
+        <div class="sidebar-row" style="margin-top:-2px;">
+          <label class="sb-label" style="color:#555;font-size:9px;">scheme</label>
+          <select id="cpu2-scheme" class="sb-select" style="font-size:10px;" title="Strategy scheme for CPU2 — overrides Level AI when set">
+            <option value="">— Level AI —</option>
+          </select>
+        </div>
         <div class="sidebar-row">
           <label class="sb-label">CPU 3</label>
           <div style="display:flex;align-items:center;gap:6px;">
@@ -161,6 +173,12 @@
               <option value="2">🟡 Inter</option><option value="3">🔴 Expert</option><option value="4">🔥 Master</option>
             </select>
           </div>
+        </div>
+        <div class="sidebar-row" style="margin-top:-2px;">
+          <label class="sb-label" style="color:#555;font-size:9px;">scheme</label>
+          <select id="cpu3-scheme" class="sb-select" style="font-size:10px;" title="Strategy scheme for CPU3 — overrides Level AI when set">
+            <option value="">— Level AI —</option>
+          </select>
         </div>
         <div class="sidebar-row" id="auto-level-row">
           <label class="sb-label">YOU</label>
