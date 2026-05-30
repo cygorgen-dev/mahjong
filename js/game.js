@@ -185,8 +185,10 @@ class Game {
         if (isBonus(player.hand[i])) {
           const b = player.hand.splice(i, 1)[0];
           player.bonus.push(b);
+          this.addLog(`${player.name} bonus ${tileMain(b)} → replacement`);
           const newTile = this.drawFromTail(); // bonus replacement from tail
           if (newTile) {
+            this.addLog(`${player.name} bonus replacement: ${tileMain(newTile)}`);
             for (const t of player.hand) t._justDrawn = false;
             newTile._justDrawn = true;
             if (player.isHuman) {
@@ -194,6 +196,8 @@ class Game {
             } else {
               player.hand.push(newTile);
             }
+          } else {
+            this.addLog(`${player.name} bonus replacement: wall exhausted`);
           }
           found = true;
         }
@@ -235,6 +239,7 @@ class Game {
     drawn._justDrawn = true;
     // Track if this was the last tile from the wall
     this._drewLastTile = (this.wallRemaining() === 0);
+    this.addLog(`${playerTag(p)} draws ${tileMain(drawn)}`);
     this._addDrawnTile(p, drawn);
     this.replaceBonus(p);
     this._checkHandCount(seat, 14 - 3 * p.melds.length, 'after-draw');
@@ -482,7 +487,12 @@ class Game {
     this.addLog(`${playerTag(this.players[seat])} ${kongLabel} ${tileMain(t)}`);
     // Draw replacement tile
     const repl = this.drawFromTail()  // kong replacement from tail wall;
-    if (repl) { this._addDrawnTile(p, repl); this.replaceBonus(p); }
+    if (repl) {
+      this.addLog(`${playerTag(p)} kong replacement: ${tileMain(repl)}`);
+      this._addDrawnTile(p, repl); this.replaceBonus(p);
+    } else {
+      this.addLog(`${playerTag(p)} kong replacement: wall exhausted`);
+    }
     this._checkHandCount(seat, 14 - 3 * p.melds.length, 'after-kong');
     this.phase = PHASE.DISCARD;
     this._actForSeat(seat);
@@ -794,7 +804,12 @@ class Game {
       }
       // Draw replacement
       const repl = this.drawFromTail()  // kong replacement from tail wall;
-      if (repl) { this._addDrawnTile(p, repl); this.replaceBonus(p); }
+      if (repl) {
+        this.addLog(`${playerTag(this.players[seat])} kong replacement: ${tileMain(repl)}`);
+        this._addDrawnTile(p, repl); this.replaceBonus(p);
+      } else {
+        this.addLog(`${playerTag(this.players[seat])} kong replacement: wall exhausted`);
+      }
     } else if (action === 'chow') {
       const fromHand = chowTiles ? chowTiles.filter(t => t.id !== tile.id) : findChowWith(p.hand, tile).filter(t => t !== tile);
       p.hand = removeFromHandList(p.hand, fromHand);
@@ -878,6 +893,7 @@ class Game {
       this.onUpdate('draw');
       return;
     }
+    this.addLog(`${playerTag(p)} kong replacement: ${tileMain(repl)}`);
     this._addDrawnTile(p, repl);
     this.replaceBonus(p);
     this._drewLastTile = (this.wallRemaining() === 0);
