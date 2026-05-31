@@ -1295,6 +1295,55 @@ const BUILTIN=[
       ].map(t=>({...t,_justDrawn:false}))},
     ],
   },
+  {
+    // CPU2 (top, seat 2) discards 一萬 (Char-1).
+    // Both You and CPU3 can win on it, but CPU3 is counter-clockwise-closer to CPU2:
+    //   CPU3 diff=(3-2+4)%4=1  <  You diff=(0-2+4)%4=2  → CPU3 hijacks You's win.
+    // CPU1 (diff=3) cannot win on 一萬.
+    // On Pass: CPU3 wins with 清一色(7f)+No Flowers(1f)=8f.
+    _presetName:'★ Hijack — CPU3 beats You (closer seat 一萬)',
+    _expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
+    _expectedPassWinnerSeat:3,_expectedPassMinFaan:3,
+    _expectedUiLayout:true,
+    phase:'claim',discardFrom:2,dealerSeat:0,roundWind:'East',
+    allPlayers:[
+      {seat:0,drawnIdx:null,melds:[],bonus:[],hand:[
+        // You — tenpai waiting for 一萬 to pair → East pung(2f)+No Flowers(1f)=3f
+        // Win is suppressed: CPU3 (diff=1) is closer to CPU2 than You (diff=2)
+        mk(SUIT.K,2),mk(SUIT.K,3),mk(SUIT.K,4),
+        mk(SUIT.K,5),mk(SUIT.K,6),mk(SUIT.K,7),
+        mk(SUIT.W,'East'),mk(SUIT.W,'East'),mk(SUIT.W,'East'),
+        mk(SUIT.C,1),mk(SUIT.C,2),mk(SUIT.C,3),
+        mk(SUIT.K,1),
+      ].map(t=>({...t,_justDrawn:false}))},
+      {seat:1,drawnIdx:null,melds:[],bonus:[],hand:[
+        // CPU1 — cannot win on 一萬; pure dots hand
+        mk(SUIT.C,1),mk(SUIT.C,2),mk(SUIT.C,3),
+        mk(SUIT.C,4),mk(SUIT.C,5),mk(SUIT.C,6),
+        mk(SUIT.C,7),mk(SUIT.C,8),mk(SUIT.C,9),
+        mk(SUIT.B,2),mk(SUIT.B,4),mk(SUIT.B,6),
+        mk(SUIT.B,8),
+      ].map(t=>({...t,_justDrawn:false}))},
+      {seat:2,drawnIdx:null,melds:[],bonus:[],hand:[
+        // CPU2 — just discarded 一萬; remaining hand cannot win on 一萬
+        mk(SUIT.B,1),mk(SUIT.B,2),mk(SUIT.B,3),
+        mk(SUIT.B,4),mk(SUIT.B,5),mk(SUIT.B,6),
+        mk(SUIT.B,7),mk(SUIT.B,8),mk(SUIT.B,9),
+        mk(SUIT.W,'South'),mk(SUIT.W,'South'),mk(SUIT.W,'South'),
+        mk(SUIT.W,'West'),
+      ].map(t=>({...t,_justDrawn:false}))},
+      {seat:3,drawnIdx:null,melds:[],bonus:[],hand:[
+        // CPU3 — 清一色 tenpai: 一萬 completes chow 一二三萬 → 清一色(7f)+No Flowers(1f)=8f
+        // diff=1 from CPU2, closer than You (diff=2) → CPU3 hijacks You
+        mk(SUIT.K,2),mk(SUIT.K,3),
+        mk(SUIT.K,2),mk(SUIT.K,3),mk(SUIT.K,4),
+        mk(SUIT.K,5),mk(SUIT.K,6),mk(SUIT.K,7),
+        mk(SUIT.K,6),mk(SUIT.K,7),mk(SUIT.K,8),
+        mk(SUIT.K,9),mk(SUIT.K,9),
+      ].map(t=>({...t,_justDrawn:false}))},
+    ],
+    discardTile:{...mk(SUIT.K,1),_discardSeat:2},
+  },
 ];
 
 function renderPresetListFull(){

@@ -1324,6 +1324,9 @@ document.addEventListener('DOMContentLoaded', () => {
       game.currentSeat = 0;
       game.discardPile = [];
       game.lastResult  = null;
+      // Always reset rob-kong state so a previous rob-kong injection doesn't bleed into the next scenario
+      game.robbingKongSeat = null; game.robbingKongTile = null;
+      game.robbingKongTiles = null; game.robbingKongPungIdx = null;
 
       const human = game.players[0];
 
