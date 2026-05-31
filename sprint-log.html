@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprint Log 📊</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #07301a; color: #ccc; padding: 8px; margin: 0;
+      font-family: system-ui, sans-serif; font-size: 11px;
+    }
+    #header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 8px; margin-bottom: 6px;
+      background: rgba(0,0,0,.4); border-radius: 6px;
+    }
+    #header-title { color: #ffd34d; font-weight: 700; font-size: 13px; }
+    #clear-btn {
+      font-size: 10px; padding: 2px 8px;
+      background: #222; color: #888;
+      border: 1px solid #444; border-radius: 3px; cursor: pointer;
+    }
+    #clear-btn:hover { color: #ccc; border-color: #666; }
+    #status-bar {
+      font-size: 11px; color: #aaa;
+      padding: 3px 6px; background: rgba(0,0,0,.3); border-radius: 4px;
+      margin-bottom: 6px; min-height: 20px;
+    }
+    #sprint-stats { font-size: 10px; color: #8ad4ff; line-height: 1.6; margin-bottom: 8px; }
+    #sprint-stats table {
+      width: 100%; font-size: 10px;
+      font-family: 'Courier New', monospace;
+      border-collapse: collapse; line-height: 1.7;
+    }
+    #sprint-log-body {
+      font-size: 10px;
+      font-family: 'Courier New', monospace;
+    }
+    #no-signal { color: #555; padding: 30px; text-align: center; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <span id="header-title">📊 Sprint Log</span>
+    <button id="clear-btn" type="button">✕ Clear</button>
+  </div>
+  <div id="status-bar"></div>
+  <div id="sprint-stats"><div id="no-signal">Waiting for sprint data… start a sprint in the main window.</div></div>
+  <div id="sprint-log-body"></div>
+
+  <script>
+    // Snap flush against the game window's right edge, full available height.
+    (function() {
+      if (!window.opener) return;
+      try {
+        const op   = window.opener;
+        const left = op.screenLeft + op.outerWidth + 20;
+        const w    = Math.max(300, op.screen.availWidth - left);
+        window.moveTo(left, op.screen.availTop || 0);
+        window.resizeTo(w, op.screen.availHeight);
+      } catch(e) {}
+    })();
+
+    const SPRINT_COLORS = ['#ffd34d', '#7dffff', '#aaffaa', '#ffaaff'];
+
+    const statsEl  = document.getElementById('sprint-stats');
+    const bodyEl   = document.getElementById('sprint-log-body');
+    const statusEl = document.getElementById('status-bar');
+    let _lastLogLen = -1;
+
+    function render(data) {
+      const log        = data.log || [];
+      const done       = data.done ?? log.length;
+      const target     = data.target ?? 50;
+      const startSc    = data.startScores ?? null;
+
+      if (log.length === 0) {
+        statsEl.innerHTML = '<div id="no-signal">Log cleared — start a sprint to see results.</div>';
+        bodyEl.innerHTML  = '';
+        statusEl.textContent = '';
+        _lastLogLen = 0;
+        return;
+      }
+
+      statusEl.textContent = done < target
+        ? `H${done}/${target} — running…`
+        : `✅ Done — ${done} hands`;
+
+      // Aggregate
+      const wins = [0, 0, 0, 0];
+      let drawCount = 0, totalFaan = 0, winCount = 0;
+      for (const e of log) {
+        if (e.winnerSeat >= 0) { wins[e.winnerSeat]++; totalFaan += e.faan; winCount++; }
+        else drawCount++;
+      }
+      const avgFaan    = winCount > 0 ? (totalFaan / winCount).toFixed(1) : '—';
+      const names      = log[0]?.scores?.map(s => s.name) ?? ['You','CPU1','CPU2','CPU3'];
+      const lastScores = log[log.length - 1]?.scores ?? [];
+      const drawRate   = log.length > 0 ? Math.round(drawCount / log.length * 100) : 0;
+
+      let statsHtml = `<b>H${done}/${target}</b>`;
+      if (drawCount > 0) statsHtml += ` · ${drawCount} draw${drawCount > 1 ? 's' : ''} (${drawRate}%)`;
+      statsHtml += ` · Avg ${avgFaan}f`;
+
+      statsHtml += `<table style="width:100%;font-size:10px;font-family:'Courier New',monospace;border-collapse:collapse;margin-top:5px;line-height:1.7;">` +
+        `<tr style="color:#444;"><td></td>` +
+        `<td title="Wins">W</td><td title="Win rate">W%</td>` +
+        `<td title="Score delta over all hands">ΔPts</td>` +
+        `<td title="Average faan per win">AvgF</td>` +
+        `<td title="Best single hand faan">Best</td></tr>`;
+
+      names.forEach((name, i) => {
+        const w      = wins[i];
+        const winPct = log.length > 0 ? Math.round(w / log.length * 100) : 0;
+        const delta  = startSc && lastScores[i]
+          ? lastScores[i].score - startSc[i]
+          : log.reduce((s, e) => s + (e.scores[i]?.delta ?? 0), 0);
+        const dStr   = delta >= 0 ? `+${delta}` : `${delta}`;
+        const dColor = delta > 0 ? '#5dde7a' : delta < 0 ? '#ff6666' : '#777';
+        const pwins  = log.filter(e => e.winnerSeat === i);
+        const pAvg   = pwins.length > 0
+          ? (pwins.reduce((s, e) => s + e.faan, 0) / pwins.length).toFixed(1) + 'f'
+          : '—';
+        const best    = pwins.length > 0 ? Math.max(...pwins.map(e => e.faan)) : 0;
+        const bestStr = best > 0 ? `${best}f` : '—';
+        const bestCol = best >= 6 ? '#ffd34d' : '#aaa';
+        const nc      = (lastScores[i]?.score ?? 0) < 0 ? '#ff4444' : SPRINT_COLORS[i];
+        statsHtml += `<tr>` +
+          `<td style="color:${nc};font-weight:700;">${name.slice(0,4)}</td>` +
+          `<td>${w}</td>` +
+          `<td style="color:#aaa;">${winPct}%</td>` +
+          `<td style="color:${dColor};font-weight:700;">${dStr}</td>` +
+          `<td>${pAvg}</td>` +
+          `<td style="color:${bestCol};font-weight:${best >= 6 ? '700' : '400'};">${bestStr}</td>` +
+          `</tr>`;
+      });
+      statsHtml += `</table>`;
+
+      // Sparkline
+      if (log.length >= 2) {
+        const BLOCKS  = '▁▂▃▄▅▆▇█';
+        const step    = log.length <= 45 ? 1 : Math.ceil(log.length / 45);
+        const sampled = log.filter((_, idx) => idx % step === 0);
+        const allSc   = names.flatMap((_, i) => sampled.map(e => e.scores[i]?.score ?? 0));
+        const sMin    = Math.min(...allSc);
+        const sMax    = Math.max(...allSc);
+        const sRange  = sMax - sMin || 1;
+        statsHtml += `<div style="margin-top:6px;font-family:'Courier New',monospace;font-size:8px;line-height:1.6;white-space:nowrap;">`;
+        statsHtml += `<div style="color:#666;font-size:7px;margin-bottom:1px;">score trend ▸</div>`;
+        names.forEach((name, i) => {
+          const line = sampled.map(e => {
+            const sc  = e.scores[i]?.score ?? sMin;
+            const idx = Math.round((sc - sMin) / sRange * 7);
+            return BLOCKS[Math.max(0, Math.min(7, idx))];
+          }).join('');
+          const nc = (lastScores[i]?.score ?? 0) < 0 ? '#ff4444' : SPRINT_COLORS[i];
+          statsHtml += `<div><span style="color:${nc};display:inline-block;width:26px;">${name.slice(0,3)}</span>` +
+            `<span style="color:${nc};">${line}</span></div>`;
+        });
+        statsHtml += `</div>`;
+      }
+
+      statsEl.innerHTML = statsHtml;
+
+      // Per-hand rows — skip re-render if nothing new
+      if (_lastLogLen === log.length) return;
+      _lastLogLen = log.length;
+
+      bodyEl.innerHTML = [...log].reverse().map(e => {
+        const win     = e.winnerSeat >= 0;
+        const wColor  = win ? SPRINT_COLORS[e.winnerSeat] : '#888';
+        const wName   = (e.winnerName ?? 'Draw').slice(0, 5);
+        const faanStr = win ? `${e.faan}f` : '—';
+        const lbl     = (e.label ?? '').replace(/\s*\(\d+\)/g, '').slice(0, 26);
+        const sc      = (e.scores ?? []).map((s, i) => {
+          const colored = s.score < 0 || e.winnerSeat === i;
+          const c    = s.score < 0 ? '#ff4444' : (e.winnerSeat === i ? SPRINT_COLORS[i] : '#aaa');
+          const bust = s.score < 0 ? '💀' : '';
+          return `<span style="color:${c};${colored ? 'font-weight:700;' : ''}">${s.score}${bust}</span>`;
+        }).join(' ');
+        return `<div style="padding:2px 0;border-bottom:1px solid #111;">` +
+          `<span style="color:#888">${String(e.hand).padStart(3)} </span>` +
+          `<span style="color:${wColor};font-weight:700;display:inline-block;width:38px;">${wName}</span>` +
+          `<span style="color:${wColor};font-weight:${win ? '700' : '400'};display:inline-block;width:20px;">${faanStr}</span> ` +
+          `<span style="color:#aaa" title="${e.label ?? ''}">${lbl}</span>` +
+          `<br><span style="padding-left:44px;font-size:9px;">${sc}</span>` +
+          `</div>`;
+      }).join('');
+    }
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      bc.postMessage({ type: 'clear' });
+      statsEl.innerHTML = '<div id="no-signal">Log cleared — start a sprint to see results.</div>';
+      bodyEl.innerHTML  = '';
+      statusEl.textContent = '';
+      _lastLogLen = 0;
+    });
+
+    const bc = new BroadcastChannel('mahjong-sprint-log');
+    bc.onmessage = e => { if (e.data && e.data.log !== undefined) render(e.data); };
+
+    try {
+      const saved = localStorage.getItem('mahjong-sprint-log-state');
+      if (saved) render(JSON.parse(saved));
+    } catch(e) {}
+  </script>
+</body>
+</html>
