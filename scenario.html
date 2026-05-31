@@ -1344,6 +1344,56 @@ const BUILTIN=[
     ],
     discardTile:{...mk(SUIT.K,1),_discardSeat:2},
   },
+  {
+    // CPU3 (left, seat 3) discards 九萬 (Char-9).
+    // All three others can win on it. Counter-clockwise distances from seat 3:
+    //   You (seat 0) diff=1 (closest) → You get WIN; CPU1 diff=2, CPU2 diff=3 → hijacked.
+    // You also have chow (七八萬 waiting for 九萬); WIN takes priority.
+    // On Pass: CPU1 wins (next closest, diff=2) with 2f.
+    _presetName:'★ You win — closest to CPU3\'s discard 九萬',
+    _expectedWin:true,_expectedPung:false,_expectedKong:false,_expectedChow:true,
+    _expectedPassWinnerSeat:1,_expectedPassMinFaan:2,
+    _expectedUiLayout:true,
+    phase:'claim',discardFrom:3,dealerSeat:0,roundWind:'East',
+    allPlayers:[
+      {seat:0,drawnIdx:null,melds:[],bonus:[],hand:[
+        // You — tenpai: 七八萬 waiting for 九萬 to complete chow
+        // Win: East pung(2f seat+round)+No Flowers(1f)=3f; also can chow
+        mk(SUIT.K,1),mk(SUIT.K,2),mk(SUIT.K,3),
+        mk(SUIT.K,2),mk(SUIT.K,3),mk(SUIT.K,4),
+        mk(SUIT.W,'East'),mk(SUIT.W,'East'),mk(SUIT.W,'East'),
+        mk(SUIT.D,'red'),mk(SUIT.D,'red'),
+        mk(SUIT.K,7),mk(SUIT.K,8),
+      ].map(t=>({...t,_justDrawn:false}))},
+      {seat:1,drawnIdx:null,melds:[],bonus:[],hand:[
+        // CPU1 — also tenpai on 九萬; diff=2, goes to pendingClaims
+        // Win: Seat Wind South(1f)+No Flowers(1f)=2f
+        mk(SUIT.B,1),mk(SUIT.B,2),mk(SUIT.B,3),
+        mk(SUIT.B,4),mk(SUIT.B,5),mk(SUIT.B,6),
+        mk(SUIT.W,'South'),mk(SUIT.W,'South'),mk(SUIT.W,'South'),
+        mk(SUIT.D,'green'),mk(SUIT.D,'green'),
+        mk(SUIT.K,7),mk(SUIT.K,8),
+      ].map(t=>({...t,_justDrawn:false}))},
+      {seat:2,drawnIdx:null,melds:[],bonus:[],hand:[
+        // CPU2 — also tenpai on 九萬; diff=3, goes to pendingClaims
+        // Win: Seat Wind West(1f)+No Flowers(1f)=2f
+        mk(SUIT.C,2),mk(SUIT.C,3),mk(SUIT.C,4),
+        mk(SUIT.C,5),mk(SUIT.C,6),mk(SUIT.C,7),
+        mk(SUIT.W,'West'),mk(SUIT.W,'West'),mk(SUIT.W,'West'),
+        mk(SUIT.D,'white'),mk(SUIT.D,'white'),
+        mk(SUIT.K,7),mk(SUIT.K,8),
+      ].map(t=>({...t,_justDrawn:false}))},
+      {seat:3,drawnIdx:null,melds:[],bonus:[],hand:[
+        // CPU3 — just discarded 九萬; remaining hand cannot win on it
+        mk(SUIT.C,1),mk(SUIT.C,1),mk(SUIT.C,1),
+        mk(SUIT.C,8),mk(SUIT.C,8),mk(SUIT.C,8),
+        mk(SUIT.W,'North'),mk(SUIT.W,'North'),mk(SUIT.W,'North'),
+        mk(SUIT.B,2),mk(SUIT.B,4),mk(SUIT.B,6),
+        mk(SUIT.B,8),
+      ].map(t=>({...t,_justDrawn:false}))},
+    ],
+    discardTile:{...mk(SUIT.K,9),_discardSeat:3},
+  },
 ];
 
 function renderPresetListFull(){
