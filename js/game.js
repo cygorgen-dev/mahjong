@@ -322,7 +322,10 @@ class Game {
     this.firstDraw = false;
     this.phase = PHASE.DISCARD;
 
-    if (p.isHuman) {
+    // In sprint mode treat human seat identically to CPU — bypasses the
+    // intermediate claimOptions path and goes straight to aiPlay like every
+    // other seat, eliminating any isHuman code-path bias in auto runs.
+    if (p.isHuman && !window.AUTO_MODE) {
       // Check if the human can win by self-draw with the new tile
       const ctx = this.makeCtx(0, true);
       // Heavenly Hand: dealer wins on very first draw with no prior action
@@ -420,17 +423,18 @@ class Game {
     }
     const p = this.players[seat];
     const ctx = this.makeCtx(seat, true);
-    // Heavenly Hand: AI dealer wins on very first draw
-    if (seat === this.dealerSeat && this.handActionCount === 0 && this._isFirstDealerDraw) {
-      ctx.heavenlyHand = true;
-    }
+    // Heavenly Hand: dealer's initial 14 dealt tiles form a winning hand
+    const isHeavenly = (seat === this.dealerSeat && this.handActionCount === 0 && this._isFirstDealerDraw);
+    if (isHeavenly) ctx.heavenlyHand = true;
     // Last Tile 海底撈月
     if (this._drewLastTile && (typeof LAST_TILE_WIN !== 'undefined') && LAST_TILE_WIN) {
       ctx.lastTile = true;
     }
     const result = canWin(p.hand, p.melds, ctx);
     const minF = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
-    if (result.win && result.faan >= minF && p.hand.some(t => t._justDrawn)) {
+    // Heavenly Hand needs no _justDrawn tile — all 14 were dealt. Regular
+    // self-draw wins require the completing tile to have just been drawn.
+    if (result.win && result.faan >= minF && (isHeavenly || p.hand.some(t => t._justDrawn))) {
       this.resolveWin(seat, null, result);
       return;
     }

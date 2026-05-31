@@ -478,42 +478,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ---- Demo Heavenly Hand 天胡: dealer gets a winning hand, first draw ----
+  // ---- Demo Heavenly Hand 天胡: dealer's 14 dealt tiles form a winning hand ----
   document.getElementById('demo-heavenly-btn').addEventListener('click', (e) => { e.stopPropagation();
     game.reset();
-    // Give dealer a complete winning hand in 13 tiles + winning tile as draw
     const p = game.players[game.dealerSeat];
-    // Clear hand and give a clean winning hand: 1-9 bamboo + East pung pair
     const makeTile = (suit, value) => ({ suit, value, id: Math.random(), _justDrawn: false });
+    // All 14 tiles dealt at once (new deal model) — no single "drawn" tile.
+    // Hand: 1-2-3 bam + 4-5-6 bam + 7-8-9 bam + circle 1-1-1 (pung) + circle 9-9 (pair)
     p.hand = [
       makeTile(SUIT.BAMBOO,1), makeTile(SUIT.BAMBOO,2), makeTile(SUIT.BAMBOO,3),
       makeTile(SUIT.BAMBOO,4), makeTile(SUIT.BAMBOO,5), makeTile(SUIT.BAMBOO,6),
       makeTile(SUIT.BAMBOO,7), makeTile(SUIT.BAMBOO,8), makeTile(SUIT.BAMBOO,9),
       makeTile(SUIT.CIRCLE,1), makeTile(SUIT.CIRCLE,1), makeTile(SUIT.CIRCLE,1),
-      makeTile(SUIT.CIRCLE,9),
+      makeTile(SUIT.CIRCLE,9), makeTile(SUIT.CIRCLE,9),
     ];
-    // The 14th tile (draw) completes to pure one suit
-    const winTile = makeTile(SUIT.CIRCLE,9);
-    winTile._justDrawn = true;
-    p.hand.unshift(winTile);
     p.melds = [];
-    // Set state: dealer's turn, first draw, no actions yet
+    // State mirrors post-deal: 14 tiles in hand, phase=DISCARD, no actions yet
     game.currentSeat = game.dealerSeat;
     game.phase = PHASE.DISCARD;
     game.handActionCount = 0;
     game.dealerFirstDiscard = false;
     game._isFirstDealerDraw = true;
-    // Trigger win check manually for human dealer
+    // Trigger win check for human dealer — Heavenly Hand needs no _justDrawn tile
     if (game.dealerSeat === 0) {
       const ctx = game.makeCtx(0, true);
       ctx.heavenlyHand = true;
       const result = canWin(p.hand, p.melds, ctx);
-      game.claimOptions = { win: result, pung: false, kong: false, chow: false };
-      game.phase = PHASE.CLAIM;
-      game.pendingClaims = [];
+      if (result.win) {
+        game.claimOptions = { win: result, pung: false, kong: false, chow: false };
+        game.phase = PHASE.CLAIM;
+        game.pendingClaims = [];
+      }
     }
     renderAll();
-    addMsg('<strong>Demo 天胡</strong>: Dealer has a winning hand on first draw!');
+    addMsg('<strong>Demo 天胡</strong>: Dealer wins with all 14 dealt tiles!');
   });
 
   // ---- Demo Earthly Hand 地胡: CPU1 is dealer, discards, human wins on it ----
