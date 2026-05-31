@@ -94,6 +94,8 @@ The only level that watches other players, not just its own hand.
 
 **Patient claiming:** In defensive situations, Master passes rather than reveals its hand direction. It only claims if already near tenpai itself.
 
+> **Known AI balance issue (open):** Master underperforms against three Beginners (~13% wins vs ~22% each for Beginners). The defensive strategy is calibrated for opponent-aware play but misfires when opponents discard randomly with no pattern. A future fix would add a "threat level fallback" — when opponents show no discernible danger signals, play more aggressively. See `combo.js` calibration runs for data.
+
 ---
 
 ## Open Hands 明牌
@@ -146,22 +148,28 @@ The hint never plays for you. It only advises.
 
 ## Special Rules
 
+### Deal Order (Cantonese rules)
+The dealer receives **14 tiles**; all other players receive **13**. Bonus tile replacement then proceeds **round-robin**: dealer replaces first, then each player counter-clockwise in turn. Replacement tiles drawn during a round are not replaced until the next round. This continues until nobody draws a bonus tile. The dealer then discards immediately — no extra draw. Multiple rounds of replacement (3+) are supported.
+
 ### Concealed Kong 暗槓
 Draw your 4th matching tile with no claimed melds → click **Kong 槓**.  
 Appears as **[■][■][■][face]** — concealed hand bonus preserved.  
 A replacement tile is drawn. Claiming any tile later reveals the kong and loses the bonus.
 
 ### Heavenly Hand 天胡
-Dealer wins by self-draw on the very first tile. Maximum faan.
+Dealer wins with their initial 14 dealt tiles before making any discard. Maximum faan. The entire 14-tile hand is checked — there is no single "drawn" tile.
 
 ### Earthly Hand 地胡
-Non-dealer wins on the dealer's very first discard. Maximum faan.
+Non-dealer wins on the dealer's very first discard (before anyone else has drawn). Maximum faan.
 
 ### Last Tile 海底撈月
 Enable with **Last Tile 海底** checkbox. Self-draw the very last wall tile to complete your hand → maximum faan.
 
 ### Robbing the Kong 搶槓
 When a player upgrades a Pung to Kong with a self-drawn tile, any player who can win with that tile may rob it. The header announces the opportunity. +1 faan bonus.
+
+### Seat Rotation
+After every complete 4-wind-round game, the three CPU players are **randomly reshuffled** among seats 1–3 (You always remain at seat 0). The last hand's winner becomes the starting dealer. A new shuffle is retried if positions are unchanged.
 
 ---
 
@@ -203,14 +211,65 @@ Set the checkboxes (Win / Pung / Kong / Chow) before saving to record what butto
 
 ## Demo Buttons
 
+Access via **More tools…** dropdown in the sidebar.
+
 | Button | What it sets up |
 |---|---|
-| **Demo Left 💡** | Cycles through winning hands for each seat and dealer position |
-| **Demo Rob 搶槓** | Cycles through four Robbing the Kong scenarios |
-| **Demo 天胡** | Dealer has a winning hand ready on first draw |
-| **Demo 地胡** | CPU1 is dealer and discards the tile you need to win |
+| **Demo Left 💡** (main sidebar) | Cycles winning hands for each seat and dealer position |
+| **Demo Rob 搶槓** | Cycles four Robbing the Kong scenarios (Human robs / AI robs / Both / Nobody) |
+| **Demo 天胡** | Dealer's 14 dealt tiles form a winning hand — Heavenly Hand |
+| **Demo 地胡** | CPU1 is dealer and discards the tile you need to win — Earthly Hand |
 | **Demo 暗槓** | You hold four of a kind with no claimed melds — click Kong 槓 |
 | **Demo 海底** | Wall drains to one tile; Last Tile toggled on automatically |
+| **Test: Rob Win 搶槓胡** | CPU1 upgrades pung→kong; CPU3 is in position to rob |
+| **Test: Kong Completes 槓完** | CPU1 upgrades pung→kong; nobody can rob; game continues |
+| **🧪 Run All Tests** | Runs the full in-browser test suite (14 tests); results in floating panel and `window._testResults` |
+
+---
+
+## Testing & Calibration
+
+### Running tests
+
+```bash
+npm test              # Full suite: 8 regression scenarios + 14 demo tests (23 total)
+node run_regression.js  # Regression scenarios only (8 tests)
+node test_all.js        # Same as npm test
+```
+
+The **in-browser test button** (`#run-all-tests-btn`) is also available for AI agents:
+
+```javascript
+// From Playwright:
+await page.evaluate(() => document.getElementById('run-all-tests-btn').click());
+await page.waitForFunction(() => window._testResults?.done === true, { timeout: 20000 });
+const results = await page.evaluate(() => window._testResults);
+// results = { done, passed, total, failed, details: [{ name, ok, why? }] }
+```
+
+### Calibration runs — `combo.js`
+
+Runs a sprint of N hands with configurable skill levels per seat:
+
+```bash
+node combo.js <seat0> <seat1> <seat2> <seat3> <hands>
+# e.g. node combo.js 4 1 1 1 400  → Master vs 3 Beginners, 400 hands
+# e.g. node combo.js 3 3 3 3 200  → all Expert, 200 hands
+
+# Named flags also work:
+node combo.js --you 4 --cpus 1 --hands 400
+```
+
+Levels: 1=Beginner, 2=Inter, 3=Expert, 4=Master.  
+Logs to `combo_<levels><hands>.log`. Reports win %, avg faan, and point deltas every 25 hands.
+
+### Batch runs — `run_all.js`
+
+Runs a predefined set of 12 configurations sequentially and prints a combined summary:
+
+```bash
+node run_all.js
+```
 
 ---
 
@@ -218,10 +277,12 @@ Set the checkboxes (Win / Pung / Kong / Chow) before saving to record what butto
 
 - **144 tiles**: Bamboo / Characters / Dots 1–9 (×4 each), Winds East/South/West/North (×4 each), Dragons Red/Green/White (×4 each), Flowers 梅蘭菊竹 and Seasons 春夏秋冬 (×1 each)
 - **Winning hand** = four sets (chow / pung / kong) + one pair
+- **Deal**: dealer receives 14 tiles, others receive 13; bonus replacement is round-robin
 - **Discard win 出銃**: the discarder pays the full amount; others pay nothing
 - **Self-draw 自摸**: all three opponents each pay equally
 - Dealer keeps the deal on a win; rotates counter-clockwise otherwise
-- Round wind advances after all four players have held East
+- Round wind advances after all four players have held the dealer role
+- Seats reshuffle after each complete 4-wind-round game
 
 ---
 
@@ -295,4 +356,41 @@ Set the checkboxes (Win / Pung / Kong / Chow) before saving to record what butto
 | `js/ai.js` | CPU opponent logic — four skill levels including opponent-aware Master |
 | `js/game.js` | Game state machine |
 | `js/ui.js` | Rendering and input handling |
-| `js/main.js` | Startup, UI wiring, demo buttons, scenario injection |
+| `js/main.js` | Startup, UI wiring, demo buttons, scenario injection, in-browser test runner |
+| `combo.js` | Sprint calibration runner — configurable levels per seat, per-run log files |
+| `run_all.js` | Batch runner — 12 preset configurations, combined summary |
+| `run_regression.js` | Scenario regression runner — opens game + scenario.html, injects and checks |
+| `test_all.js` | Combined test suite — regression scenarios + demo tests (23 total); `npm test` |
+| `run_check.js` | Playwright utility — used for one-off checks and demo verification |
+
+---
+
+## Notes for AI Agents & Future Developers
+
+### Architecture overview
+
+- **No build step, no bundler.** All JS is loaded as plain `<script>` tags in `index.html`. Changes to any `.js` file take effect immediately on reload.
+- **Game state lives in `game` (a `let` in `main.js` module scope).** It is NOT on `window.game`. Access it from Playwright via `page.evaluate(() => eval('game'))`.
+- **Sprint mode runs synchronously.** In `window.AUTO_MODE === 'sprint'`, `_scheduleOrStep(fn)` calls `fn()` immediately — the entire hand resolves in one call stack. This is why sprints are fast but can't be interrupted mid-hand.
+- **CPU levels follow players by name, not seat.** `window.CPU_LEVELS_BY_NAME = { CPU1: n, CPU2: n, CPU3: n }` persists through seat rotations. `CPU_LEVELS[seat]` is refreshed from this map at the start of each `aiPlay` call.
+- **YOU (seat 0) is always `isHuman=true`**, even in sprint auto mode. In auto mode, `startTurn` now routes seat 0 through the same CPU code path (`!window.AUTO_MODE` guard) to avoid any `isHuman` code-path bias in sprint statistics.
+
+### Testing workflow for AI agents
+
+1. Open `index.html` with Playwright (headless is fine).
+2. Click `#run-all-tests-btn` via `page.evaluate(...)`.
+3. Poll `window._testResults.done === true` (timeout ~20s).
+4. Read `window._testResults.details` for pass/fail per test.
+5. For the full 23-test suite including regression scenarios, run `node test_all.js` as a subprocess.
+
+### Known open issues
+
+- **Master AI vs Beginners balance**: In a 1v3 scenario (Master alone vs 3 Beginners), Master consistently wins only ~13% of hands while Beginners win ~20-25% each. The inverse also holds — a lone Beginner against 3 Masters wins ~22-24%. Root cause: Master's defensive strategy is calibrated for opponent-aware play. Against randomly-discarding Beginners it over-withholds tiles and misses winning opportunities. Fix: add a "low threat" fallback in `aiClaimDecisionLevel4` and `aiChooseDiscardLevel4` — when opponent danger signals are absent, revert to Expert-style aggressive play.
+- **Seat rotation in calibration data**: `combo.js` reports wins by physical seat number. After `rotatePlayers()` fires (every ~16 hands), CPUs shuffle among seats 1–3 so a given seat's win rate reflects a mix of player levels over time. For clean per-level analysis, track wins by player name rather than seat.
+
+### Key decisions made (session 2026-05-31)
+
+- **Deal order corrected**: Dealer now receives 14 tiles at deal time (was 13 + 1 drawn via `startTurn`). Round-robin bonus replacement replaces the old per-player exhaustive replacement. `deal()` in `game.js` was the change point.
+- **Heavenly Hand fix**: `aiPlay` no longer requires `_justDrawn` when `isHeavenly` is true — with 14 tiles dealt at once, there is no single "drawn" tile. The `_justDrawn` guard remains for regular self-draw wins.
+- **Auto seat rotation**: `nextDeal()` now calls `rotatePlayers()` automatically when the North wind round completes (wind wraps to East). Previously this was only available via the manual "Rotate Seats" UI button.
+- **Sprint bias fix**: `startTurn` now uses `if (p.isHuman && !window.AUTO_MODE)` so in sprint/fast/slow auto modes the human seat takes exactly the same code path as CPU seats.
