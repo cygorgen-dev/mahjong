@@ -197,9 +197,10 @@ function initUI(game) {
 
   function _sprintStart(mode) {
     const n = parseInt(document.getElementById('sprint-count-input')?.value, 10) || 50;
-    window._sprintTarget    = Math.max(1, Math.min(5000, n));
-    window._sprintDone      = 0;
-    window._sprintLog       = [];
+    window._sprintTarget       = Math.max(1, Math.min(5000, n));
+    window._sprintDone         = 0;
+    window._sprintLog          = [];
+    window._sprintBrowseFullLog = [];  // accumulated log across all hands for sprint-slow
     window._sprintStartScores  = _game ? _game.players.map(p => p.score) : null;
     window._sprintDisplayMs    = parseInt(document.getElementById('sprint-display-ms')?.value, 10) || 1500;
     setAutoMode(mode);

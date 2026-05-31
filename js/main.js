@@ -141,8 +141,19 @@ function onGameUpdate(event) {
       } else {
         if (sl) sl.textContent = `H${window._sprintDone}/${window._sprintTarget} — click Pass to end`;
       }
+      // Accumulate log across hands: prepend current hand's entries (newest first)
+      window._sprintBrowseFullLog = [
+        ...(game.log || []),
+        ...(window._sprintBrowseFullLog || []),
+      ];
+      game.shareState();  // writes scores + current hand log to localStorage
+      // Replace the single-hand log with the full accumulated log so score.html sees all hands
+      try {
+        const s = JSON.parse(localStorage.getItem('mahjongSharedState'));
+        if (s) { s.log = window._sprintBrowseFullLog; localStorage.setItem('mahjongSharedState', JSON.stringify(s)); }
+      } catch(e) {}
     }
-    renderAll();   // always render so board is examinable
+    renderAll();   // always render so board is examinable (also broadcasts wall → peek.html)
     saveGameState();
     return;
   }
