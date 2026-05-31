@@ -134,8 +134,7 @@ class Game {
 
     this.addLog(`${playerTag(this.players[this.dealerSeat])} deals — distributing tiles.`);
 
-    // Deal 13 tiles and replace bonus in CCW order starting from dealer:
-    // dealer → dealer's left → across → dealer's right
+    // Deal: dealer gets 14, others get 13, in CCW order starting from dealer.
     const d = this.dealerSeat;
     const ccwSeats = [d, (d+1)%4, (d+2)%4, (d+3)%4];
     for (const seat of ccwSeats) {
@@ -143,13 +142,73 @@ class Game {
       p.hand = [];
       p.melds = [];
       p.bonus = [];
-      for (let i = 0; i < 13; i++) p.hand.push(this.drawFromWall());
-      if (!this.replaceBonus(p)) return;
+      const count = seat === d ? 14 : 13;
+      for (let i = 0; i < count; i++) p.hand.push(this.drawFromWall());
     }
-    this.currentSeat = this.dealerSeat;
-    this.phase = PHASE.DRAW;
-    this.firstDraw = true;
-    this.startTurn(this.currentSeat);
+
+    // Cantonese round-robin bonus replacement:
+    // Each round every player (dealer first) replaces all bonus tiles currently
+    // in hand. Replacement tiles received this round are NOT replaced until the
+    // next round — the loop repeats until nobody draws a bonus tile.
+    let anyBonus = true;
+    while (anyBonus) {
+      anyBonus = false;
+      for (const seat of ccwSeats) {
+        const p = this.players[seat];
+        const toReplace = p.hand.filter(t => isBonus(t));
+        if (toReplace.length === 0) continue;
+        anyBonus = true;
+        for (const b of toReplace) {
+          p.hand.splice(p.hand.indexOf(b), 1);
+          p.bonus.push(b);
+          this.addLog(`${playerTag(p)} bonus ${tileMain(b)} → replacement`);
+          const newTile = this.drawFromTail();
+          if (!newTile) {
+            this.addLog(`${playerTag(p)} bonus replacement: wall exhausted — hand ended 黃牌!`);
+            this.phase = PHASE.END;
+            this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+            this.onUpdate('draw');
+            return;
+          }
+          this.addLog(`${playerTag(p)} bonus replacement: ${tileMain(newTile)}`);
+          p.hand.push(newTile);
+        }
+      }
+    }
+
+    // Dealer already holds 14 tiles — go straight to discard (no draw needed).
+    // Mark the last tile _justDrawn so Heavenly Hand detection works correctly.
+    this.currentSeat = d;
+    this.phase = PHASE.DISCARD;
+    this.firstDraw = false;
+    this.dealerFirstDiscard = false;
+    this.handActionCount = 0;
+    this._isFirstDealerDraw = true;
+    this._drewLastTile = false;
+    this.discard = null; this.discardSeat = null; this.lastClaimedTile = null;
+
+    const dealerP = this.players[d];
+    for (const pl of this.players) for (const t of pl.hand) t._justDrawn = false;
+    if (dealerP.hand.length > 0) dealerP.hand[dealerP.hand.length - 1]._justDrawn = true;
+
+    if (dealerP.isHuman && !window.AUTO_MODE) {
+      const ctx = this.makeCtx(d, true);
+      ctx.heavenlyHand = true;
+      const result = canWin(dealerP.hand, dealerP.melds, ctx);
+      const minF = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
+      if (result.win && result.faan >= minF) {
+        this.claimOptions = { win: result, pung: false, kong: false, chow: false };
+        this.phase = PHASE.CLAIM;
+        this.pendingClaims = [];
+        this._actForSeat(d, 'claim-prompt');
+      } else {
+        this.claimOptions = null;
+        this.lastCheckFaan = result.faan || 0;
+        this._actForSeat(d, 'your-turn');
+      }
+    } else {
+      this._scheduleOrStep(() => this.aiPlay(d));
+    }
   }
 
   drawFromWall() {
