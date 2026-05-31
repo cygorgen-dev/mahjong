@@ -1119,7 +1119,16 @@ class Game {
       this.dealerSeat = (this.dealerSeat + 1) % 4;
       if (this.dealerSeat === 0) {
         const ri = WINDS.indexOf(this.roundWind);
-        this.roundWind = WINDS[(ri + 1) % 4];
+        const nextWind = WINDS[(ri + 1) % 4];
+        // Full game complete (North round just finished) — rotate seats
+        if (nextWind === 'East') {
+          const winnerName = (this.lastResult?.winner >= 0)
+            ? (this.players[this.lastResult.winner]?.name ?? null)
+            : null;
+          this.rotatePlayers(winnerName ?? this.players[this.dealerSeat].name);
+          return;
+        }
+        this.roundWind = nextWind;
       }
     }
     // Preserve scores and names across deals
