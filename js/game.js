@@ -113,9 +113,12 @@ class Game {
     const breakSeat = (this.dealerSeat + (this.diceTotal - 1) % 4) % 4;
 
     // Step 2: find segment index and head tile index
-    const segIdx = ccwOrder.indexOf(breakSeat);
-    const segEnd  = segIdx * tilesPerSide + tilesPerSide - 1;
-    const headIdx = ((segEnd - this.diceTotal + 1) + this.wall.length) % this.wall.length;
+    // Count diceTotal COLUMNS (pairs) from the player's right end of their wall.
+    // segBase = first physical index of that segment.
+    // headIdx = inner tile of the (diceTotal)th column from the right = segBase + 2*diceTotal.
+    const segIdx  = ccwOrder.indexOf(breakSeat);
+    const segBase = segIdx * tilesPerSide;
+    const headIdx = (segBase + 2 * this.diceTotal) % this.wall.length;
 
     // Store break info for the visual wall ring renderer
     this.wallBreakSeat  = breakSeat;   // which seat's wall was broken

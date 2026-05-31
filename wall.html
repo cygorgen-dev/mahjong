@@ -409,22 +409,18 @@
     const WALL_ELS = { 0:'wall-bot', 1:'wall-rgt', 2:'wall-top', 3:'wall-lft' };
     const CCW_ORDER = [0,3,2,1];
 
-    // Compute the head column (0..17) within the break seat's segment,
-    // given wallBreakCount (= diceTotal in game.js).
+    // headCol = breakCount: the (breakCount)th column from the player's right end.
+    // Each wall's "player's right" end in segment space = col 0 (the segment starts there).
+    // Display positions (breakCount columns from player's right):
+    //   seat0 bottom: c=17..0, col 0=rightmost → display from left = 17 - breakCount
+    //   seat3 left:   c=17..0, col 0=bottom    → display from top  = 17 - breakCount
+    //   seat2 top:    c=0..17, col 0=leftmost  → display from left = breakCount
+    //   seat1 right:  c=0..17, col 0=topmost   → display from top  = breakCount
     function headColFromBreak(breakSeat, breakCount) {
-      const si  = CCW_ORDER.indexOf(breakSeat);
-      const hi  = ((si * 36 + 35 - breakCount + 1) + 144) % 144;
-      return Math.floor((hi % 36) / 2);
+      return breakCount; // column breakCount from player's right end (= segment col 0)
     }
 
-    // Place break marker at the head column of the wall.
-    // headColInSeg: column index 0..17 within the segment (game.js ordering).
-    // Display positions per wall:
-    //   seat0 bottom: rendered c=17..0 left→right  → display pos from left  = 17 - col
-    //   seat3 left:   rendered c=17..0 top→bottom  → display pos from top   = 17 - col
-    //   seat2 top:    rendered c=0..17  left→right → display pos from left  = col
-    //   seat1 right:  rendered c=0..17  top→bottom → display pos from top   = col
-    function placeBreakMarker(seat, headColInSeg) {
+    function placeBreakMarker(seat, breakCount) {
       document.querySelectorAll('.break-marker').forEach(e => e.remove());
       const wallEl = document.getElementById(WALL_ELS[seat]);
       if (!wallEl) return;
@@ -433,19 +429,19 @@
       marker.textContent = '×';
 
       if (seat === 0) {
-        const pos = (17 - headColInSeg) * STEP + 17 - MR;
+        const pos = (17 - breakCount) * STEP + 17 - MR;
         marker.style.left = pos + 'px';
         marker.style.top  = (-MR * 2 - 2) + 'px';
       } else if (seat === 2) {
-        const pos = headColInSeg * STEP + 17 - MR;
+        const pos = breakCount * STEP + 17 - MR;
         marker.style.left   = pos + 'px';
         marker.style.bottom = (-MR * 2 - 2) + 'px';
       } else if (seat === 3) {
-        const pos = (17 - headColInSeg) * STEP + 17 - MR;
+        const pos = (17 - breakCount) * STEP + 17 - MR;
         marker.style.top   = pos + 'px';
         marker.style.right = (-MR * 2 - 2) + 'px';
       } else { // seat 1
-        const pos = headColInSeg * STEP + 17 - MR;
+        const pos = breakCount * STEP + 17 - MR;
         marker.style.top  = pos + 'px';
         marker.style.left = (-MR * 2 - 2) + 'px';
       }
@@ -496,15 +492,11 @@
       const diceTotal     = data.diceTotal     ?? 0;
       const dealerSeat    = data.dealerSeat    ?? 0;
 
-      // Compute headIdx: the physical position of wall[0]
-      // Same formula as game.js deal():
-      //   segIdx   = ccwOrder.indexOf(wallBreakSeat)   where ccwOrder = [0,3,2,1]
-      //   segEnd   = segIdx*36 + 35
-      //   headIdx  = (segEnd - wallBreakCount + 1 + 144) % 144
+      // Compute headIdx: physical position of wall[0] = segBase + 2*breakCount
+      // Matches game.js deal() formula: headIdx = segIdx*36 + 2*diceTotal
       const ccwOrder = [0,3,2,1];
       const segIdx   = ccwOrder.indexOf(wallBreakSeat);
-      const segEnd   = segIdx * 36 + 35;
-      _headIdx       = ((segEnd - wallBreakCount + 1) + 144) % 144;
+      _headIdx       = (segIdx * 36 + 2 * wallBreakCount) % 144;
 
       // Rebuild physical tile grid when a new game starts (wall[0].id changed)
       const newId0 = wall[0] ? wall[0].id : null;
@@ -527,10 +519,12 @@
       // Apply used/live/head/tail overlay
       applyGameState(data);
 
-      // Badge
+      // Badge + disable standalone controls in live mode
       const badge = document.getElementById('mode-badge');
       badge.textContent = 'live';
       badge.className = 'live';
+      document.getElementById('shuffle-btn').disabled = true;
+      document.getElementById('dice-btn').disabled    = true;
       _gameConnected = true;
     }
 
