@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mahjong Wall</title>
+  <style>
+    :root { --tw:34px; --th:48px; --gap:2px; }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:"Segoe UI",system-ui,sans-serif;
+      background:#0b3d1f; color:#f5f5f5;
+      min-height:100vh;
+      display:flex; flex-direction:column; align-items:center;
+      padding:10px; gap:8px;
+    }
+
+    /* ── Controls bar ─────────────────────────────────────────────────────── */
+    .controls {
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center;
+    }
+    h1 { margin:0; font-size:18px; color:#ffd34d; }
+    .btn {
+      background:#ffd34d; color:#07301a; border:0;
+      padding:5px 14px; border-radius:4px; font-weight:700; cursor:pointer; font-size:13px;
+    }
+    .btn:hover { background:#ffc620; }
+    .btn:disabled { opacity:0.4; cursor:default; }
+    label { font-size:13px; color:#ccc; }
+    select {
+      background:#1a6b3a; color:#fff; border:1px solid #ffd34d;
+      border-radius:4px; padding:3px 8px; font-size:13px; font-weight:600; cursor:pointer;
+    }
+
+    /* ── Stats bar ────────────────────────────────────────────────────────── */
+    #stats {
+      display:flex; gap:14px; flex-wrap:wrap; justify-content:center;
+      padding:4px 10px;
+      background:rgba(0,0,0,.4); border-radius:6px;
+      font-size:12px; font-weight:600; min-height:24px;
+    }
+
+    /* ── Scene grid ───────────────────────────────────────────────────────── */
+    .scene {
+      display:grid;
+      grid-template-areas:
+        ".      .        s2-lbl   .        .    "
+        ".      .        wall-top .        .    "
+        "s3-lbl wall-lft center   wall-rgt s1-lbl"
+        ".      .        wall-bot .        .    "
+        ".      .        s0-lbl   .        .    ";
+      align-items:center; justify-items:center; gap:6px;
+    }
+
+    /* ── Tile ─────────────────────────────────────────────────────────────── */
+    .tile {
+      width:var(--tw); height:var(--th);
+      border:1.5px solid #aaa; border-radius:3px;
+      flex-shrink:0; position:relative;
+      background:#fff; overflow:hidden;
+      transition: opacity 0.15s;
+    }
+    .tile img { width:100%; height:100%; object-fit:contain; display:block; }
+    .tile.used       { opacity:0.15; }
+    .tile.tail-used  { opacity:0.20; outline:1px solid rgba(255,152,0,0.35); }
+    .tile.next-head  { outline:3px solid #ffd34d; box-shadow:0 0 7px 2px rgba(255,211,77,0.7); }
+    .tile.next-tail  { outline:3px solid #ff9800; box-shadow:0 0 7px 2px rgba(255,152,0,0.7); }
+
+    /* ── Rotated wrapper (left / right walls) ─────────────────────────────── */
+    .rw { width:var(--th); height:var(--tw); position:relative; flex-shrink:0; }
+    .rw .tile { position:absolute; top:50%; left:50%; }
+    .rw.rl .tile { transform:translate(-50%,-50%) rotate( 90deg); }
+    .rw.rr .tile { transform:translate(-50%,-50%) rotate(-90deg); }
+    .tile.r180 { transform:rotate(180deg); }
+
+    /* ── Wall containers ──────────────────────────────────────────────────── */
+    #wall-top, #wall-bot { display:flex; flex-direction:row; gap:var(--gap); }
+    #wall-lft, #wall-rgt { display:flex; flex-direction:column; gap:var(--gap); }
+    #wall-top, #wall-bot, #wall-lft, #wall-rgt { position:relative; overflow:visible; }
+    #wall-top { grid-area:wall-top; }
+    #wall-bot { grid-area:wall-bot; }
+    #wall-lft { grid-area:wall-lft; }
+    #wall-rgt { grid-area:wall-rgt; }
+    .sv { display:flex; flex-direction:column; gap:var(--gap); }
+    .sh { display:flex; flex-direction:row;    gap:var(--gap); }
+
+    /* ── Center ───────────────────────────────────────────────────────────── */
+    #wall-center {
+      grid-area:center;
+      background:radial-gradient(ellipse at center,#14572b 0%,#0b3d1f 80%);
+      border:1px solid rgba(255,211,77,0.15);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+    }
+    .ctr-title { font-size:14px; font-weight:700; color:rgba(255,211,77,0.7); }
+    .ctr-sub   { font-size:11px; color:rgba(255,255,255,0.3); }
+
+    /* ── Seat labels ──────────────────────────────────────────────────────── */
+    .seat-lbl {
+      font-size:12px; font-weight:700;
+      color:rgba(255,255,255,0.8);
+      background:rgba(0,0,0,0.45);
+      padding:4px 10px; border-radius:4px;
+      white-space:nowrap; text-align:center;
+    }
+    .seat-lbl.dealer { background:#ffd34d; color:#07301a; }
+    #s0-lbl { grid-area:s0-lbl; }
+    #s2-lbl { grid-area:s2-lbl; }
+    #s1-lbl { grid-area:s1-lbl; writing-mode:vertical-rl; }
+    #s3-lbl { grid-area:s3-lbl; writing-mode:vertical-rl; transform:rotate(180deg); }
+
+    .footnote { font-size:11px; color:rgba(255,255,255,0.3); text-align:center; }
+
+    /* ── Target wall highlight ────────────────────────────────────────────── */
+    .target-wall { outline:3px solid #ffd34d; border-radius:3px; box-shadow:0 0 14px 5px rgba(255,211,77,0.55); }
+    .seat-lbl.target { outline:2px solid #ffd34d; }
+
+    /* ── Break-point marker ──────────────────────────────────────────────── */
+    .break-marker {
+      position:absolute; width:26px; height:26px;
+      background:#ff3300; border:3px solid #fff; border-radius:50%;
+      box-shadow:0 0 10px 3px rgba(255,80,0,0.85);
+      z-index:200; pointer-events:none;
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:900; color:#fff; line-height:1;
+    }
+
+    /* ── Dice display ─────────────────────────────────────────────────────── */
+    .dice-row   { display:flex; gap:6px; align-items:center; justify-content:center; }
+    .die {
+      width:28px; height:28px; background:#fff; border:2px solid #333;
+      border-radius:5px; display:flex; align-items:center; justify-content:center;
+      font-size:18px; line-height:1; color:#111; box-shadow:1px 2px 4px rgba(0,0,0,0.5);
+    }
+    .dice-sum    { font-size:15px; font-weight:700; color:#ffd34d; }
+    .dice-result { font-size:11px; color:rgba(255,255,255,0.7); text-align:center; }
+
+    /* ── Mode badge ───────────────────────────────────────────────────────── */
+    #mode-badge {
+      font-size:11px; font-weight:700; padding:2px 8px; border-radius:3px;
+      background:rgba(0,0,0,0.5); color:#aaa;
+    }
+    #mode-badge.live { background:rgba(0,180,80,0.25); color:#5dde7a; }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <h1>Mahjong Wall</h1>
+    <span id="mode-badge">standalone</span>
+    <button class="btn" id="shuffle-btn" onclick="standaloneMode()">Shuffle</button>
+    <button class="btn" id="dice-btn" onclick="standaloneDice()" style="background:#2a8b4e;color:#fff;">Roll Dice</button>
+    <label>Dealer:
+      <select id="dealer-sel" onchange="updateDealerLabels()">
+        <option value="0" selected>Seat 0</option>
+        <option value="1">Seat 1</option>
+        <option value="2">Seat 2</option>
+        <option value="3">Seat 3</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="stats"></div>
+
+  <div class="scene">
+    <div class="seat-lbl" id="s2-lbl">Seat 2</div>
+    <div class="seat-lbl" id="s3-lbl">Seat 3</div>
+    <div class="seat-lbl dealer" id="s0-lbl">Seat 0 · Dealer</div>
+    <div class="seat-lbl" id="s1-lbl">Seat 1</div>
+
+    <div id="wall-top"></div>
+    <div id="wall-lft"></div>
+    <div id="wall-center">
+      <div class="ctr-title" id="ctr-title">144 tiles</div>
+      <div class="ctr-sub" id="ctr-sub">4 walls · 18 × 2</div>
+      <div id="dice-display" style="display:none; flex-direction:column; align-items:center; gap:5px; margin-top:8px;">
+        <div class="dice-row" id="dice-faces"></div>
+        <div class="dice-sum" id="dice-sum-lbl"></div>
+        <div class="dice-result" id="dice-result-lbl"></div>
+      </div>
+    </div>
+    <div id="wall-rgt"></div>
+    <div id="wall-bot"></div>
+  </div>
+
+  <div class="footnote">Inner row on top (toward center) · Outer row below (toward player) · Corners open</div>
+
+  <script>
+    // ── Tile image src ────────────────────────────────────────────────────
+    function tileSrc(t) {
+      return `img/tiles/${t.suit}_${t.value}.png`;
+    }
+
+    // ── Build full 144-tile deck (standalone mode) ────────────────────────
+    function buildDeck() {
+      const d = [];
+      for (const s of ['bamboo','circle','char'])
+        for (let n = 1; n <= 9; n++)
+          for (let c = 0; c < 4; c++) d.push({ suit:s, value:n });
+      for (const w of ['East','South','West','North'])
+        for (let c = 0; c < 4; c++) d.push({ suit:'wind', value:w });
+      for (const dr of ['red','green','white'])
+        for (let c = 0; c < 4; c++) d.push({ suit:'dragon', value:dr });
+      for (let i = 0; i < 4; i++) d.push({ suit:'flower', value:i });
+      for (let i = 0; i < 4; i++) d.push({ suit:'season', value:i });
+      return d; // 144
+    }
+
+    function fisherYates(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // ── Physical layout ───────────────────────────────────────────────────
+    // Segments stored in game.js CCW order: seg0=seat0, seg1=seat3, seg2=seat2, seg3=seat1
+    // Each segment: 36 tiles = 18 columns × 2 (index 0 = inner/top, 1 = outer/bottom per column)
+    // Wall assignment: seat0=bottom, seat1=right, seat2=top, seat3=left
+    //
+    // Within each segment, columns go in the direction that makes clockwise dealing work:
+    //   seat0 (bottom): col0 = rightmost  (index 0,1 of seg)
+    //   seat3 (left):   col0 = bottommost (index 0,1 of seg)
+    //   seat2 (top):    col0 = leftmost   (index 0,1 of seg)
+    //   seat1 (right):  col0 = topmost    (index 0,1 of seg)
+
+    // Map flat 144-tile array (game order) back to {seat, col, layer}
+    // physIdx 0..143 in game's original (pre-rotation) array
+    const SEG_TO_SEAT = [0, 3, 2, 1];
+    function physToPos(physIdx) {
+      const seg  = Math.floor(physIdx / 36);
+      const seat = SEG_TO_SEAT[seg];
+      const col  = Math.floor((physIdx % 36) / 2);
+      const layer = physIdx % 2;   // 0 = inner (top of stack), 1 = outer (bottom)
+      return { seat, col, layer };
+    }
+
+    // Given game-rotated index i and the headIdx offset, get physical position
+    function gameIdxToPos(i, headIdx) {
+      return physToPos((headIdx + i) % 144);
+    }
+
+    // ── Persistent tile elements: _tiles[physIdx] = {img, wrapper} ────────
+    let _tiles = [];    // indexed by physIdx (0..143)
+    let _headIdx = 0;   // physical rotation offset (= wall[0]'s physical index)
+    let _gameConnected = false;
+
+    // ── Build the 4-wall DOM from a flat 144-tile array ───────────────────
+    // tiles[physIdx] = tile object {suit, value}
+    function buildWalls(tiles) {
+      _tiles = new Array(144);
+
+      function makeImg(physIdx) {
+        const t = tiles[physIdx];
+        const img = document.createElement('img');
+        img.src = tileSrc(t);
+        img.alt = '';
+        const div = document.createElement('div');
+        div.className = 'tile';
+        div.appendChild(img);
+        _tiles[physIdx] = { div, img };
+        return div;
+      }
+
+      function makeRot(physIdx, rotCls) {
+        const w = document.createElement('div');
+        w.className = `rw ${rotCls}`;
+        w.appendChild(makeImg(physIdx));
+        return w;
+      }
+
+      // Bottom wall (seat 0, seg 0): col0=right → col17=left, inner=top of stack
+      // physIdx: seg0 = 0..35; col c → inner=c*2, outer=c*2+1
+      // Display: col17 on left, col0 on right → iterate c=17..0
+      const bot = document.getElementById('wall-bot');
+      bot.innerHTML = '';
+      for (let c = 17; c >= 0; c--) {
+        const s = document.createElement('div');
+        s.className = 'sv';
+        s.appendChild(makeImg(c*2));       // inner (top, closer to center)
+        s.appendChild(makeImg(c*2 + 1));   // outer (bottom, toward player)
+        bot.appendChild(s);
+      }
+
+      // Left wall (seat 3, seg 1): col0=bottommost (adjacent to bottom player)
+      // physIdx: seg1 = 36..71; col c → inner=36+c*2, outer=36+c*2+1
+      // Display: col17 at top (toward top player), col0 at bottom → iterate c=17..0
+      const lft = document.getElementById('wall-lft');
+      lft.innerHTML = '';
+      for (let c = 17; c >= 0; c--) {
+        const s = document.createElement('div');
+        s.className = 'sh';
+        s.appendChild(makeRot(36+c*2 + 1, 'rl'));   // outer (left, away from center)
+        s.appendChild(makeRot(36+c*2,     'rl'));   // inner (right, toward center)
+        lft.appendChild(s);
+      }
+
+      // Top wall (seat 2, seg 2): col0=left → col17=right, inner=bottom (toward center)
+      // physIdx: seg2 = 72..107; col c → inner=72+c*2, outer=72+c*2+1
+      // Display: col0 on left, col17 on right → iterate c=0..17
+      const top = document.getElementById('wall-top');
+      top.innerHTML = '';
+      for (let c = 0; c < 18; c++) {
+        const s = document.createElement('div');
+        s.className = 'sv';
+        s.appendChild(makeImg(72+c*2));        // inner (top of stack = toward center for seat 2, shown with r180)
+        s.appendChild(makeImg(72+c*2 + 1));    // outer
+        // Seat 2 tiles face center — rotate 180°
+        _tiles[72+c*2].div.classList.add('r180');
+        _tiles[72+c*2+1].div.classList.add('r180');
+        top.appendChild(s);
+      }
+
+      // Right wall (seat 1, seg 3): col0=top → col17=bottom, inner=left (toward center)
+      // physIdx: seg3 = 108..143; col c → inner=108+c*2, outer=108+c*2+1
+      // Display: col0 at top, col17 at bottom → iterate c=0..17
+      const rgt = document.getElementById('wall-rgt');
+      rgt.innerHTML = '';
+      for (let c = 0; c < 18; c++) {
+        const s = document.createElement('div');
+        s.className = 'sh';
+        s.appendChild(makeRot(108+c*2,     'rr'));   // inner (left, toward center)
+        s.appendChild(makeRot(108+c*2 + 1, 'rr'));   // outer (right, away from center)
+        rgt.appendChild(s);
+      }
+
+      // Size the center square
+      const span = 18 * 34 + 17 * 2;
+      const ctr = document.getElementById('wall-center');
+      ctr.style.width  = span + 'px';
+      ctr.style.height = span + 'px';
+    }
+
+    // ── Apply live game state overlay ─────────────────────────────────────
+    function applyGameState(data) {
+      const wall      = data.wall;       // rotated tile array, game draw order
+      const wallIdx   = data.wallIdx;
+      const tailCol   = data.tailCol;
+      const tailPhase = data.tailPhase;
+      const effTP     = (tailPhase === 0 && tailCol * 2 < wallIdx) ? 1 : tailPhase;
+
+      const remain   = Math.max(0, 2 * (tailCol + 1) - wallIdx - tailPhase);
+      const tailUsed = (71 - tailCol) * 2 + effTP;
+      const exhausted = remain === 0;
+
+      // Head / tail pointer positions in game-array space
+      const headSkips = wallIdx % 2 === 0 && Math.floor(wallIdx / 2) === tailCol && tailPhase === 1;
+      const effHeadIdx = wallIdx + (headSkips ? 1 : 0);
+      const effTailIdx = tailCol * 2 + effTP;
+
+      // Reset all tile styles
+      for (let physIdx = 0; physIdx < 144; physIdx++) {
+        const el = _tiles[physIdx];
+        if (!el) continue;
+        el.div.classList.remove('used', 'tail-used', 'next-head', 'next-tail');
+        el.div.style.opacity = '';
+        el.div.style.outline = '';
+        el.div.style.boxShadow = '';
+      }
+
+      // Classify each game-array position
+      for (let i = 0; i < 144; i++) {
+        const physIdx = (_headIdx + i) % 144;
+        const el = _tiles[physIdx];
+        if (!el) continue;
+
+        const isHeadUsed = i < wallIdx;
+        const isTailUsed = (() => {
+          const c = Math.floor(i / 2);
+          const isTop = (i % 2 === 0);
+          if (c > tailCol) return true;
+          if (c === tailCol && isTop && effTP === 1) return true;
+          return false;
+        })();
+
+        if (!exhausted && i === effHeadIdx) {
+          el.div.classList.add('next-head');
+        } else if (!exhausted && i === effTailIdx) {
+          el.div.classList.add('next-tail');
+        } else if (isHeadUsed) {
+          el.div.classList.add('used');
+        } else if (isTailUsed) {
+          el.div.classList.add('tail-used');
+        }
+      }
+
+      // Stats bar
+      const statsEl = document.getElementById('stats');
+      if (exhausted) {
+        statsEl.innerHTML = `<span style="color:#ff4444;font-weight:700">🏁 WALL EXHAUSTED — 0 tiles left</span><span style="color:#aaa">${wallIdx} drawn · ${tailUsed} replaced</span>`;
+      } else {
+        statsEl.innerHTML = `
+          <span style="color:#7dffff">${remain} live</span>
+          <span style="color:#aaa">${wallIdx} drawn · ${tailUsed} replaced</span>
+          <span style="color:#ffd34d">■ next draw</span>
+          <span style="color:#ff9800">■ next replacement</span>
+          <span style="color:#555">dim = used</span>`;
+      }
+
+      document.getElementById('ctr-title').textContent = `${remain} tiles`;
+      document.getElementById('ctr-sub').textContent   = `${wallIdx} drawn · ${tailUsed} tail`;
+    }
+
+    // ── Render dice + break marker from game data ─────────────────────────
+    const STEP = 34 + 2;   // tile-width + gap
+    const MR   = 13;       // marker radius (half of 26px)
+    const DIE_FACES = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
+    const WALL_ELS = { 0:'wall-bot', 1:'wall-rgt', 2:'wall-top', 3:'wall-lft' };
+    const CCW_ORDER = [0,3,2,1];
+
+    // Compute the head column (0..17) within the break seat's segment,
+    // given wallBreakCount (= diceTotal in game.js).
+    function headColFromBreak(breakSeat, breakCount) {
+      const si  = CCW_ORDER.indexOf(breakSeat);
+      const hi  = ((si * 36 + 35 - breakCount + 1) + 144) % 144;
+      return Math.floor((hi % 36) / 2);
+    }
+
+    // Place break marker at the head column of the wall.
+    // headColInSeg: column index 0..17 within the segment (game.js ordering).
+    // Display positions per wall:
+    //   seat0 bottom: rendered c=17..0 left→right  → display pos from left  = 17 - col
+    //   seat3 left:   rendered c=17..0 top→bottom  → display pos from top   = 17 - col
+    //   seat2 top:    rendered c=0..17  left→right → display pos from left  = col
+    //   seat1 right:  rendered c=0..17  top→bottom → display pos from top   = col
+    function placeBreakMarker(seat, headColInSeg) {
+      document.querySelectorAll('.break-marker').forEach(e => e.remove());
+      const wallEl = document.getElementById(WALL_ELS[seat]);
+      if (!wallEl) return;
+      const marker = document.createElement('div');
+      marker.className = 'break-marker';
+      marker.textContent = '×';
+
+      if (seat === 0) {
+        const pos = (17 - headColInSeg) * STEP + 17 - MR;
+        marker.style.left = pos + 'px';
+        marker.style.top  = (-MR * 2 - 2) + 'px';
+      } else if (seat === 2) {
+        const pos = headColInSeg * STEP + 17 - MR;
+        marker.style.left   = pos + 'px';
+        marker.style.bottom = (-MR * 2 - 2) + 'px';
+      } else if (seat === 3) {
+        const pos = (17 - headColInSeg) * STEP + 17 - MR;
+        marker.style.top   = pos + 'px';
+        marker.style.right = (-MR * 2 - 2) + 'px';
+      } else { // seat 1
+        const pos = headColInSeg * STEP + 17 - MR;
+        marker.style.top  = pos + 'px';
+        marker.style.left = (-MR * 2 - 2) + 'px';
+      }
+      wallEl.appendChild(marker);
+    }
+
+    function showDice(dice, diceTotal, breakSeat) {
+      const facesEl = document.getElementById('dice-faces');
+      facesEl.innerHTML = '';
+      (dice || []).forEach(v => {
+        const die = document.createElement('div');
+        die.className = 'die';
+        die.textContent = DIE_FACES[v] || v;
+        facesEl.appendChild(die);
+      });
+      document.getElementById('dice-sum-lbl').textContent = `Sum: ${diceTotal}`;
+      document.getElementById('dice-result-lbl').textContent = `Break Seat ${breakSeat}'s wall`;
+      document.getElementById('dice-display').style.display = 'flex';
+    }
+
+    function highlightBreakWall(seat) {
+      document.querySelectorAll('.target-wall').forEach(e => e.classList.remove('target-wall'));
+      const el = document.getElementById(WALL_ELS[seat]);
+      if (el) el.classList.add('target-wall');
+    }
+
+    // ── Dealer labels ─────────────────────────────────────────────────────
+    function updateDealerLabels(dealerSeat) {
+      const d = dealerSeat !== undefined ? dealerSeat : parseInt(document.getElementById('dealer-sel').value);
+      [0,1,2,3].forEach(s => {
+        const el = document.getElementById(`s${s}-lbl`);
+        el.className = s === d ? 'seat-lbl dealer' : 'seat-lbl';
+        el.textContent = s === d ? `Seat ${s} · Dealer` : `Seat ${s}`;
+      });
+      if (dealerSeat !== undefined) {
+        document.getElementById('dealer-sel').value = dealerSeat;
+      }
+    }
+
+    // ── Rebuild tile images in-place when a new game's wall arrives ────────
+    let _lastWallId0 = null;
+
+    function renderFromGame(data) {
+      const wall          = data.wall;           // 144 rotated tile objects
+      const wallBreakSeat = data.wallBreakSeat ?? 0;
+      const wallBreakCount= data.wallBreakCount ?? 0;
+      const dice          = data.dice          ?? [];
+      const diceTotal     = data.diceTotal     ?? 0;
+      const dealerSeat    = data.dealerSeat    ?? 0;
+
+      // Compute headIdx: the physical position of wall[0]
+      // Same formula as game.js deal():
+      //   segIdx   = ccwOrder.indexOf(wallBreakSeat)   where ccwOrder = [0,3,2,1]
+      //   segEnd   = segIdx*36 + 35
+      //   headIdx  = (segEnd - wallBreakCount + 1 + 144) % 144
+      const ccwOrder = [0,3,2,1];
+      const segIdx   = ccwOrder.indexOf(wallBreakSeat);
+      const segEnd   = segIdx * 36 + 35;
+      _headIdx       = ((segEnd - wallBreakCount + 1) + 144) % 144;
+
+      // Rebuild physical tile grid when a new game starts (wall[0].id changed)
+      const newId0 = wall[0] ? wall[0].id : null;
+      if (newId0 !== _lastWallId0) {
+        _lastWallId0 = newId0;
+        // Unrotate the wall back to physical order for building the DOM
+        const physical = new Array(144);
+        for (let i = 0; i < 144; i++) {
+          physical[(_headIdx + i) % 144] = wall[i];
+        }
+        buildWalls(physical);
+
+        // Show dice and break marker
+        showDice(dice, diceTotal, wallBreakSeat);
+        highlightBreakWall(wallBreakSeat);
+        placeBreakMarker(wallBreakSeat, headColFromBreak(wallBreakSeat, wallBreakCount));
+        updateDealerLabels(dealerSeat);
+      }
+
+      // Apply used/live/head/tail overlay
+      applyGameState(data);
+
+      // Badge
+      const badge = document.getElementById('mode-badge');
+      badge.textContent = 'live';
+      badge.className = 'live';
+      _gameConnected = true;
+    }
+
+    // ── Standalone mode ───────────────────────────────────────────────────
+    let _standaloneTiles = null;
+
+    function standaloneMode() {
+      _standaloneTiles = fisherYates(buildDeck());
+      buildWalls(_standaloneTiles);
+      clearDiceDisplay();
+      updateDealerLabels();
+      document.getElementById('stats').innerHTML = '<span style="color:#aaa">Standalone — shuffle only</span>';
+      document.getElementById('ctr-title').textContent = '144 tiles';
+      document.getElementById('ctr-sub').textContent   = '4 walls · 18 × 2';
+      _headIdx = 0;
+      _gameConnected = false;
+      const badge = document.getElementById('mode-badge');
+      badge.textContent = 'standalone';
+      badge.className = '';
+    }
+
+    function standaloneDice() {
+      if (!_standaloneTiles) standaloneMode();
+      const d1 = Math.ceil(Math.random()*6);
+      const d2 = Math.ceil(Math.random()*6);
+      const d3 = Math.ceil(Math.random()*6);
+      const sum = d1 + d2 + d3;
+      const dealer = parseInt(document.getElementById('dealer-sel').value);
+      // Seat selection: counterclockwise from dealer, 1-indexed
+      const breakSeat = (dealer + (sum - 1) % 4) % 4;
+      showDice([d1,d2,d3], sum, breakSeat);
+      highlightBreakWall(breakSeat);
+      placeBreakMarker(breakSeat, headColFromBreak(breakSeat, sum));
+    }
+
+    function clearDiceDisplay() {
+      document.getElementById('dice-display').style.display = 'none';
+      document.querySelectorAll('.target-wall').forEach(e => e.classList.remove('target-wall'));
+      document.querySelectorAll('.break-marker').forEach(e => e.remove());
+    }
+
+    // ── BroadcastChannel + localStorage ──────────────────────────────────
+    const bc = new BroadcastChannel('mahjong-wall');
+    bc.onmessage = e => renderFromGame(e.data);
+
+    try {
+      const saved = localStorage.getItem('mahjong-wall-state');
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data && data.wall && data.wall.length === 144) renderFromGame(data);
+        else standaloneMode();
+      } else {
+        standaloneMode();
+      }
+    } catch(e) {
+      standaloneMode();
+    }
+
+    // Self-position next to opener window
+    (function() {
+      if (!window.opener) return;
+      try {
+        const op   = window.opener;
+        const left = op.screenLeft + op.outerWidth;
+        const w    = Math.max(300, op.screen.availWidth - left);
+        window.moveTo(left, op.screen.availTop || 0);
+        window.resizeTo(w, op.screen.availHeight);
+      } catch(e) {}
+    })();
+  </script>
+</body>
+</html>

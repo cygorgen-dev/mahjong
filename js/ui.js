@@ -13,10 +13,15 @@ let _sprintLogBC = null;
 function _broadcastWallState() {
   if (!_game) return;
   const data = {
-    wall:      _game.wall.map(t => ({ id: t.id, suit: t.suit, value: t.value })),
-    wallIdx:   _game.wallIdx   ?? 0,
-    tailCol:   _game.tailCol   ?? 71,
-    tailPhase: _game.tailPhase ?? 0,
+    wall:          _game.wall.map(t => ({ id: t.id, suit: t.suit, value: t.value })),
+    wallIdx:       _game.wallIdx       ?? 0,
+    tailCol:       _game.tailCol       ?? 71,
+    tailPhase:     _game.tailPhase     ?? 0,
+    wallBreakSeat: _game.wallBreakSeat ?? 0,
+    wallBreakCount:_game.wallBreakCount?? 0,
+    dice:          _game.dice          ?? [],
+    diceTotal:     _game.diceTotal     ?? 0,
+    dealerSeat:    _game.dealerSeat    ?? 0,
   };
   try { localStorage.setItem('mahjong-wall-state', JSON.stringify(data)); } catch(e) {}
   if (!_wallBC) _wallBC = new BroadcastChannel('mahjong-wall');
@@ -281,7 +286,7 @@ function initUI(game) {
       // peek.html self-positions via window.opener for accuracy.
       const _pl = window.screenLeft + window.outerWidth;
       const _pw = Math.max(300, screen.availWidth - _pl);
-      _peekWin = window.open('peek.html', 'mahjong-peek',
+      _peekWin = window.open('wall.html', 'mahjong-peek',
         `width=${_pw},height=${screen.availHeight},left=${_pl},top=${screen.availTop||0},resizable=yes,scrollbars=yes`);
     } else {
       _peekWin.focus();
