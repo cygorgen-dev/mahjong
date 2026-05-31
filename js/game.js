@@ -47,6 +47,7 @@ class Game {
 
     this.roundWind = 'East';
     this.dealerSeat = 0;
+    this._roundStartDealer = 0; // seat that opened the current wind round
     this.currentSeat = 0;
     this.phase = PHASE.IDLE;
     this.discard = null;        // last discarded tile
@@ -1158,6 +1159,7 @@ class Game {
     }
 
     this.roundWind  = 'East';
+    this._roundStartDealer = this.dealerSeat; // first dealer of new game sets the round anchor
     this.wall       = buildWall();
     this.wallIdx    = 0;
     this.tailCol    = 71;
@@ -1180,7 +1182,10 @@ class Game {
     // Rotate dealer (keep if dealer won)
     if (!(this.lastResult && this.lastResult.winner === this.dealerSeat)) {
       this.dealerSeat = (this.dealerSeat + 1) % 4;
-      if (this.dealerSeat === 0) {
+      // Wind round completes when dealership returns to whoever opened this round.
+      // Using _roundStartDealer (not hardcoded 0) so games starting at non-zero
+      // seats (after rotatePlayers) still run full 4-player wind rounds.
+      if (this.dealerSeat === this._roundStartDealer) {
         const ri = WINDS.indexOf(this.roundWind);
         const nextWind = WINDS[(ri + 1) % 4];
         // Full game complete (North round just finished) — rotate seats
@@ -1192,6 +1197,7 @@ class Game {
           return;
         }
         this.roundWind = nextWind;
+        this._roundStartDealer = this.dealerSeat; // anchor the new wind round
       }
     }
     // Preserve scores and names across deals
