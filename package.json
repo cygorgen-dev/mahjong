@@ -1,0 +1,25 @@
+{
+  "name": "mahjong",
+  "version": "1.0.0",
+  "description": "A fully playable **Hong Kong Cantonese Mahjong** game that runs in any modern web browser.   No install, no server, no build step required.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test_all.js",
+    "regression": "node run_regression.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cygorgen-dev/mahjong.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/cygorgen-dev/mahjong/issues"
+  },
+  "homepage": "https://github.com/cygorgen-dev/mahjong#readme",
+  "dependencies": {
+    "playwright": "^1.60.0"
+  }
+}

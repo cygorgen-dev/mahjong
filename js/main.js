@@ -1139,6 +1139,98 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
+  // ---- Run All Tests 🧪 -------------------------------------------------------
+  // Runs the in-browser demo test suite and stores results in window._testResults.
+  // AI agents: click #run-all-tests-btn, then poll window._testResults.done.
+  document.getElementById('run-all-tests-btn')?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    window._testResults = { done: false };
+    const _res = [];
+    const ok  = name       => { _res.push({ name, ok: true });        };
+    const err = (name, why) => { _res.push({ name, ok: false, why }); };
+
+    const delay = ms => new Promise(r => setTimeout(r, ms));
+    const tap   = id => { document.getElementById(id)?.click(); return delay(450); };
+    const gs    = ()  => ({
+      phase:      game.phase,
+      lastWinner: game.lastResult?.winner ?? null,
+      win:        game.claimOptions?.win !== false && !!game.claimOptions?.win,
+      winLabel:   game.claimOptions?.win?.label ?? null,
+      earthly:    !!game.claimOptions?._earthlyHand,
+      robbing:    game.robbingKongSeat ?? null,
+      hand0:      game.players[0].hand.length,
+    });
+
+    // Demo Win — cycles Left(3)→Right(1)→Top(2)→You(0)
+    const winSeats = [3,1,2,0], winNames=['Left(3)','Right(1)','Top(2)','You(0)'];
+    for (let i = 0; i < 4; i++) {
+      await tap('demo-win-btn');
+      const s = gs();
+      s.lastWinner === winSeats[i] ? ok(`Demo Win ${winNames[i]}`) : err(`Demo Win ${winNames[i]}`, `winner=${s.lastWinner}`);
+    }
+
+    // Demo Heavenly 天胡
+    game.reset(); await tap('demo-heavenly-btn');
+    { const s = gs(); (s.phase==='claim' && s.win && s.winLabel?.includes('Heavenly') && s.hand0===14) ? ok('Demo Heavenly 天胡') : err('Demo Heavenly 天胡', JSON.stringify(s)); }
+
+    // Demo Earthly 地胡
+    game.reset(); await tap('demo-earthly-btn');
+    { const s = gs(); (s.phase==='claim' && s.win && s.earthly) ? ok('Demo Earthly 地胡') : err('Demo Earthly 地胡', JSON.stringify(s)); }
+
+    // Demo Concealed Kong 暗槓
+    game.reset(); await tap('demo-ckong-btn');
+    { const s = gs();
+      const bam1 = game.players[0].hand.filter(t => t.suit==='bamboo' && t.value===1).length;
+      (s.phase==='discard' && bam1===4) ? ok('Demo Concealed Kong 暗槓') : err('Demo Concealed Kong 暗槓', `phase=${s.phase} bam1=${bam1}`); }
+
+    // Demo Last Tile 海底撈月 (has 500ms internal setTimeout)
+    game.reset(); await tap('demo-lasttile-btn');
+    await delay(800);
+    { const s = gs(); (s.phase==='claim' && s.win && s.winLabel?.includes('Last Tile')) ? ok('Demo Last Tile 海底') : err('Demo Last Tile 海底', JSON.stringify(s)); }
+
+    // Demo Rob 搶槓 — 4 variants
+    const robExpect = [
+      { label:'A Human robs', humanWin:true },
+      { label:'B AI robs',    humanWin:false },
+      { label:'C Both rob',   humanWin:true },
+      { label:'D Nobody robs',humanWin:false },
+    ];
+    for (const v of robExpect) {
+      game.reset(); await tap('demo-rob-btn');
+      const s = gs();
+      (s.robbing !== null && (game.claimOptions?.win !== false) === v.humanWin)
+        ? ok(`Demo Rob ${v.label}`) : err(`Demo Rob ${v.label}`, `robbing=${s.robbing} humanWin=${game.claimOptions?.win !== false}`);
+    }
+
+    // Test Rob Win 搶槓胡
+    game.reset(); await tap('test-rob-win-btn');
+    { const s = gs();
+      const cpu3Robs = game.pendingClaims?.some(c => c.action==='win' && c.seat===3);
+      (s.robbing !== null && cpu3Robs) ? ok('Test Rob Win 搶槓胡') : err('Test Rob Win 搶槓胡', `robbing=${s.robbing} cpu3Robs=${cpu3Robs}`); }
+
+    // Test Kong Completes 槓完
+    game.reset(); await tap('test-kong-done-btn');
+    { const cpu1Kong = game.players[1].melds.some(m => m.type==='kong' && m.tiles.some(t => t.suit==='bamboo' && t.value===4));
+      cpu1Kong ? ok('Test Kong Completes 槓完') : err('Test Kong Completes 槓完', 'CPU1 kong not found'); }
+
+    // Publish results
+    const passed = _res.filter(r => r.ok).length;
+    const failed = _res.filter(r => !r.ok);
+    window._testResults = { done: true, passed, total: _res.length, failed: failed.length, details: _res };
+
+    // Show floating result panel
+    let panel = document.getElementById('_test-results-panel');
+    if (!panel) { panel = document.createElement('div'); panel.id = '_test-results-panel';
+      Object.assign(panel.style, { position:'fixed', top:'10px', left:'50%', transform:'translateX(-50%)',
+        background:'#1a1a2e', border:'2px solid #4a9', borderRadius:'8px', padding:'12px 16px',
+        zIndex:9999, fontFamily:'monospace', fontSize:'13px', color:'#eee', maxHeight:'80vh',
+        overflowY:'auto', minWidth:'340px', boxShadow:'0 4px 24px #000a' });
+      document.body.appendChild(panel); }
+    panel.innerHTML = `<strong>🧪 Test Results — ${passed}/${_res.length} passed</strong><br>`
+      + _res.map(r => `${r.ok ? '✅' : '❌'} ${r.name}${r.ok ? '' : '<br>  <small style="color:#f88">'+r.why+'</small>'}`).join('<br>')
+      + `<br><br><button onclick="this.parentElement.remove()" style="cursor:pointer">Close</button>`;
+  });
+
   // ---- Rotate Seats button ----
   (function setupRotateSeats() {
     const modal    = document.getElementById('rotate-modal');
