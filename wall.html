@@ -111,18 +111,13 @@
 
     .footnote { font-size:11px; color:rgba(255,255,255,0.3); text-align:center; }
 
-    /* ── Target wall highlight ────────────────────────────────────────────── */
-    .target-wall { outline:3px solid #ffd34d; border-radius:3px; box-shadow:0 0 14px 5px rgba(255,211,77,0.55); }
-    .seat-lbl.target { outline:2px solid #ffd34d; }
-
     /* ── Break-point marker ──────────────────────────────────────────────── */
     .break-marker {
-      position:absolute; width:26px; height:26px;
-      background:#ff3300; border:3px solid #fff; border-radius:50%;
-      box-shadow:0 0 10px 3px rgba(255,80,0,0.85);
+      position:absolute; width:20px; height:20px;
       z-index:200; pointer-events:none;
       display:flex; align-items:center; justify-content:center;
-      font-size:13px; font-weight:900; color:#fff; line-height:1;
+      font-size:16px; line-height:1; color:#4dff88;
+      filter: drop-shadow(0 0 3px rgba(0,200,80,0.7));
     }
 
     /* ── Dice display ─────────────────────────────────────────────────────── */
@@ -426,7 +421,7 @@
       if (!wallEl) return;
       const marker = document.createElement('div');
       marker.className = 'break-marker';
-      marker.textContent = '×';
+      marker.textContent = '▶';
 
       if (seat === 0) {
         const pos = (17 - breakCount) * STEP + 17 - MR;
@@ -462,11 +457,7 @@
       document.getElementById('dice-display').style.display = 'flex';
     }
 
-    function highlightBreakWall(seat) {
-      document.querySelectorAll('.target-wall').forEach(e => e.classList.remove('target-wall'));
-      const el = document.getElementById(WALL_ELS[seat]);
-      if (el) el.classList.add('target-wall');
-    }
+
 
     // ── Dealer labels ─────────────────────────────────────────────────────
     function updateDealerLabels(dealerSeat) {
@@ -511,7 +502,6 @@
 
         // Show dice and break marker
         showDice(dice, diceTotal, wallBreakSeat);
-        highlightBreakWall(wallBreakSeat);
         placeBreakMarker(wallBreakSeat, headColFromBreak(wallBreakSeat, wallBreakCount));
         updateDealerLabels(dealerSeat);
       }
@@ -556,13 +546,11 @@
       // Seat selection: counterclockwise from dealer, 1-indexed
       const breakSeat = (dealer + (sum - 1) % 4) % 4;
       showDice([d1,d2,d3], sum, breakSeat);
-      highlightBreakWall(breakSeat);
       placeBreakMarker(breakSeat, headColFromBreak(breakSeat, sum));
     }
 
     function clearDiceDisplay() {
       document.getElementById('dice-display').style.display = 'none';
-      document.querySelectorAll('.target-wall').forEach(e => e.classList.remove('target-wall'));
       document.querySelectorAll('.break-marker').forEach(e => e.remove());
     }
 
