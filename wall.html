@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mahjong Wall</title>
   <style>
-    :root { --tw:34px; --th:48px; --gap:2px; }
+    :root { --tw:34px; --th:48px; --gap:2px; }  /* overridden by JS on load/resize */
     * { box-sizing:border-box; }
     body {
       margin:0;
@@ -320,8 +320,13 @@
         rgt.appendChild(s);
       }
 
-      // Size the center square
-      const span = 18 * 34 + 17 * 2;
+      updateCenterSize();
+    }
+
+    function updateCenterSize() {
+      const tw  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tw'));
+      const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+      const span = 18 * tw + 17 * gap;
       const ctr = document.getElementById('wall-center');
       ctr.style.width  = span + 'px';
       ctr.style.height = span + 'px';
@@ -397,9 +402,32 @@
       document.getElementById('ctr-sub').textContent   = `${wallIdx} drawn · ${tailUsed} tail`;
     }
 
+    // ── Tile sizing ───────────────────────────────────────────────────────
+    // Scene width ≈ 2*th + 18*tw + 17*gap + 2*label + padding
+    // With th ≈ 1.41*tw: total ≈ (2*1.41 + 18)*tw + margins ≈ 20.8*tw + ~80px
+    function applyTileSize() {
+      const availW = window.innerWidth  - 20;
+      const availH = window.innerHeight - 140; // controls + stats + footnote
+      const avail  = Math.min(availW, availH);
+      const tw  = Math.max(10, Math.min(40, Math.floor((avail - 80) / 20.8)));
+      const th  = Math.round(tw * 48 / 34);
+      const gap = Math.max(1, Math.round(tw / 17));
+      const root = document.documentElement;
+      root.style.setProperty('--tw',  tw  + 'px');
+      root.style.setProperty('--th',  th  + 'px');
+      root.style.setProperty('--gap', gap + 'px');
+      STEP = tw + gap;
+      MR   = Math.round(tw * 10 / 34);
+      updateCenterSize();
+      // Re-place marker with updated STEP/MR
+      if (_lastBreakSeat !== null) placeBreakMarker(_lastBreakSeat, _lastBreakCount);
+    }
+
     // ── Render dice + break marker from game data ─────────────────────────
-    const STEP = 34 + 2;   // tile-width + gap
-    const MR   = 13;       // marker radius (half of 26px)
+    let STEP = 36;   // tile-width + gap (updated by applyTileSize)
+    let MR   = 10;   // marker half-size  (updated by applyTileSize)
+    let _lastBreakSeat  = null;
+    let _lastBreakCount = 0;
     const DIE_FACES = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
     const WALL_ELS = { 0:'wall-bot', 1:'wall-rgt', 2:'wall-top', 3:'wall-lft' };
     const CCW_ORDER = [0,3,2,1];
@@ -416,6 +444,8 @@
     }
 
     function placeBreakMarker(seat, breakCount) {
+      _lastBreakSeat  = seat;
+      _lastBreakCount = breakCount;
       document.querySelectorAll('.break-marker').forEach(e => e.remove());
       const wallEl = document.getElementById(WALL_ELS[seat]);
       if (!wallEl) return;
@@ -558,6 +588,22 @@
     const bc = new BroadcastChannel('mahjong-wall');
     bc.onmessage = e => renderFromGame(e.data);
 
+    // Self-position next to opener window, then size tiles to fit
+    (function() {
+      if (!window.opener) return;
+      try {
+        const op   = window.opener;
+        const left = op.screenLeft + op.outerWidth;
+        const w    = Math.max(300, op.screen.availWidth - left);
+        window.moveTo(left, op.screen.availTop || 0);
+        window.resizeTo(w, op.screen.availHeight);
+      } catch(e) {}
+    })();
+
+    // Initial tile sizing (after any window.resizeTo above)
+    applyTileSize();
+    window.addEventListener('resize', applyTileSize);
+
     try {
       const saved = localStorage.getItem('mahjong-wall-state');
       if (saved) {
@@ -570,18 +616,6 @@
     } catch(e) {
       standaloneMode();
     }
-
-    // Self-position next to opener window
-    (function() {
-      if (!window.opener) return;
-      try {
-        const op   = window.opener;
-        const left = op.screenLeft + op.outerWidth;
-        const w    = Math.max(300, op.screen.availWidth - left);
-        window.moveTo(left, op.screen.availTop || 0);
-        window.resizeTo(w, op.screen.availHeight);
-      } catch(e) {}
-    })();
   </script>
 </body>
 </html>
