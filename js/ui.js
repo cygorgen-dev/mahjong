@@ -1769,11 +1769,15 @@ function renderWallRing() {
   const remaining = Math.max(0, _game.wallRemaining());
   const total = WALL_TOTAL_SLOTS;
 
-  // How many tiles consumed from each end
-  const headDrawn = _game.wallIdx ?? 0;
-  const tailDrawn = _game.wall ? (_game.wall.length - 1 - (_game.tailIdx ?? (_game.wall.length - 1))) : 0;
-  const headSlots = Math.round((headDrawn / 144) * total);
-  const tailSlots = Math.round((tailDrawn / 144) * total);
+  // Exact head/tail column counts (no rounding — matches peek.html logic)
+  const wallIdx   = _game.wallIdx   ?? 0;
+  const tailCol   = _game.tailCol   ?? 71;
+  const tailPhase = _game.tailPhase ?? 0;
+  const effTP     = (tailPhase === 0 && tailCol * 2 < wallIdx) ? 1 : tailPhase;
+  // headSlots = number of ring columns fully or partially consumed from the head
+  const headSlots = Math.ceil(wallIdx / 2);
+  // tailSlots = number of ring columns fully or partially consumed from the tail
+  const tailSlots = (71 - tailCol) + (effTP > 0 ? 1 : 0);
 
   // Build clockwise ring
   const ring = [];
@@ -1845,7 +1849,8 @@ function renderWallRing() {
     svgContent += `<circle cx="${(s.x+s.w/2).toFixed(1)}" cy="${(s.y+s.h/2).toFixed(1)}" r="3" fill="#ff9800" opacity="${op}"/>`;
   }
 
-  // Center text — only show tail replacement count (remaining shown in discard area already)
+  // Center text — tail replacement count
+  const tailDrawn = (71 - tailCol) * 2 + effTP;
   if (tailDrawn > 0) {
     svgContent += `<text x="360" y="320" text-anchor="middle" font-size="11" fill="rgba(255,152,0,0.5)" font-family="sans-serif">+${tailDrawn} tail</text>`;
   }

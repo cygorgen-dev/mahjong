@@ -121,9 +121,15 @@ class Game {
     this.wallBreakSeat  = breakSeat;   // which seat's wall was broken
     this.wallBreakCount = this.diceTotal; // how many tiles from right end of that segment
 
+    this.addLog(`144 tiles shuffled — wall built.`);
+    this.addLog(`${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
+    this.addLog(`Wall broken at ${playerTag(this.players[breakSeat])}'s wall, ${this.diceTotal} tiles from right end.`);
+
     // Rotate wall so index 0 = head (first tile drawn)
     this.wall = [...this.wall.slice(headIdx), ...this.wall.slice(0, headIdx)];
     this.wallIdx = 0;
+
+    this.addLog(`${playerTag(this.players[this.dealerSeat])} deals — distributing tiles.`);
 
     // Deal 13 tiles to each player, replace bonus immediately
     for (const p of this.players) {
@@ -135,8 +141,6 @@ class Game {
     }
     this.currentSeat = this.dealerSeat;
     this.phase = PHASE.DRAW;
-    this.addLog(`New hand dealt. ${playerTag(this.players[this.dealerSeat])} deals.`);
-    this.addLog(`Dice: ${this.diceTotal} → wall break at ${playerTag(this.players[breakSeat])}'s segment, tile ${this.diceTotal} from right end.`);
     this.firstDraw = true;
     this.startTurn(this.currentSeat);
   }
@@ -469,7 +473,9 @@ class Game {
         this.phase = PHASE.CLAIM;
         this.addLog(`${playerTag(p)} declares Kong 槓 ${tileMain(t)} — can be robbed!`);
         this.onUpdate('claim-prompt');
-        if (window.AUTO_MODE) {
+        // If the kong declarer is the human they cannot rob their own kong — auto-resolve.
+        // Also auto-resolve in all auto modes.
+        if (seat === 0 || window.AUTO_MODE) {
           this._scheduleOrStep(() => {
             if (this.robbingKongSeat === null) return;
             if (this.claimOptions && this.claimOptions.win) {
