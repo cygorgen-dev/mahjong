@@ -280,9 +280,10 @@ node run_all.js
 - **Deal**: dealer receives 14 tiles, others receive 13; bonus replacement is round-robin
 - **Discard win 出銃**: the discarder pays the full amount; others pay nothing
 - **Self-draw 自摸**: all three opponents each pay equally
-- Dealer keeps the deal on a win; rotates counter-clockwise otherwise
-- Round wind advances after all four players have held the dealer role
-- Seats reshuffle after each complete 4-wind-round game
+- **Dealer retention**: a winning dealer keeps the deal — dealership only passes on a loss or draw
+- **Wind round**: completes when all four players have been dealer at least once (minimum 4 hands, but extended by dealer wins — a hot dealer can hold the deal for many consecutive hands)
+- **Round wind** advances after each complete wind round; four wind rounds (East→South→West→North) constitute one full game
+- **Seat reshuffle** after each complete game; the last hand's winner becomes the new East dealer
 
 ---
 
@@ -392,5 +393,5 @@ node run_all.js
 
 - **Deal order corrected**: Dealer now receives 14 tiles at deal time (was 13 + 1 drawn via `startTurn`). Round-robin bonus replacement replaces the old per-player exhaustive replacement. `deal()` in `game.js` was the change point.
 - **Heavenly Hand fix**: `aiPlay` no longer requires `_justDrawn` when `isHeavenly` is true — with 14 tiles dealt at once, there is no single "drawn" tile. The `_justDrawn` guard remains for regular self-draw wins.
-- **Auto seat rotation**: `nextDeal()` now calls `rotatePlayers()` automatically when the North wind round completes (wind wraps to East). Previously this was only available via the manual "Rotate Seats" UI button.
+- **Auto seat rotation**: `nextDeal()` now calls `rotatePlayers()` automatically when the North wind round completes. Wind-round tracking uses `_roundStartDealer` (not hardcoded seat 0) so games starting at non-zero seats (after rotation) still run full 4-player wind rounds. Previously rotation was only available via the manual "Rotate Seats" UI button.
 - **Sprint bias fix**: `startTurn` now uses `if (p.isHuman && !window.AUTO_MODE)` so in sprint/fast/slow auto modes the human seat takes exactly the same code path as CPU seats.
