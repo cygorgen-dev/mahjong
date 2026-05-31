@@ -221,7 +221,12 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
           <select class="ctx-sel" id="inject-phase">
             <option value="claim">CLAIM (discard on table)</option>
             <option value="discard">DISCARD (your turn)</option>
+            <option value="self-drawn">SELF-DRAWN (pung→kong upgrade)</option>
           </select>
+        </div>
+        <div id="rob-kong-badge" style="display:none;margin-top:4px;padding:3px 7px;background:#4a1a00;border:1px solid #ff9800;border-radius:4px;font-size:10px;color:#ff9800;font-weight:700;align-items:center;gap:6px;">
+          ⚡ Rob-Kong mode active
+          <button onclick="clearRobKong()" style="font-size:9px;padding:1px 5px;background:#222;color:#aaa;border:1px solid #555;border-radius:3px;cursor:pointer;">✕ clear</button>
         </div>
         <div class="ctx-row"><span class="ctx-lbl">Dealer:</span>
           <select class="ctx-sel" id="dealer-seat">
@@ -246,11 +251,11 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
     <!-- filled by JS -->
   </div>
 
-  <!-- REQUIRED DISCARD TILE -->
+  <!-- DISCARD TILE (required for CLAIM, optional otherwise) -->
   <div class="discard-bar">
     <div class="pc-header">
-      <span class="pc-name" style="color:#ff8888;">🎯 Required Discard Tile</span>
-      <span class="pc-seat">CLAIM phase</span>
+      <span class="pc-name" id="discard-bar-title" style="color:#ff8888;">🎯 Required Discard Tile</span>
+      <span class="pc-seat" id="discard-bar-phase">CLAIM phase</span>
       <div class="pc-actions">
         <button class="btn btn-sm btn-green" id="q-set-discard">Select</button>
       </div>
@@ -372,6 +377,13 @@ let targetSeat=0;
 let discardTile=null;
 let quickMode=null; // null|'pung'|'kong'|'chow'|'draw'|'bonus'|'discard'
 let chowBuffer=[];
+// Rob-kong scenario state — populated by loadPreset(), consumed by buildState()
+let _rkActive=false, _rkSeat=null, _rkTile=null, _rkTiles=null, _rkPungIdx=null;
+function clearRobKong(){ _rkActive=false;_rkSeat=null;_rkTile=null;_rkTiles=null;_rkPungIdx=null;updateRkBadge(); }
+function updateRkBadge(){
+  const b=document.getElementById('rob-kong-badge');
+  if(b) b.style.display=_rkActive?'flex':'none';
+}
 
 function P(s=targetSeat){return players[s];}
 function setQStatus(msg,warn=false){
@@ -660,6 +672,23 @@ function clearPlayer(seat){
   setQStatus(`Cleared ${SEAT_NAMES[seat]}.`);
 }
 
+// ── DISCARD BAR LABEL ─────────────────────────────────────────
+function updateDiscardBarLabel(){
+  const phase=document.getElementById('inject-phase').value;
+  const required=(phase==='claim');
+  const titleEl=document.getElementById('discard-bar-title');
+  const phaseEl=document.getElementById('discard-bar-phase');
+  if(titleEl){
+    titleEl.textContent=required?'🎯 Required Discard Tile':'🎯 Discard Tile (optional)';
+    titleEl.style.color=required?'#ff8888':'#aaa';
+  }
+  if(phaseEl){
+    const labels={'claim':'CLAIM phase','discard':'DISCARD phase','self-drawn':'SELF-DRAWN phase'};
+    phaseEl.textContent=labels[phase]||phase+' phase';
+  }
+}
+document.getElementById('inject-phase').addEventListener('change',updateDiscardBarLabel);
+
 // ── DISCARD PREVIEW ───────────────────────────────────────────
 function renderDiscardPreview(){
   const el=document.getElementById('discard-preview');
@@ -720,13 +749,21 @@ function buildState(){
   }
 
   const p0=players[0];
-  return{
+  const s={
     ts:Date.now(),scenario:true,phase,dealerSeat,roundWind,discardFrom,discardTile:dt,
     humanHand:p0.hand.map((t,i)=>Object.assign({},t,{_justDrawn:i===p0.drawnIdx})),
     humanMelds:p0.melds.map(m=>({type:m.type,claimed:!!m.claimed,tiles:(m.tiles||[]).map(t=>Object.assign({},t))})),
     humanBonus:(p0.bonus||[]).map(t=>Object.assign({},t)),
     allPlayers,
   };
+  if(_rkActive){
+    s._robbingKong=true;
+    s.robbingKongSeat=_rkSeat;
+    s.robbingKongTile=_rkTile?{..._rkTile}:null;
+    s.robbingKongTiles=(_rkTiles||[]).map(t=>({...t}));
+    s.robbingKongPungIdx=_rkPungIdx;
+  }
+  return s;
 }
 
 function injectScenario(state){
@@ -901,6 +938,7 @@ function loadPreset(preset){
   }
   discardTile=preset.discardTile?{...preset.discardTile}:null;
   document.getElementById('inject-phase').value=preset.phase||'claim';
+  updateDiscardBarLabel();
   document.getElementById('discard-from').value=preset.discardFrom??3;
   document.getElementById('dealer-seat').value=preset.dealerSeat??0;
   document.getElementById('round-wind').value=preset.roundWind??'East';
@@ -914,6 +952,17 @@ function loadPreset(preset){
   passWinnerSel.value=String(preset._expectedPassWinnerSeat??-1);
   document.getElementById('exp-pass-min-faan').value=String(preset._expectedPassMinFaan??0);
   document.getElementById('exp-pass-faan-wrap').style.display=(preset._expectedPassWinnerSeat>=0)?'':'none';
+  // Rob-kong state
+  if(preset._robbingKong){
+    _rkActive=true;
+    _rkSeat=preset.robbingKongSeat??1;
+    _rkTile=preset.robbingKongTile?{...preset.robbingKongTile}:null;
+    _rkTiles=(preset.robbingKongTiles||[]).map(t=>({...t}));
+    _rkPungIdx=preset.robbingKongPungIdx??0;
+  } else {
+    clearRobKong();
+  }
+  updateRkBadge();
   renderHands();renderDiscardPreview();
   const loadMsg=`Loaded "${preset._presetName}".`;
   setLoadSaveMsg(loadMsg);
@@ -1134,18 +1183,33 @@ const BUILTIN=[
     discardTile:null,
   },
   {
-    _presetName:'★ Kong upgrade (pung→kong self-draw)',_expectedWin:false,_expectedPung:false,_expectedKong:true,_expectedChow:false,
-    phase:'discard',discardFrom:3,dealerSeat:0,
-    allPlayers:[{seat:0,
-      // 9 hand tiles + the self-drawn 三萬 as 10th (drawnIdx:9)
-      hand:[
-        ...([SUIT.K,SUIT.K,SUIT.B,SUIT.B,SUIT.B,SUIT.C,SUIT.C,SUIT.W,SUIT.D]
-          .map((s,i)=>({...mk(s,[1,2,5,6,7,9,8,'East','red'][i]),_justDrawn:false}))),
-        {...mk(SUIT.K,3),_justDrawn:true},  // self-drawn 三萬 → triggers pung→kong upgrade
-      ],
-      melds:[{type:'pung',tiles:[mk(SUIT.K,3),mk(SUIT.K,3),mk(SUIT.K,3)]}],
-      bonus:[],drawnIdx:9}],
-    discardTile:null,
+    // YOU draw the 4th 三萬 (Char-3) to upgrade your pung; CPU1 is tenpai waiting on 三萬 and robs it.
+    // Same YOU hand as ★ Kong upgrade. CPU1: 混一色(3f)+East(1f)+搶槓(1f)=5f.
+    // Inject → KONG button lights → press KONG → CPU1 wins automatically (no PASS needed).
+    _presetName:'★ YOU Kong → CPU1 robs 搶槓胡',
+    _expectedWin:false,_expectedPung:false,_expectedKong:true,_expectedChow:false,
+    phase:'self-drawn',discardFrom:1,dealerSeat:0,roundWind:'East',discardTile:null,
+    allPlayers:[
+      {seat:0,
+        // Same hand as ★ Kong upgrade: pung of 三萬, other tiles, drawn 三萬
+        hand:[
+          ...([SUIT.K,SUIT.K,SUIT.B,SUIT.B,SUIT.B,SUIT.C,SUIT.C,SUIT.W,SUIT.D]
+            .map((s,i)=>({...mk(s,[1,2,5,6,7,9,8,'East','red'][i]),_justDrawn:false}))),
+          {...mk(SUIT.K,3),_justDrawn:true},
+        ],
+        melds:[{type:'pung',tiles:[mk(SUIT.K,3),mk(SUIT.K,3),mk(SUIT.K,3)]}],
+        bonus:[],drawnIdx:9},
+      {seat:1,
+        // 一萬二萬 wait + 四五六萬 + 七八九萬 + 東東東(round wind) + 北北 pair → robs 三萬 → 混一色(3f)+East(1f)+搶槓(1f)=5f
+        hand:[
+          mk(SUIT.K,1),mk(SUIT.K,2),
+          mk(SUIT.K,4),mk(SUIT.K,5),mk(SUIT.K,6),
+          mk(SUIT.K,7),mk(SUIT.K,8),mk(SUIT.K,9),
+          mk(SUIT.W,'East'),mk(SUIT.W,'East'),mk(SUIT.W,'East'),
+          mk(SUIT.W,'North'),mk(SUIT.W,'North'),
+        ].map(t=>({...t,_justDrawn:false})),
+        melds:[],bonus:[],drawnIdx:null},
+    ],
   },
   {
     _presetName:'★ No claim',_expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
@@ -1194,11 +1258,12 @@ const BUILTIN=[
     discardTile:{...mk(SUIT.K,5),_discardSeat:2},
   },
   {
-    // CPU1 (right) upgrades 4-Bamboo pung→kong; CPU3 (left) is waiting on 4-Bam and robs it.
-    // East is round wind (dealerSeat=0). CPU3 hand: East pung (1f) + concealed + no flowers + robbed kong (+1) = 4f.
+    // CPU1 (right) upgrades 4-Bamboo pung→kong; CPU3 (left) robs it.
+    // CPU3: 混一色(3f) + East round-wind pung(1f) + Red dragon pung(1f) + robbed kong(1f) = 6f.
+    // 6f beats any MIN_FAAN setting.
     _presetName:'★ Rob Kong Win — CPU3 robs 搶槓胡',
     _expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
-    _expectedPassWinnerSeat:3,_expectedPassMinFaan:2,
+    _expectedPassWinnerSeat:3,_expectedPassMinFaan:3,
     _robbingKong:true,robbingKongSeat:1,
     robbingKongTile:mk(SUIT.B,4),
     robbingKongTiles:[mk(SUIT.B,4),mk(SUIT.B,4),mk(SUIT.B,4),mk(SUIT.B,4)],
@@ -1211,31 +1276,22 @@ const BUILTIN=[
         mk(SUIT.C,2),mk(SUIT.C,4),mk(SUIT.C,6),mk(SUIT.C,8),
         mk(SUIT.B,1),mk(SUIT.B,3),mk(SUIT.B,5),mk(SUIT.B,7),
       ].map(t=>({...t,_justDrawn:false}))},
+      {seat:1,drawnIdx:null,bonus:[],
+        // CPU1 has the pung of 竹4 that is being promoted — shows visually in game
+        melds:[{type:'pung',tiles:[mk(SUIT.B,4),mk(SUIT.B,4),mk(SUIT.B,4)]}],
+        hand:[
+          mk(SUIT.K,2),mk(SUIT.K,4),mk(SUIT.K,6),mk(SUIT.K,8),
+          mk(SUIT.C,1),mk(SUIT.C,3),mk(SUIT.C,5),mk(SUIT.C,7),
+          mk(SUIT.B,6),mk(SUIT.B,8),
+        ].map(t=>({...t,_justDrawn:false}))},
       {seat:3,drawnIdx:null,melds:[],bonus:[],hand:[
-        // East×3 (round wind pung 1f) + two circle chows + North pair + Bam 2-3 waiting for 4
+        // 混一色: East pung + Red dragon pung + 竹567 + 竹23(wait) + 竹99 pair
+        // With robbed 竹4: 竹234+竹567+東東東+中中中+竹99 → 混一色(3f)+East(1f)+中(1f)+搶槓(1f)=6f
         mk(SUIT.W,'East'),mk(SUIT.W,'East'),mk(SUIT.W,'East'),
-        mk(SUIT.C,4),mk(SUIT.C,5),mk(SUIT.C,6),
-        mk(SUIT.C,7),mk(SUIT.C,8),mk(SUIT.C,9),
+        mk(SUIT.D,'red'),mk(SUIT.D,'red'),mk(SUIT.D,'red'),
+        mk(SUIT.B,5),mk(SUIT.B,6),mk(SUIT.B,7),
         mk(SUIT.B,2),mk(SUIT.B,3),
-        mk(SUIT.W,'North'),mk(SUIT.W,'North'),
-      ].map(t=>({...t,_justDrawn:false}))},
-    ],
-  },
-  {
-    // CPU1 (right) upgrades 4-Bamboo pung→kong; nobody else can win — kong completes normally.
-    // All seats get dud hands. Expected: no claim options for human (win/pung/kong/chow all false).
-    _presetName:'★ Kong Completes — nobody robs 槓完',
-    _expectedWin:false,_expectedPung:false,_expectedKong:false,_expectedChow:false,
-    _robbingKong:true,robbingKongSeat:1,
-    robbingKongTile:mk(SUIT.B,4),
-    robbingKongTiles:[mk(SUIT.B,4),mk(SUIT.B,4),mk(SUIT.B,4),mk(SUIT.B,4)],
-    robbingKongPungIdx:0,
-    phase:'claim',discardFrom:1,dealerSeat:0,roundWind:'East',discardTile:null,
-    allPlayers:[
-      {seat:0,drawnIdx:null,melds:[],bonus:[],hand:[
-        mk(SUIT.K,1),mk(SUIT.K,3),mk(SUIT.K,5),mk(SUIT.K,7),mk(SUIT.K,9),
-        mk(SUIT.C,2),mk(SUIT.C,4),mk(SUIT.C,6),mk(SUIT.C,8),
-        mk(SUIT.B,1),mk(SUIT.B,3),mk(SUIT.B,5),mk(SUIT.B,7),
+        mk(SUIT.B,9),mk(SUIT.B,9),
       ].map(t=>({...t,_justDrawn:false}))},
     ],
   },
@@ -1282,6 +1338,7 @@ function renderPresetList(){renderPresetListFull();}
 buildPalette();
 renderHands();
 renderDiscardPreview();
+updateDiscardBarLabel();
 renderPresetListFull();
 
 // ── CAPTURE RECEIVER ──────────────────────────────────────────
