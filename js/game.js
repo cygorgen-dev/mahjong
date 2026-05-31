@@ -134,8 +134,12 @@ class Game {
 
     this.addLog(`${playerTag(this.players[this.dealerSeat])} deals — distributing tiles.`);
 
-    // Deal 13 tiles to each player, replace bonus immediately
-    for (const p of this.players) {
+    // Deal 13 tiles and replace bonus in CCW order starting from dealer:
+    // dealer → dealer's left → across → dealer's right
+    const d = this.dealerSeat;
+    const ccwSeats = [d, (d+1)%4, (d+2)%4, (d+3)%4];
+    for (const seat of ccwSeats) {
+      const p = this.players[seat];
       p.hand = [];
       p.melds = [];
       p.bonus = [];
