@@ -110,6 +110,7 @@ function onGameUpdate(event) {
       const sl = document.getElementById('sprint-status-label');
       if (sl) sl.textContent = `H${window._sprintDone}/${window._sprintTarget} — running…`;
       renderAll();
+      game.shareState();
       const delay = window._sprintDisplayMs ?? 1500;
       if (window._sprintDone < window._sprintTarget) {
         setTimeout(() => {
@@ -611,6 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   game = new Game(onGameUpdate);
+  window.game = game; // expose for Playwright scripts and dev tools
   // Restore game state if tab was refreshed mid-game
   if (restoreGameState()) {
     renderAll();
