@@ -4,25 +4,30 @@
 // After each full game (four wind rounds) the CPU players rotate seats, but
 // each player carries their assigned strategy with them.
 //
-// Usage (positional — levels by player order: You CPU1 CPU2 CPU3):
+// Usage (positional — levels/schemes by player order: You CPU1 CPU2 CPU3):
 //   node combo.js                            (all Expert, 200 hands)
 //   node combo.js 3 3 3 3 200               (explicit levels + hands)
 //   node combo.js 4 1                        (You=Master, CPU1=Beginner, rest Expert)
+//   node combo.js 10 10 10 10 200            (scheme #10 for all four, 200 hands)
+//   node combo.js 1 5 6 7 30                 (You=Beginner, CPU1=scheme#5, CPU2=scheme#6, CPU3=scheme#7, 30 hands)
+//   node combo.js 3 3 3 3 50 verbose         (add hand-by-hand log after final report)
 //
 // Usage (named flags):
 //   node combo.js --you 4 --cpus 1 --hands 500
 //   node combo.js --cpu1 4 --cpu2 3 --cpu3 1
 //
 // Scheme flags (replace the level AI for that player):
-//   --syou   <scheme-id>    YOU player scheme
+//   --syou   <scheme-id>    YOU player scheme (by id string)
 //   --scpu1  <scheme-id>    CPU1 player scheme
 //   --scpu2  <scheme-id>    CPU2 player scheme
 //   --scpu3  <scheme-id>    CPU3 player scheme
 //
 // Utility:
-//   node combo.js --list-schemes             (list scheme IDs read live from game)
+//   node combo.js list                       (list scheme numbers + IDs from game)
+//   node combo.js --list-schemes             (same)
 //
 // Levels: 1=Beginner  2=Inter  3=Expert  4=Master
+// Schemes: numbered starting at 5 (run 'node combo.js list' to see the full list)
 // Scheme IDs come from js/schemes.js — add schemes there; no changes needed here.
 
 const { chromium } = require('playwright');
@@ -38,37 +43,62 @@ for (let i = 0; i < rawArgs.length; i++) {
   if (rawArgs[i].startsWith('--')) {
     flagMap[rawArgs[i].slice(2)] = rawArgs[i + 1] ?? true;
     i++;
+  } else if (rawArgs[i].startsWith('-') && rawArgs[i].length > 1 && isNaN(rawArgs[i])) {
+    flagMap[rawArgs[i].slice(1)] = rawArgs[i + 1] ?? true;
+    i++;
   } else {
     positional.push(rawArgs[i]);
   }
 }
 
-const LIST_SCHEMES = !!flagMap['list-schemes'];
+// 'list' as first positional is an alias for --list-schemes
+const LIST_SCHEMES = !!flagMap['list-schemes'] || positional[0] === 'list';
+const effPos = positional[0] === 'list' ? positional.slice(1) : positional;
 
 const DEFAULT_LEVEL = 3;
 const DEFAULT_HANDS = 200;
 
-const YOU_LEVEL = parseInt(flagMap['you'] ?? positional[0] ?? DEFAULT_LEVEL, 10);
-const HANDS     = parseInt(flagMap['hands'] ?? positional[4] ?? DEFAULT_HANDS, 10);
+// Parse a single player value: 1-4 → AI level, >=5 → scheme number (base level=Expert)
+function parsePlayerVal(val) {
+  const n = parseInt(val, 10);
+  if (isNaN(n) || n < 1) return { level: DEFAULT_LEVEL, schemeNum: null };
+  if (n <= 4)             return { level: n,             schemeNum: null };
+  return                         { level: DEFAULT_LEVEL, schemeNum: n   };
+}
 
-let CPU_LEVELS;
+const YOU_PARSED = parsePlayerVal(flagMap['you'] ?? effPos[0]);
+const HANDS      = parseInt(flagMap['hands'] ?? effPos[4] ?? DEFAULT_HANDS, 10);
+const VERBOSE    = !!flagMap['verbose'] || effPos[5] === 'verbose';
+
+let CPU_PARSED;
 if (flagMap['cpus'] !== undefined) {
-  const cpuParts = flagMap['cpus'].split(',').map(s => parseInt(s.trim(), 10));
-  CPU_LEVELS = [
-    cpuParts[0] ?? DEFAULT_LEVEL,
-    cpuParts[1] ?? cpuParts[0] ?? DEFAULT_LEVEL,
-    cpuParts[2] ?? cpuParts[0] ?? DEFAULT_LEVEL,
+  const cpuParts = flagMap['cpus'].split(',');
+  CPU_PARSED = [
+    parsePlayerVal(cpuParts[0]),
+    parsePlayerVal(cpuParts[1] ?? cpuParts[0]),
+    parsePlayerVal(cpuParts[2] ?? cpuParts[0]),
   ];
 } else {
-  CPU_LEVELS = [
-    parseInt(flagMap['cpu1'] ?? positional[1] ?? DEFAULT_LEVEL, 10),
-    parseInt(flagMap['cpu2'] ?? positional[2] ?? DEFAULT_LEVEL, 10),
-    parseInt(flagMap['cpu3'] ?? positional[3] ?? DEFAULT_LEVEL, 10),
+  CPU_PARSED = [
+    parsePlayerVal(flagMap['cpu1'] ?? effPos[1]),
+    parsePlayerVal(flagMap['cpu2'] ?? effPos[2]),
+    parsePlayerVal(flagMap['cpu3'] ?? effPos[3]),
   ];
 }
 
-// Schemes keyed by player name — null means use level AI
-const SCHEMES_BY_PLAYER = {
+const YOU_LEVEL  = YOU_PARSED.level;
+const CPU_LEVELS = CPU_PARSED.map(p => p.level);
+
+// Scheme numbers (>=5) from positionals — resolved to IDs after browser loads schemes
+const SCHEME_NUMS = {
+  You:  YOU_PARSED.schemeNum,
+  CPU1: CPU_PARSED[0].schemeNum,
+  CPU2: CPU_PARSED[1].schemeNum,
+  CPU3: CPU_PARSED[2].schemeNum,
+};
+
+// Explicit scheme IDs from --syou / --scpu1 / --scpu2 / --scpu3 flags
+const FLAG_SCHEME_IDS = {
   You:  flagMap['syou']  || null,
   CPU1: flagMap['scpu1'] || null,
   CPU2: flagMap['scpu2'] || null,
@@ -82,18 +112,15 @@ const FILE          = 'file:///' + path.resolve('index.html').replace(/\\/g, '/'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Returns a short display tag for a player's strategy
 function strategyTag(playerName, levelIdx, schemeName) {
   return schemeName || (LEVEL_LABELS[levelIdx] ?? `L${levelIdx}`);
 }
 
-function buildLogPath(schemeNames) {
-  const parts = PLAYER_NAMES.map((name, i) => {
-    const lvl = i === 0 ? YOU_LEVEL : CPU_LEVELS[i - 1];
-    const sc  = schemeNames[name];
-    const safe = sc ? sc.replace(/[^\w-]/g, '').slice(0, 10) : null;
-    return safe ? `${lvl}-${safe}` : String(lvl);
-  });
+function buildLogPath() {
+  const parts = [
+    YOU_PARSED.schemeNum ?? YOU_PARSED.level,
+    ...CPU_PARSED.map(p => p.schemeNum ?? p.level),
+  ];
   return path.join(__dirname, `combo_${parts.join('_')}_${HANDS}.log`);
 }
 
@@ -103,7 +130,6 @@ function write(line) {
   if (_logPath) fs.appendFileSync(_logPath, line + '\n');
 }
 
-// Aggregate log entries by player NAME (not seat — seats rotate between games)
 function report(label, log, startByName) {
   const total = log.length;
   if (!total) return;
@@ -111,10 +137,9 @@ function report(label, log, startByName) {
   const draws = log.filter(e => e.winnerSeat < 0).length;
   const wins  = total - draws;
 
-  // Collect all player names encountered (may include rotated positions)
   const nameSet = new Set();
   for (const e of log) for (const s of e.scores) nameSet.add(s.name);
-  const names = PLAYER_NAMES.filter(n => nameSet.has(n)); // canonical order
+  const names = PLAYER_NAMES.filter(n => nameSet.has(n));
 
   const byName = {};
   names.forEach(n => { byName[n] = { wins: 0, faan: 0 }; });
@@ -126,7 +151,6 @@ function report(label, log, startByName) {
     }
   }
 
-  // Final scores by name from last log entry
   const lastEntry  = log[total - 1];
   const endByName  = {};
   for (const s of lastEntry.scores) endByName[s.name] = s.score;
@@ -151,6 +175,27 @@ function report(label, log, startByName) {
   }
 }
 
+function printVerboseLog(log) {
+  write('\n── Hand-by-hand log ──');
+  write(`  ${'H'.padEnd(5)} ${'Winner'.padEnd(8)} ${'F'.padStart(2)}  ${'Scoring label'}`);
+  write(`  ${'─'.repeat(5)} ${'─'.repeat(8)} ${'─'.repeat(2)}  ${'─'.repeat(34)}  ${'─'.repeat(32)}`);
+  let prevByName = null;
+  for (const e of log) {
+    const hNum  = String(e.hand).padStart(3, '0');
+    const who   = e.draw ? 'Draw' : (e.winnerName ?? '?');
+    const fStr  = e.draw ? ' —' : String(e.faan).padStart(2);
+    const lbl   = e.draw ? '' : (e.label ?? '');
+    const currByName = {};
+    for (const s of e.scores) currByName[s.name] = s.score;
+    const deltas = e.scores.map(s => {
+      const d = prevByName ? s.score - (prevByName[s.name] ?? s.score) : 0;
+      return `${s.name}${d >= 0 ? '+' : ''}${d}`;
+    }).join('  ');
+    prevByName = currByName;
+    write(`  H${hNum} ${who.padEnd(8)} ${fStr}  ${lbl.padEnd(34)}  ${deltas}`);
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -169,26 +214,49 @@ function report(label, log, startByName) {
   );
 
   if (LIST_SCHEMES) {
-    console.log('\nAvailable schemes (from js/schemes.js):\n');
-    for (const s of availableSchemes) {
-      console.log(`  ${s.id.padEnd(20)}  ${s.name}`);
-      console.log(`  ${''.padEnd(20)}  ${s.desc}`);
+    console.log('\nAvailable schemes (use the # as a positional argument):\n');
+    console.log(`  ${'#'.padEnd(4)} ${'ID'.padEnd(24)} Name`);
+    console.log(`  ${'─'.repeat(4)} ${'─'.repeat(24)} ${'─'.repeat(30)}`);
+    availableSchemes.forEach((s, i) => {
+      const num = i + 5;
+      console.log(`  ${String(num).padEnd(4)} ${s.id.padEnd(24)} ${s.name}`);
+      console.log(`  ${''.padEnd(4)} ${''.padEnd(24)} ${s.desc}`);
       console.log();
-    }
+    });
+    console.log(`  Levels 1–4: Beginner / Inter / Expert / Master`);
     await browser.close();
     return;
   }
 
-  // ── Validate requested scheme IDs ─────────────────────────────────────────
-  const validIds   = new Set(availableSchemes.map(s => s.id));
-  // Map player name -> scheme display name (null if no scheme)
+  // ── Resolve scheme numbers (>=5) to scheme IDs ────────────────────────────
+  // Flag-based --syou/--scpu1 etc. take priority over positional scheme numbers.
+  const SCHEMES_BY_PLAYER = {};
+  for (const player of PLAYER_NAMES) {
+    if (FLAG_SCHEME_IDS[player]) {
+      SCHEMES_BY_PLAYER[player] = FLAG_SCHEME_IDS[player];
+    } else if (SCHEME_NUMS[player] != null) {
+      const idx = SCHEME_NUMS[player] - 5;
+      if (idx < 0 || idx >= availableSchemes.length) {
+        const maxNum = availableSchemes.length + 4;
+        console.error(`\nScheme number ${SCHEME_NUMS[player]} for ${player} is out of range (valid: 5–${maxNum})`);
+        console.error(`Run: node combo.js list  for the full numbered list`);
+        process.exit(1);
+      }
+      SCHEMES_BY_PLAYER[player] = availableSchemes[idx].id;
+    } else {
+      SCHEMES_BY_PLAYER[player] = null;
+    }
+  }
+
+  // ── Validate resolved scheme IDs ──────────────────────────────────────────
+  const validIds    = new Set(availableSchemes.map(s => s.id));
   const schemeNames = {};
   for (const [player, id] of Object.entries(SCHEMES_BY_PLAYER)) {
     if (!id) { schemeNames[player] = null; continue; }
     if (!validIds.has(id)) {
       console.error(`\nUnknown scheme id for ${player}: "${id}"`);
       console.error(`Valid ids: ${[...validIds].join(', ')}`);
-      console.error(`Run: node combo.js --list-schemes  for details`);
+      console.error(`Run: node combo.js list  for details`);
       process.exit(1);
     }
     schemeNames[player] = availableSchemes.find(s => s.id === id).name;
@@ -200,7 +268,7 @@ function report(label, log, startByName) {
     `${name}=${strategyTag(name, allLevels[i], schemeNames[name])}`
   ).join('  ');
 
-  _logPath = buildLogPath(schemeNames);
+  _logPath = buildLogPath();
   fs.writeFileSync(_logPath, `combo.js started ${new Date().toISOString()}\n`);
   write(`Config : ${CONFIG_TAG}`);
   write(`Hands  : ${HANDS}`);
@@ -220,7 +288,7 @@ function report(label, log, startByName) {
   const startState = await page.evaluate(() => {
     const players = window.game?.players ?? [];
     const byName = {};
-    const seats  = {};   // seat# -> playerName
+    const seats  = {};
     for (const p of players) {
       byName[p.name] = p.score;
       seats[p.seat]  = p.name;
@@ -276,6 +344,8 @@ function report(label, log, startByName) {
   report(`${CONFIG_TAG} — ${HANDS} hands`, final, startByName);
   write('═'.repeat(60));
   write(`Log: ${_logPath}`);
+
+  if (VERBOSE) printVerboseLog(final);
 
   await browser.close();
 })();

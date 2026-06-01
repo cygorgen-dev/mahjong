@@ -133,19 +133,35 @@ class Game {
     this.wall = [...this.wall.slice(headIdx), ...this.wall.slice(0, headIdx)];
     this.wallIdx = 0;
 
-    this.addLog(`${playerTag(this.players[this.dealerSeat])} deals — distributing tiles.`);
-
-    // Deal: dealer gets 14, others get 13, in CCW order starting from dealer.
+    // Round-robin deal: 3 rounds of 4 tiles each, then 1 tile each, then dealer's extra.
     const d = this.dealerSeat;
     const ccwSeats = [d, (d+1)%4, (d+2)%4, (d+3)%4];
     for (const seat of ccwSeats) {
-      const p = this.players[seat];
-      p.hand = [];
-      p.melds = [];
-      p.bonus = [];
-      const count = seat === d ? 14 : 13;
-      for (let i = 0; i < count; i++) p.hand.push(this.drawFromWall());
+      this.players[seat].hand = [];
+      this.players[seat].melds = [];
+      this.players[seat].bonus = [];
     }
+
+    this.addLog(`${playerTag(this.players[d])} deals — distributing tiles.`);
+
+    for (let round = 0; round < 3; round++) {
+      for (const seat of ccwSeats) {
+        const tiles = [this.drawFromWall(), this.drawFromWall(), this.drawFromWall(), this.drawFromWall()];
+        this.players[seat].hand.push(...tiles);
+        this.addLog(`${playerTag(this.players[seat])} gets 4 tiles: ${tiles.map(tileMain).join(' ')}`);
+      }
+    }
+
+    for (const seat of ccwSeats) {
+      const tile = this.drawFromWall();
+      this.players[seat].hand.push(tile);
+      this.addLog(`${playerTag(this.players[seat])} gets 1 tile: ${tileMain(tile)}`);
+    }
+
+    const extraTile = this.drawFromWall();
+    this.players[d].hand.push(extraTile);
+    this.addLog(`${playerTag(this.players[d])} gets 1 tile: ${tileMain(extraTile)}`);
+
 
     // Cantonese round-robin bonus replacement:
     // Each round every player (dealer first) replaces all bonus tiles currently
@@ -432,7 +448,13 @@ class Game {
       ctx.lastTile = true;
     }
     const result = canWin(p.hand, p.melds, ctx);
-    const minF = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
+    const _scheme = seat === 0
+      ? ((typeof USER_SCHEME !== 'undefined') ? USER_SCHEME : null)
+      : (window.CPU_SCHEMES?.[seat] ?? null);
+    const minF = Math.max(
+      (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3,
+      _scheme?.claim?.winMinFaan ?? 0
+    );
     // Heavenly Hand needs no _justDrawn tile — all 14 were dealt. Regular
     // self-draw wins require the completing tile to have just been drawn.
     if (result.win && result.faan >= minF && (isHeavenly || p.hand.some(t => t._justDrawn))) {

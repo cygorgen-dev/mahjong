@@ -109,9 +109,9 @@ const SCHEMES = [
   {
     id: 'concealed',
     name: '🤫 Concealed',
-    desc: 'Speed pursuit but never break concealed tenpai; only pung/chow when it immediately creates tenpai; target 3+ faan wins',
+    desc: 'Speed pursuit but never break concealed tenpai; only pung/chow when it immediately creates tenpai; wins at game min faan',
     discard: { pursue: 'speed',  suitLock: null, honorPenalty: 1, terminalPenalty: 0.5, safetyLevel: 0.0 },
-    claim:   { pung: 'if-tenpai', chow: 'if-tenpai', kong: true, winMinFaan: 3,
+    claim:   { pung: 'if-tenpai', chow: 'if-tenpai', kong: true, winMinFaan: 0,
                protectConcealed: true, protectSevenPairs: false }
   },
 
