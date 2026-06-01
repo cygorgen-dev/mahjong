@@ -145,8 +145,18 @@
     }
     .fly-tile::after {
       content:""; position:absolute; inset:4px;
-      border:1.5px solid #2a8b4e; border-radius:2px;
-      pointer-events:none;
+      border:1.5px solid #2a8b4e; border-radius:2px; pointer-events:none;
+    }
+
+    /* ── Face-down overlay for wall tiles during deal ─────────────────────── */
+    .tile.face-down {
+      background:linear-gradient(135deg,#1a6b3a 0%,#0b3d1f 100%) !important;
+      border-color:#042510 !important;
+    }
+    .tile.face-down > img { display:none !important; }
+    .tile.face-down::after {
+      content:""; position:absolute; inset:5px;
+      border:1.5px solid #2a8b4e; border-radius:3px; pointer-events:none;
     }
 
     /* ── Seat-label dash trays (JS-positioned, absolute in page space) ─────── */
@@ -596,6 +606,7 @@
       _gameConnected = false;
       document.getElementById('deal-btn').disabled = false;
       document.getElementById('reveal-btn').style.display = 'none';
+      _revealed = false;
       clearDashes();
       const badge = document.getElementById('mode-badge');
       badge.textContent = 'standalone';
@@ -681,11 +692,16 @@
       }
     }
 
-    // Fly `gameIndices` tiles simultaneously toward `seat`'s edge, then add dashes.
+    // Target point: centre of the seat label (dashes land just outside it).
+    function getDashTarget(seat) {
+      const r = document.getElementById(`s${seat}-lbl`).getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
+
+    // Fly `gameIndices` tiles simultaneously to the seat's label, then add dashes.
     function flyGroup(gameIndices, seat, ms) {
       return new Promise(resolve => {
-        const [dx, dy] = DEAL_DIR[seat];
-        const dist = Math.max(window.innerWidth, window.innerHeight) * 1.5;
+        const tgt = getDashTarget(seat);
 
         const entries = gameIndices.map(gi => {
           const physIdx = (_headIdx + gi) % 144;
@@ -702,14 +718,14 @@
           return { clone, srcEl };
         }).filter(Boolean);
 
-        // All clones start moving simultaneously after one rAF paint
+        // All clones fly simultaneously to the seat label centre
         requestAnimationFrame(() => requestAnimationFrame(() => {
           entries.forEach(({ clone }) => {
-            const x0 = parseFloat(clone.style.left);
-            const y0 = parseFloat(clone.style.top);
-            clone.style.transition = `left ${ms}ms ease-in, top ${ms}ms ease-in, opacity ${ms*0.35}ms ${ms*0.65}ms ease-in`;
-            clone.style.left    = (x0 + dx * dist) + 'px';
-            clone.style.top     = (y0 + dy * dist) + 'px';
+            const w = parseFloat(clone.style.width);
+            const h = parseFloat(clone.style.height);
+            clone.style.transition = `left ${ms}ms ease-in, top ${ms}ms ease-in, opacity ${ms*0.3}ms ${ms*0.7}ms ease-in`;
+            clone.style.left    = (tgt.x - w / 2) + 'px';
+            clone.style.top     = (tgt.y - h / 2) + 'px';
             clone.style.opacity = '0';
           });
         }));
@@ -717,6 +733,7 @@
         setTimeout(() => {
           entries.forEach(({ clone, srcEl }) => {
             clone.remove();
+            srcEl.classList.remove('face-down');
             srcEl.classList.add('used');
           });
           addDashes(seat, entries.length);
@@ -735,10 +752,10 @@
       document.getElementById('reveal-btn').style.display = 'none';
       clearDashes();
       if (_gameConnected) {
-        // Live mode: wall and _headIdx already set — just reset tile visuals
+        // Live mode: wall and _headIdx already set — reset tile visuals then blank ring
         for (let i = 0; i < 144; i++) {
           if (_tiles[i]) {
-            _tiles[i].div.classList.remove('used','tail-used','next-head','next-tail');
+            _tiles[i].div.classList.remove('used','tail-used','next-head','next-tail','revealed');
             _tiles[i].div.style.opacity = '';
             _tiles[i].div.style.outline = '';
             _tiles[i].div.style.boxShadow = '';
@@ -751,6 +768,11 @@
         standaloneDice();
         positionDashTrays();
         await sleep(900);
+      }
+
+      // Blank the entire ring face-down before dealing
+      for (let i = 0; i < 144; i++) {
+        if (_tiles[i]) _tiles[i].div.classList.add('face-down');
       }
 
       const dealer   = _gameConnected ? _liveDealerSeat : parseInt(document.getElementById('dealer-sel').value);
@@ -801,10 +823,9 @@
         const el = _tiles[physIdx]?.div;
         if (!el) continue;
         if (_revealed) {
-          el.classList.remove('used');
-          el.classList.add('revealed');
+          el.classList.remove('used', 'face-down');
         } else {
-          el.classList.remove('revealed');
+          el.classList.remove('face-down');
           el.classList.add('used');
         }
       }
