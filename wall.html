@@ -187,7 +187,7 @@
       </select>
     </label>
     <button class="btn" id="deal-btn" onclick="demoDeal()" style="background:#7dffff;color:#07301a;">Deal</button>
-    <button class="btn" id="reveal-btn" onclick="toggleReveal()" style="background:#ff9800;color:#07301a;display:none;">Reveal</button>
+    <button class="btn" id="reveal-btn" onclick="toggleReveal()" style="background:#ff9800;color:#07301a;display:none;">Restore</button>
     <label>Speed: <input type="range" id="deal-speed" min="1" max="5" value="3"></label>
   </div>
 
@@ -546,7 +546,10 @@
     // ── Rebuild tile images in-place when a new game's wall arrives ────────
     let _lastWallId0 = null;
 
+    let _lastLiveData = null;
+
     function renderFromGame(data) {
+      _lastLiveData = data;
       const wall          = data.wall;           // 144 rotated tile objects
       const wallBreakSeat = data.wallBreakSeat ?? 0;
       const wallBreakCount= data.wallBreakCount ?? 0;
@@ -811,25 +814,30 @@
       document.getElementById('shuffle-btn').disabled = _gameConnected;
       document.getElementById('dice-btn').disabled    = _gameConnected;
       _revealed = false;
-      document.getElementById('reveal-btn').textContent = 'Reveal';
+      document.getElementById('reveal-btn').textContent = 'Restore';
       document.getElementById('reveal-btn').style.display = '';
     }
 
     let _revealed = false;
     function toggleReveal() {
-      _revealed = !_revealed;
-      for (let i = 0; i < 53; i++) {
-        const physIdx = (_headIdx + i) % 144;
-        const el = _tiles[physIdx]?.div;
-        if (!el) continue;
-        if (_revealed) {
-          el.classList.remove('used', 'face-down');
-        } else {
-          el.classList.remove('face-down');
-          el.classList.add('used');
+      // Remove all deal-animation classes from every tile
+      for (let i = 0; i < 144; i++) {
+        if (_tiles[i]) {
+          _tiles[i].div.classList.remove('face-down', 'used', 'revealed',
+                                          'tail-used', 'next-head', 'next-tail');
+          _tiles[i].div.style.opacity   = '';
+          _tiles[i].div.style.outline   = '';
+          _tiles[i].div.style.boxShadow = '';
         }
       }
-      document.getElementById('reveal-btn').textContent = _revealed ? 'Hide' : 'Reveal';
+      clearDashes();
+      document.getElementById('reveal-btn').style.display = 'none';
+      _revealed = false;
+
+      // Restore the actual game state if we have live data
+      if (_lastLiveData) {
+        applyGameState(_lastLiveData);
+      }
     }
 
     function clearDiceDisplay() {
