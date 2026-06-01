@@ -299,8 +299,8 @@
       for (let c = 0; c < 18; c++) {
         const s = document.createElement('div');
         s.className = 'sv';
-        s.appendChild(makeImg(72+c*2));        // inner (top of stack = toward center for seat 2, shown with r180)
-        s.appendChild(makeImg(72+c*2 + 1));    // outer
+        s.appendChild(makeImg(72+c*2 + 1));    // outer — top of column (toward seat 2 edge)
+        s.appendChild(makeImg(72+c*2));         // inner — bottom of column (toward center)
         // Seat 2 tiles face center — rotate 180°
         _tiles[72+c*2].div.classList.add('r180');
         _tiles[72+c*2+1].div.classList.add('r180');
