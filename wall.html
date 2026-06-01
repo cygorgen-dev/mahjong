@@ -699,6 +699,9 @@
       await flyTile(_tiles[physIdx].div, dealer, ms);
       flashSeat(dealer, groupGap * 2);
 
+      document.getElementById('ctr-title').textContent = `${144 - gameIdx} tiles`;
+      document.getElementById('ctr-sub').textContent   = `${gameIdx} dealt · ${144 - gameIdx} remaining`;
+
       _dealing = false;
       document.getElementById('deal-btn').disabled    = false;
       document.getElementById('shuffle-btn').disabled = _gameConnected;
