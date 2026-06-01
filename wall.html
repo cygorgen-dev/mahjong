@@ -791,7 +791,11 @@
 
     // Initial tile sizing (after any window.resizeTo above)
     applyTileSize();
-    window.addEventListener('resize', applyTileSize);
+    window.addEventListener('resize', () => {
+      applyTileSize();
+      if (document.querySelector('#dash-0 .dash-h, #dash-0 .dash-v,#dash-1 .dash-v'))
+        positionDashTrays();
+    });
 
     try {
       const saved = localStorage.getItem('mahjong-wall-state');
