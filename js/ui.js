@@ -684,7 +684,7 @@ function renderSeats() {
         // Update label
         const lbl = claimRow.querySelector('.seat-label');
         if (lbl) {
-          lbl.className = 'seat-label' + activeClass + winnerClass;
+          lbl.className = 'seat-label' + winnerClass;
           lbl.textContent = labelText;
         }
         // Update wind circle (dealer only)
@@ -809,7 +809,7 @@ function renderSeats() {
     if (seat === 1 || seat === 3) {
       const wrap = document.createElement('div');
       const sideDir = el.classList.contains('seat-left') ? ' left' : ' right';
-      wrap.className = 'side-hand-label' + sideDir + activeClass + winnerClass;
+      wrap.className = 'side-hand-label' + sideDir + winnerClass;
 
       const lbl = document.createElement('div');
       lbl.className = 'side-hand-label-text';
@@ -852,7 +852,7 @@ function renderSeats() {
     if (seat === 0 || seat === 2) {
       // Label fake tile
       const lblTile = document.createElement('div');
-      lblTile.className = 'h-hand-fake-tile h-label-tile' + activeClass + winnerClass;
+      lblTile.className = 'h-hand-fake-tile h-label-tile' + winnerClass;
       lblTile.textContent = p.name;
       handEl.prepend(lblTile);
 
@@ -1186,49 +1186,12 @@ function renderMessage() {
     return;
   }
   if (_game.phase === PHASE.DISCARD && _game.currentSeat === 0) {
-    const minF = typeof MIN_FAAN !== 'undefined' ? MIN_FAAN : 3;
-    const f = _game.lastCheckFaan;
-    if (f > 0 && f < minF) {
-      el.textContent = `Your turn — hand scores ${f} faan (need ${minF} to win) — click a tile to discard, or Pass to discard the new tile`;
-    } else {
-      el.textContent = 'Your turn — click a tile to discard, or Pass to discard the new tile';
-    }
     if (_alwaysHint) {
       const hp = _game.players[0];
       const hctx = _game.makeCtx(0, true);
       showHint(generateHint(hp.hand, hp.melds, _game.discardPile, hctx));
     }
-    return;
-  }
-  if (_game.phase === PHASE.CLAIM && _game.claimOptions) {
-    const o = _game.claimOptions;
-
-    // Hijack message: human would have won but a closer player gets priority
-    if (o._hijackedBy !== undefined) {
-      const posName = ['You','Right 右','Top 上','Left 左'][o._hijackedBy] || `seat ${o._hijackedBy}`;
-      el.innerHTML = `⚠️ Win hijacked by <strong>${posName}</strong> — Pass to continue`;
-      return;
-    }
-    if (o.robbingKong) {
-      const kongPlayer = seatName(_game.robbingKongSeat);
-      const tName = _game.robbingKongTile ? tileMain(_game.robbingKongTile) + ' ' + tileEnglish(_game.robbingKongTile) : '';
-      el.innerHTML = o.win
-        ? `<strong>🀄 ${kongPlayer}</strong> is upgrading <strong>${tName}</strong> pung→Kong 槓 — you can <strong>Rob it 搶槓胡</strong> to Win! (+1 faan) — or Pass`
-        : `<strong>🀄 ${kongPlayer}</strong> is upgrading <strong>${tName}</strong> pung→Kong 槓 — Pass to continue`;
-      return;
-    }
-    const parts = [];
-    if (o.win)  parts.push('Win!');
-    if (o.pung) parts.push('Pung 碰');
-    if (o.kong) parts.push('Kong 槓');
-    if (o.chow) parts.push('Chow 上');
-    el.textContent = parts.length
-      ? `You can: ${parts.join(', ')} click Pass or anywhere `
-      : 'Click Pass or anywhere to continue';
-    return;
-  }
-  if (_game.phase === PHASE.DISCARD && _game.currentSeat !== 0) {
-    el.textContent = `${seatName(_game.currentSeat)} is thinking…`;
+    el.textContent = '';
     return;
   }
   el.textContent = '';
