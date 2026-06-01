@@ -136,6 +136,17 @@
       background:rgba(0,0,0,0.5); color:#aaa;
     }
     #mode-badge.live { background:rgba(0,180,80,0.25); color:#5dde7a; }
+
+    /* ── Flying tile (deal animation) ────────────────────────────────────── */
+    .fly-tile {
+      position:fixed; z-index:1000; pointer-events:none;
+      border:1.5px solid #aaa; border-radius:3px;
+      background:#fff; overflow:hidden;
+    }
+    .fly-tile img { width:100%; height:100%; object-fit:contain; display:block; }
+
+    /* ── Deal speed slider ────────────────────────────────────────────────── */
+    #deal-speed { width:70px; vertical-align:middle; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -153,6 +164,8 @@
         <option value="3">Seat 3</option>
       </select>
     </label>
+    <button class="btn" id="deal-btn" onclick="demoDeal()" style="background:#7dffff;color:#07301a;">Deal</button>
+    <label>Speed: <input type="range" id="deal-speed" min="1" max="5" value="3"></label>
   </div>
 
   <div id="stats"></div>
@@ -545,6 +558,7 @@
       badge.className = 'live';
       document.getElementById('shuffle-btn').disabled = true;
       document.getElementById('dice-btn').disabled    = true;
+      document.getElementById('deal-btn').disabled    = true;
       _gameConnected = true;
     }
 
@@ -577,6 +591,118 @@
       const breakSeat = (dealer + (sum - 1) % 4) % 4;
       showDice([d1,d2,d3], sum, breakSeat);
       placeBreakMarker(breakSeat, headColFromBreak(breakSeat, sum));
+      // Update _headIdx so deal animation draws from the correct position
+      const ccwOrder = [0,3,2,1];
+      const segIdx = ccwOrder.indexOf(breakSeat);
+      _headIdx = (segIdx * 36 + 2 * sum) % 144;
+    }
+
+    // ── Deal animation ────────────────────────────────────────────────────
+    let _dealing = false;
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // Fly a tile clone from srcEl's position to the seat label, then dim srcEl.
+    function flyTile(srcEl, seat, ms) {
+      return new Promise(resolve => {
+        const srcRect = srcEl.getBoundingClientRect();
+        const tgtEl   = document.getElementById(`s${seat}-lbl`);
+        const tgtRect = tgtEl.getBoundingClientRect();
+        const destX   = tgtRect.left + tgtRect.width  / 2 - srcRect.width  / 2;
+        const destY   = tgtRect.top  + tgtRect.height / 2 - srcRect.height / 2;
+
+        const clone = document.createElement('div');
+        clone.className = 'fly-tile';
+        clone.style.left   = srcRect.left + 'px';
+        clone.style.top    = srcRect.top  + 'px';
+        clone.style.width  = srcRect.width  + 'px';
+        clone.style.height = srcRect.height + 'px';
+        clone.style.transition = `left ${ms}ms ease-in-out, top ${ms}ms ease-in-out, opacity ${ms * 0.6}ms ease-in`;
+        clone.innerHTML = srcEl.innerHTML;
+        document.body.appendChild(clone);
+
+        // Double rAF to ensure the initial position is painted before transitioning
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          clone.style.left    = destX + 'px';
+          clone.style.top     = destY + 'px';
+          clone.style.opacity = '0';
+        }));
+
+        setTimeout(() => {
+          clone.remove();
+          srcEl.classList.add('used');
+          resolve();
+        }, ms + 60);
+      });
+    }
+
+    // Flash a seat label briefly when it receives tiles.
+    function flashSeat(seat, ms) {
+      const el = document.getElementById(`s${seat}-lbl`);
+      const origBg    = el.style.background;
+      const origColor = el.style.color;
+      el.style.transition = `background ${ms * 0.2}ms`;
+      el.style.background = '#ffd34d';
+      el.style.color      = '#07301a';
+      setTimeout(() => {
+        el.style.background = origBg;
+        el.style.color      = origColor;
+      }, ms * 1.2);
+    }
+
+    async function demoDeal() {
+      if (_dealing) return;
+      _dealing = true;
+      document.getElementById('deal-btn').disabled  = true;
+      document.getElementById('shuffle-btn').disabled = true;
+      document.getElementById('dice-btn').disabled  = true;
+
+      // Fresh wall + dice roll, then pause so the break point is visible
+      standaloneMode();
+      standaloneDice();
+      await sleep(900);
+
+      const dealer   = parseInt(document.getElementById('dealer-sel').value);
+      const ccwSeats = [dealer, (dealer+1)%4, (dealer+2)%4, (dealer+3)%4];
+      const speedVal = parseInt(document.getElementById('deal-speed').value); // 1–5
+      const ms       = [600, 350, 180, 100, 50][speedVal - 1];
+      const gap      = ms * 0.4;   // pause between tiles within a group
+      const groupGap = ms * 1.0;   // pause between players within a round
+      const roundGap = ms * 2.0;   // pause between rounds
+
+      let gameIdx = 0;
+
+      // 3 rounds of 4 tiles each
+      for (let round = 0; round < 3; round++) {
+        for (const seat of ccwSeats) {
+          for (let t = 0; t < 4; t++) {
+            const physIdx = (_headIdx + gameIdx++) % 144;
+            await flyTile(_tiles[physIdx].div, seat, ms);
+            if (t < 3) await sleep(gap);
+          }
+          flashSeat(seat, groupGap);
+          await sleep(groupGap);
+        }
+        await sleep(roundGap);
+      }
+
+      // Single tile round
+      for (const seat of ccwSeats) {
+        const physIdx = (_headIdx + gameIdx++) % 144;
+        await flyTile(_tiles[physIdx].div, seat, ms);
+        flashSeat(seat, groupGap);
+        await sleep(groupGap);
+      }
+
+      // Dealer's extra tile
+      const physIdx = (_headIdx + gameIdx++) % 144;
+      await flyTile(_tiles[physIdx].div, dealer, ms);
+      flashSeat(dealer, groupGap * 2);
+
+      _dealing = false;
+      document.getElementById('deal-btn').disabled    = false;
+      document.getElementById('shuffle-btn').disabled = _gameConnected;
+      document.getElementById('dice-btn').disabled    = _gameConnected;
     }
 
     function clearDiceDisplay() {
