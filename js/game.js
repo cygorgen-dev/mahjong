@@ -645,6 +645,20 @@ class Game {
   }
 
   processClaims(fromSeat, tile) {
+    // Refresh CPU_LEVELS and CPU_SCHEMES by current seat (mirrors aiPlay — needed after seat rotation)
+    if (typeof CPU_LEVELS !== 'undefined' && window.CPU_LEVELS_BY_NAME) {
+      for (const pl of this.players) {
+        if (!pl.isHuman && window.CPU_LEVELS_BY_NAME[pl.name] !== undefined)
+          CPU_LEVELS[pl.seat] = window.CPU_LEVELS_BY_NAME[pl.name];
+      }
+    }
+    if (window.CPU_SCHEMES_BY_NAME) {
+      if (!window.CPU_SCHEMES) window.CPU_SCHEMES = [null, null, null, null];
+      for (const pl of this.players) {
+        if (!pl.isHuman && window.CPU_SCHEMES_BY_NAME[pl.name] !== undefined)
+          window.CPU_SCHEMES[pl.seat] = window.CPU_SCHEMES_BY_NAME[pl.name];
+      }
+    }
     // Collect AI claims — in auto mode, seat 0 (human) also acts as CPU
     const claims = [];
     for (let i = 1; i <= 3; i++) {
@@ -1251,5 +1265,22 @@ class Game {
     this.log = [];
     this.log.push(`=== ${label}: Seat ${this.dealerSeat} dealer, ${this.roundWind} round ===`);
     this.log.push(ver);
+    if (typeof window !== 'undefined') {
+      const LVL = ['', 'Bgn', 'Int', 'Exp', 'Mst'];
+      const parts = [...this.players].sort((a, b) => a.seat - b.seat).map(p => {
+        let lvlIdx, sc;
+        if (p.isHuman) {
+          lvlIdx = window.AUTO_USER_LEVEL ?? 1;
+          sc = (typeof USER_SCHEME !== 'undefined') ? USER_SCHEME : null;
+        } else {
+          lvlIdx = window.CPU_LEVELS_BY_NAME?.[p.name] ?? 1;
+          sc = window.CPU_SCHEMES_BY_NAME?.[p.name] ?? null;
+        }
+        const lvl = LVL[lvlIdx] ?? `L${lvlIdx}`;
+        const strategy = sc ? `${lvl}[${sc.name}]` : lvl;
+        return `S${p.seat}:${p.name}(${strategy})`;
+      });
+      this.log.push(`⚙ ${parts.join(' · ')}`);
+    }
   }
 }

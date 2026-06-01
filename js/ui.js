@@ -28,6 +28,12 @@ function _broadcastWallState() {
   _wallBC.postMessage(data);
 }
 
+function _getSchemeLabel(selId) {
+  const sel = document.getElementById(selId);
+  if (!sel || !sel.value) return null;
+  return sel.options[sel.selectedIndex]?.text || null;
+}
+
 function _broadcastSprintLog() {
   const payload = {
     log:        window._sprintLog ?? [],
@@ -39,6 +45,12 @@ function _broadcastSprintLog() {
       parseInt(document.getElementById('cpu1-level')?.value) || 1,
       parseInt(document.getElementById('cpu2-level')?.value) || 1,
       parseInt(document.getElementById('cpu3-level')?.value) || 1,
+    ],
+    schemes: [
+      _getSchemeLabel('user-scheme-select'),
+      _getSchemeLabel('cpu1-scheme'),
+      _getSchemeLabel('cpu2-scheme'),
+      _getSchemeLabel('cpu3-scheme'),
     ],
   };
   if (!_sprintLogBC) _sprintLogBC = new BroadcastChannel('mahjong-sprint-log');

@@ -56,6 +56,7 @@
     #log-list .entry { border-bottom:1px dashed rgba(255,255,255,0.07); padding:2px 0; }
     #log-list .win { color:#ffd34d; font-weight:600; }
     #log-list .draw { color:#aaa; }
+    #log-list .cfg { color:#7ab8f5; font-size:11px; }
   </style>
 </head>
 <body>
@@ -221,7 +222,7 @@ function renderLog(state) {
   const log = state.log || [];
   if (!log.length) { el.innerHTML = '<span style="color:#aaa">No log yet.</span>'; return; }
   el.innerHTML = log.map(e => {
-    const cls = e.includes('WINS') ? 'win' : e.includes('exhausted') ? 'draw' : '';
+    const cls = e.includes('WINS') ? 'win' : e.includes('exhausted') ? 'draw' : e.startsWith('⚙') ? 'cfg' : '';
     return `<div class="entry ${cls}">${e}</div>`;
   }).join('');
 }
