@@ -4,7 +4,7 @@
   "description": "A fully playable **Hong Kong Cantonese Mahjong** game that runs in any modern web browser.   No install, no server, no build step required.",
   "main": "index.js",
   "scripts": {
-    "test": "node test_all.js",
+    "test": "node run_check.js",
     "regression": "node run_regression.js"
   },
   "repository": {

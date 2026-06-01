@@ -223,7 +223,9 @@ Access via **More tools…** dropdown in the sidebar.
 | **Demo 海底** | Wall drains to one tile; Last Tile toggled on automatically |
 | **Test: Rob Win 搶槓胡** | CPU1 upgrades pung→kong; CPU3 is in position to rob |
 | **Test: Kong Completes 槓完** | CPU1 upgrades pung→kong; nobody can rob; game continues |
-| **🧪 Run All Tests** | Runs the full in-browser test suite (14 tests); results in floating panel and `window._testResults` |
+| **📋 Hand Log ↗** | Opens `hand.html` — the persistent hand-by-hand log |
+| **🗑 Clear Hand Log** | Resets the hand log to a single current-strategy entry |
+| **🧪 Run All Tests** | Runs the 14 in-browser demo/dev-tool tests; results in floating panel and `window._testResults` |
 
 ---
 
@@ -232,20 +234,12 @@ Access via **More tools…** dropdown in the sidebar.
 ### Running tests
 
 ```bash
-npm test              # Full suite: 8 regression scenarios + 14 demo tests (23 total)
-node run_regression.js  # Regression scenarios only (8 tests)
-node test_all.js        # Same as npm test
+npm test               # Full suite: 8 regression scenarios + 14 demo tests (23 total)
+node run_check.js      # Same as npm test — the canonical test runner
+node run_regression.js # Regression scenarios only (8 tests)
 ```
 
-The **in-browser test button** (`#run-all-tests-btn`) is also available for AI agents:
-
-```javascript
-// From Playwright:
-await page.evaluate(() => document.getElementById('run-all-tests-btn').click());
-await page.waitForFunction(() => window._testResults?.done === true, { timeout: 20000 });
-const results = await page.evaluate(() => window._testResults);
-// results = { done, passed, total, failed, details: [{ name, ok, why? }] }
-```
+The **in-browser test button** (`#run-all-tests-btn`, Dev Tools → More tools → 🧪 Run All Tests) runs the 14 demo tests only and is useful for quick in-game checks. For the full 23-test suite use `node run_check.js`.
 
 ### Calibration runs — `combo.js`
 
@@ -348,6 +342,7 @@ node run_all.js
 | File | Purpose |
 |---|---|
 | `index.html` | Main game page |
+| `hand.html` | Persistent hand-by-hand log — opens from Dev Tools → More tools |
 | `score.html` | Live score and game log |
 | `rules.html` | Full rules reference |
 | `scenario.html` | Scenario Builder — developer test tool |
@@ -358,11 +353,12 @@ node run_all.js
 | `js/game.js` | Game state machine |
 | `js/ui.js` | Rendering and input handling |
 | `js/main.js` | Startup, UI wiring, demo buttons, scenario injection, in-browser test runner |
+| `js/handlog.js` | Hand log recording — writes every hand result and strategy change to localStorage |
+| `js/schemes.js` | User-defined auto-play strategy schemes |
 | `combo.js` | Sprint calibration runner — configurable levels per seat, per-run log files |
-| `run_all.js` | Batch runner — 12 preset configurations, combined summary |
-| `run_regression.js` | Scenario regression runner — opens game + scenario.html, injects and checks |
-| `test_all.js` | Combined test suite — regression scenarios + demo tests (23 total); `npm test` |
-| `run_check.js` | Playwright utility — used for one-off checks and demo verification |
+| `run_check.js` | **Full 23-test suite** — 8 regression scenarios + 14 demo tests; `npm test` |
+| `run_regression.js` | Regression scenario runner — 8 scenario tests only |
+| `test_all.js` | Legacy alias — same as `run_check.js` |
 
 ---
 
@@ -378,16 +374,20 @@ node run_all.js
 
 ### Testing workflow for AI agents
 
-1. Open `index.html` with Playwright (headless is fine).
-2. Click `#run-all-tests-btn` via `page.evaluate(...)`.
-3. Poll `window._testResults.done === true` (timeout ~20s).
-4. Read `window._testResults.details` for pass/fail per test.
-5. For the full 23-test suite including regression scenarios, run `node test_all.js` as a subprocess.
+- **Full suite (23 tests):** `node run_check.js` — the canonical single command.
+- **In-browser only (14 tests):** click `#run-all-tests-btn`, poll `window._testResults.done === true`, read `window._testResults.details`.
+- `window.game` is exposed directly — no need for `eval('game')`.
 
 ### Known open issues
 
 - **Master AI vs Beginners balance**: In a 1v3 scenario (Master alone vs 3 Beginners), Master consistently wins only ~13% of hands while Beginners win ~20-25% each. The inverse also holds — a lone Beginner against 3 Masters wins ~22-24%. Root cause: Master's defensive strategy is calibrated for opponent-aware play. Against randomly-discarding Beginners it over-withholds tiles and misses winning opportunities. Fix: add a "low threat" fallback in `aiClaimDecisionLevel4` and `aiChooseDiscardLevel4` — when opponent danger signals are absent, revert to Expert-style aggressive play.
 - **Seat rotation in calibration data**: `combo.js` reports wins by physical seat number. After `rotatePlayers()` fires (every ~16 hands), CPUs shuffle among seats 1–3 so a given seat's win rate reflects a mix of player levels over time. For clean per-level analysis, track wins by player name rather than seat.
+
+### Key decisions made (session 2026-06-01) — v0601-361
+
+- **Hand log (`hand.html` + `js/handlog.js`):** Every hand result (win or draw) and every strategy change (level or scheme) is recorded to localStorage under `mahjong-hand-log`. `hand.html` reads the log live and renders it as a monospace table with coloured winner/delta columns. Hand numbers restart at H001 after each strategy change. "📋 Hand Log ↗" and "🗑 Clear Hand Log" added to Dev Tools → More tools.
+- **Test consolidation:** `run_check.js` is now the single 23-test entry point (replaces `test_all.js`). `npm test` updated accordingly. `window.game` is used directly in tests instead of `eval('game')`.
+- **.gitignore tightened:** `node_modules/`, `package-lock.json`, `.claude/`, `verify_*.js`, `screenshot_*.js`, and other dev-only scripts suppressed so `git status` stays clean.
 
 ### Key decisions made (session 2026-05-31)
 
