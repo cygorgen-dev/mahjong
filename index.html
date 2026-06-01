@@ -9,7 +9,7 @@
 <body>
   <div id="app" class="sidebar-open">
     <header>
-      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0531-358</span></h1>
+      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0601-361</span></h1>
       <div id="message"></div>
       <div id="info-bar">
         <button id="new-game-btn">New Game</button>
@@ -254,6 +254,8 @@
           <option value="demo-ckong-btn">Demo 暗槓</option>
           <option value="demo-lasttile-btn">Demo 海底</option>
           <option value="demo-overflow-btn">Demo Overflow 溢</option>
+          <option value="hand-log-open-btn">📋 Hand Log ↗</option>
+          <option value="clear-hand-log-btn">🗑 Clear Hand Log</option>
           <option value="faan-tests-link">🧪 Faan Tests ↗</option>
           <option value="run-all-tests-btn">🧪 Run All Tests</option>
         </select>
@@ -271,6 +273,8 @@
       <button id="demo-lasttile-btn"></button>
       <button id="demo-overflow-btn"></button>
       <button id="run-all-tests-btn"></button>
+      <button id="hand-log-open-btn"></button>
+      <button id="clear-hand-log-btn"></button>
       <a id="faan-tests-link" href="faan_test.html" target="_blank"></a>
     </div>
 
@@ -359,6 +363,7 @@
   <script src="js/scoring.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/schemes.js"></script>
+  <script src="js/handlog.js"></script>
   <script src="js/game.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>

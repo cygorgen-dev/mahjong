@@ -102,6 +102,11 @@ function _sprintRecordHand() {
 }
 
 function onGameUpdate(event) {
+  // Record every hand completion in the persistent hand log
+  if ((event === 'win' || event === 'draw') && game) {
+    window.handLog?.recordHand(game);
+  }
+
   // ---- Sprint (fast): skip renders during hand; render + auto-advance at end ----
   if (window.AUTO_MODE === 'sprint') {
     if (event === 'win' || event === 'draw') {
@@ -394,6 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const label = chosen ? chosen.name : 'Level AI';
       if (game) game.addLog(`⚙ YOU scheme → ${label}`);
       if (game) game.shareState();
+      window.handLog?.checkStrategyChange(game);
     });
   }
 
@@ -415,6 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     }
+    window.handLog?.checkStrategyChange(game);
   }
 
   if (typeof SCHEMES !== 'undefined') {
@@ -456,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     }
+    window.handLog?.checkStrategyChange(game);
   }
   ['cpu1-level','cpu2-level','cpu3-level'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', updateCpuLevels);
@@ -629,6 +637,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initUI(game);
   renderAll();
+
+  // ---- Hand Log buttons ----
+  document.getElementById('hand-log-open-btn')?.addEventListener('click', () => {
+    window.handLog?.open();
+  });
+  document.getElementById('clear-hand-log-btn')?.addEventListener('click', () => {
+    if (game) window.handLog?.clear(game);
+  });
+  // Record initial strategy state on load
+  window.handLog?.checkStrategyChange(game);
 
   // ---- Demo Win button: cycles through all seats winning, including when the winner IS the dealer ----
   // Cycle: Left wins (dealer=0) → Right wins (dealer=0) → Top wins (dealer=0) → You win (dealer=0)

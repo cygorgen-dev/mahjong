@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hand Log 📋</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #07301a; color: #ccc; padding: 8px; margin: 0;
+      font-family: 'Courier New', Courier, monospace; font-size: 12px;
+    }
+    #header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 8px; margin-bottom: 6px;
+      background: rgba(0,0,0,.4); border-radius: 6px;
+    }
+    #header-title { color: #ffd34d; font-weight: 700; font-size: 13px; }
+    #status-bar {
+      font-size: 11px; color: #aaa; padding: 3px 6px;
+      background: rgba(0,0,0,.3); border-radius: 4px;
+      margin-bottom: 6px; min-height: 18px;
+    }
+    #log-body { white-space: pre; line-height: 1.55; }
+    #no-signal { color: #555; padding: 30px; text-align: center; font-size: 13px; white-space: normal; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <span id="header-title">📋 Hand Log</span>
+    <span id="status-bar" style="margin:0;"></span>
+  </div>
+  <div id="log-body"><div id="no-signal">No hand log data yet. Play a hand (or change strategy) to begin recording.</div></div>
+
+  <script>
+    // Snap to right of the game window when opened as a popup
+    (function() {
+      if (!window.opener) return;
+      try {
+        const op   = window.opener;
+        const left = op.screenLeft + op.outerWidth + 10;
+        const w    = Math.max(400, op.screen.availWidth - left);
+        window.moveTo(left, op.screenTop || op.screen.availTop || 0);
+        window.resizeTo(w, op.screen.availHeight);
+      } catch(e) {}
+    })();
+
+    const HL_KEY   = 'mahjong-hand-log';
+    const PLAYERS  = ['You','CPU1','CPU2','CPU3'];
+    const WIN_COLS = ['#ffd34d','#7dffff','#aaffaa','#ffaaff'];
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function pad(s, n, right) {
+      s = String(s);
+      return right ? s.padStart(n) : s.padEnd(n);
+    }
+
+    function fmtTs(ts) {
+      const d = new Date(ts);
+      const z = n => String(n).padStart(2,'0');
+      return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`;
+    }
+
+    // Column layout (chars before label):
+    //  5   hand num   H001 + space
+    //  9   winner     padEnd(8) + space
+    //  5   faan       padStart(2) + 3 spaces
+    // 40   deltas     4 × padEnd(10)
+    //  3   sep
+    // 27   scores     3 × (padStart(6)+space) + padStart(6)
+    //  3   sep
+    // = 92 before label
+
+    const DELTA_W  = 10;  // per-player delta column width
+    const SCORE_W  = 6;   // per-player score column width
+
+    function fmtDeltaStr(name, val) {
+      return val >= 0 ? `${name}+${val}` : `${name}${val}`;
+    }
+
+    function renderStrategyEntry(entry) {
+      const ts  = fmtTs(entry.ts);
+      const ps  = entry.players;
+      const lvl = `${ts}   ` + ps.map(p => esc(`${p.name} - ${p.level}`)).join('   ');
+
+      let html = `<span style="color:#8ad4ff">${lvl}</span>`;
+
+      const anyScheme = ps.some(p => p.scheme);
+      if (anyScheme) {
+        const schLine = `${ts}   ` + ps.map(p => esc(`${p.name} - ${p.scheme ?? 'Level AI'}`)).join('   ');
+        html += '\n' + `<span style="color:#7ac4ff">${schLine}</span>`;
+      }
+
+      return html;
+    }
+
+    function renderHeader() {
+      // Line 1: column group labels
+      const col1 = pad('H', 5) + pad('Winner', 9) + pad('F', 5);
+      const dHdr = 'Score Delta' + ' '.repeat(40 - 11);  // 40 wide
+      const sHdr = 'Player Total Points';
+      const line1 = col1 + dHdr + '   ' + sHdr;
+
+      // Line 2: player names at column positions
+      const col1b = ' '.repeat(19);
+      const dNames = PLAYERS.map((n,i) => pad(n, i < 3 ? DELTA_W : DELTA_W - 2)).join('');
+      const sNames = PLAYERS.map((n,i) => pad(n, SCORE_W, true) + (i < 3 ? ' ' : '')).join('');
+      const line2 = col1b + dNames + '   ' + sNames + '   Scoring label';
+
+      // Separator line
+      const col1s = '─────' + ' ' + '────────' + ' ' + '──' + '   ';
+      const dSep  = PLAYERS.map((n,i) => '─'.repeat(i < 3 ? DELTA_W - 1 : DELTA_W - 3) + ' ').join('');
+      const sSep  = PLAYERS.map((n,i) => '─'.repeat(SCORE_W) + (i < 3 ? ' ' : '')).join('');
+      const line3 = col1s + dSep + '   ' + sSep + '   ' + '─'.repeat(34);
+
+      return [
+        `<span style="color:#555">${esc(line1)}</span>`,
+        `<span style="color:#555">${esc(line2)}</span>`,
+        `<span style="color:#444">${esc(line3)}</span>`,
+      ].join('\n');
+    }
+
+    function renderHandEntry(entry) {
+      const isDraw   = entry.winner === 'Draw';
+      const winIdx   = PLAYERS.indexOf(entry.winner);
+      const winColor = isDraw ? '#ccc' : (WIN_COLS[winIdx] ?? '#ccc');
+      const faan     = isDraw ? '—' : String(entry.faan);
+
+      // hand num
+      let html = esc('H' + String(entry.handNum).padStart(3,'0') + ' ');
+
+      // winner
+      html += `<span style="color:${winColor};font-weight:${isDraw ? '400' : '700'}">${esc(pad(entry.winner, 8) + ' ')}</span>`;
+
+      // faan
+      html += `<span style="color:${winColor}">${esc(pad(faan, 2, true) + '   ')}</span>`;
+
+      // deltas
+      for (let i = 0; i < PLAYERS.length; i++) {
+        const name = PLAYERS[i];
+        const d    = entry.deltas?.[name] ?? 0;
+        const s    = fmtDeltaStr(name, d);
+        const w    = i < 3 ? DELTA_W : DELTA_W - 2;
+        const isWinner = name === entry.winner;
+        const col = isWinner ? winColor : (d > 0 ? '#5dde7a' : d < 0 ? '#ff6666' : null);
+        const fw  = isWinner && !isDraw ? 'font-weight:700;' : '';
+        const span = col ? `<span style="color:${col};${fw}">${esc(pad(s, w))}</span>`
+                         : esc(pad(s, w));
+        html += span;
+      }
+
+      html += '   ';
+
+      // scores
+      for (let i = 0; i < PLAYERS.length; i++) {
+        const sc  = entry.scores?.[PLAYERS[i]] ?? 0;
+        const s   = pad(sc, SCORE_W, true) + (i < 3 ? ' ' : '');
+        if (sc < 0) {
+          html += `<span style="color:#ff4444;font-weight:700">${esc(s)}</span>`;
+        } else {
+          html += esc(s);
+        }
+      }
+
+      // label
+      if (entry.label) {
+        html += '   ' + esc(entry.label);
+      }
+
+      return html;
+    }
+
+    function render() {
+      const raw = localStorage.getItem(HL_KEY);
+      const log = raw ? JSON.parse(raw) : [];
+      const statusEl = document.getElementById('status-bar');
+      const bodyEl   = document.getElementById('log-body');
+
+      if (!log.length) {
+        bodyEl.innerHTML = '<div id="no-signal">No hand log data yet. Play a hand (or change strategy) to begin recording.</div>';
+        statusEl.textContent = '';
+        return;
+      }
+
+      const handCount = log.filter(e => e.type === 'hand').length;
+      const stratCount = log.filter(e => e.type === 'strategy').length;
+      statusEl.textContent = `${handCount} hand${handCount !== 1 ? 's' : ''} · ${stratCount} strategy block${stratCount !== 1 ? 's' : ''}`;
+
+      const lines = [];
+      let needHeader = false;
+      let prevType   = null;
+
+      for (let i = 0; i < log.length; i++) {
+        const e = log[i];
+
+        if (e.type === 'strategy') {
+          if (lines.length) lines.push('');  // blank line before new strategy block
+          lines.push(renderStrategyEntry(e));
+          lines.push('');
+          needHeader = true;
+          prevType = 'strategy';
+        } else if (e.type === 'hand') {
+          if (needHeader) {
+            lines.push(renderHeader());
+            needHeader = false;
+          }
+          lines.push(renderHandEntry(e));
+          prevType = 'hand';
+        }
+      }
+
+      bodyEl.innerHTML = lines.join('\n');
+    }
+
+    render();
+
+    // Live update when game writes to localStorage
+    window.addEventListener('storage', e => {
+      if (e.key === HL_KEY) render();
+    });
+
+    // Fallback poll in case same-tab storage events are missed
+    let _lastRaw = localStorage.getItem(HL_KEY) ?? '';
+    setInterval(() => {
+      const cur = localStorage.getItem(HL_KEY) ?? '';
+      if (cur !== _lastRaw) { _lastRaw = cur; render(); }
+    }, 1500);
+  </script>
+</body>
+</html>
