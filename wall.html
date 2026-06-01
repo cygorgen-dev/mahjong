@@ -561,6 +561,7 @@
         placeBreakMarker(wallBreakSeat, headColFromBreak(wallBreakSeat, wallBreakCount));
         updateDealerLabels(dealerSeat);
       }
+      _liveDealerSeat = dealerSeat;
 
       // Apply used/live/head/tail overlay
       applyGameState(data);
@@ -576,13 +577,14 @@
 
     // ── Standalone mode ───────────────────────────────────────────────────
     let _standaloneTiles = null;
+    let _liveDealerSeat  = 0;
 
     function standaloneMode() {
       _standaloneTiles = fisherYates(buildDeck());
       buildWalls(_standaloneTiles);
       clearDiceDisplay();
       updateDealerLabels();
-      document.getElementById('stats').innerHTML = '<span style="color:#aaa">Standalone — shuffle only</span>';
+      document.getElementById('stats').innerHTML = '';
       document.getElementById('ctr-title').textContent = '144 tiles';
       document.getElementById('ctr-sub').textContent   = '4 walls · 18 × 2';
       _headIdx = 0;
@@ -725,13 +727,27 @@
       document.getElementById('shuffle-btn').disabled = true;
       document.getElementById('dice-btn').disabled    = true;
 
-      standaloneMode();
-      standaloneDice();
       clearDashes();
-      positionDashTrays();
-      await sleep(900);
+      if (_gameConnected) {
+        // Live mode: wall and _headIdx already set — just reset tile visuals
+        for (let i = 0; i < 144; i++) {
+          if (_tiles[i]) {
+            _tiles[i].div.classList.remove('used','tail-used','next-head','next-tail');
+            _tiles[i].div.style.opacity = '';
+            _tiles[i].div.style.outline = '';
+            _tiles[i].div.style.boxShadow = '';
+          }
+        }
+        positionDashTrays();
+        await sleep(600);
+      } else {
+        standaloneMode();
+        standaloneDice();
+        positionDashTrays();
+        await sleep(900);
+      }
 
-      const dealer   = parseInt(document.getElementById('dealer-sel').value);
+      const dealer   = _gameConnected ? _liveDealerSeat : parseInt(document.getElementById('dealer-sel').value);
       const ccwSeats = [dealer, (dealer+1)%4, (dealer+2)%4, (dealer+3)%4];
       const speedVal = parseInt(document.getElementById('deal-speed').value);
       const ms       = [1200, 700, 350, 180, 80][speedVal - 1];
