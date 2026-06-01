@@ -137,13 +137,17 @@
     }
     #mode-badge.live { background:rgba(0,180,80,0.25); color:#5dde7a; }
 
-    /* ── Flying tile (deal animation) ────────────────────────────────────── */
+    /* ── Flying tile (deal animation) — shown face-down ─────────────────── */
     .fly-tile {
       position:fixed; z-index:1000; pointer-events:none;
-      border:1.5px solid #aaa; border-radius:3px;
-      background:#fff; overflow:hidden;
+      border:1.5px solid #042510; border-radius:3px;
+      background:linear-gradient(135deg,#1a6b3a 0%,#0b3d1f 100%);
     }
-    .fly-tile img { width:100%; height:100%; object-fit:contain; display:block; }
+    .fly-tile::after {
+      content:""; position:absolute; inset:4px;
+      border:1.5px solid #2a8b4e; border-radius:2px;
+      pointer-events:none;
+    }
 
     /* ── Seat-label dash trays (JS-positioned, absolute in page space) ─────── */
     .dash-tray {
@@ -173,6 +177,7 @@
       </select>
     </label>
     <button class="btn" id="deal-btn" onclick="demoDeal()" style="background:#7dffff;color:#07301a;">Deal</button>
+    <button class="btn" id="reveal-btn" onclick="toggleReveal()" style="background:#ff9800;color:#07301a;display:none;">Reveal</button>
     <label>Speed: <input type="range" id="deal-speed" min="1" max="5" value="3"></label>
   </div>
 
@@ -590,6 +595,7 @@
       _headIdx = 0;
       _gameConnected = false;
       document.getElementById('deal-btn').disabled = false;
+      document.getElementById('reveal-btn').style.display = 'none';
       clearDashes();
       const badge = document.getElementById('mode-badge');
       badge.textContent = 'standalone';
@@ -692,7 +698,6 @@
           clone.style.top    = r.top    + 'px';
           clone.style.width  = r.width  + 'px';
           clone.style.height = r.height + 'px';
-          clone.innerHTML = srcEl.innerHTML;
           document.body.appendChild(clone);
           return { clone, srcEl };
         }).filter(Boolean);
@@ -727,6 +732,7 @@
       document.getElementById('shuffle-btn').disabled = true;
       document.getElementById('dice-btn').disabled    = true;
 
+      document.getElementById('reveal-btn').style.display = 'none';
       clearDashes();
       if (_gameConnected) {
         // Live mode: wall and _headIdx already set — just reset tile visuals
@@ -782,6 +788,27 @@
       document.getElementById('deal-btn').disabled    = false;
       document.getElementById('shuffle-btn').disabled = _gameConnected;
       document.getElementById('dice-btn').disabled    = _gameConnected;
+      _revealed = false;
+      document.getElementById('reveal-btn').textContent = 'Reveal';
+      document.getElementById('reveal-btn').style.display = '';
+    }
+
+    let _revealed = false;
+    function toggleReveal() {
+      _revealed = !_revealed;
+      for (let i = 0; i < 53; i++) {
+        const physIdx = (_headIdx + i) % 144;
+        const el = _tiles[physIdx]?.div;
+        if (!el) continue;
+        if (_revealed) {
+          el.classList.remove('used');
+          el.classList.add('revealed');
+        } else {
+          el.classList.remove('revealed');
+          el.classList.add('used');
+        }
+      }
+      document.getElementById('reveal-btn').textContent = _revealed ? 'Hide' : 'Reveal';
     }
 
     function clearDiceDisplay() {
