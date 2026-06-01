@@ -383,6 +383,15 @@ node run_all.js
 - **Master AI vs Beginners balance**: In a 1v3 scenario (Master alone vs 3 Beginners), Master consistently wins only ~13% of hands while Beginners win ~20-25% each. The inverse also holds — a lone Beginner against 3 Masters wins ~22-24%. Root cause: Master's defensive strategy is calibrated for opponent-aware play. Against randomly-discarding Beginners it over-withholds tiles and misses winning opportunities. Fix: add a "low threat" fallback in `aiClaimDecisionLevel4` and `aiChooseDiscardLevel4` — when opponent danger signals are absent, revert to Expert-style aggressive play.
 - **Seat rotation in calibration data**: `combo.js` reports wins by physical seat number. After `rotatePlayers()` fires (every ~16 hands), CPUs shuffle among seats 1–3 so a given seat's win rate reflects a mix of player levels over time. For clean per-level analysis, track wins by player name rather than seat.
 
+### Key decisions made (session 2026-06-01) — v0601-362
+
+- **Hand log improvements (`hand.html` + `js/handlog.js`):**
+  - Column headers brightened so they are readable on the dark green background.
+  - Score-delta sub-header changed from player names to `Seat0 / Seat1 / Seat2 / Seat3`; each hand entry records `seatOrder[]` so deltas render in the current seat assignment order. Seat rotation is directly observable — a new strategy block is automatically written whenever seat assignments change.
+  - Strategy entries now record `mode` (`null`=HUMAN / `sprint` / `slow` / `fast`) and `seats[]`; rendered as `[HUMAN    ]  S0:You - Human   S1:CPU1 - Expert …` in seat order. All mode tags are padded to the same width so lines align.
+  - You's AI level is shown accurately as the active AI level in AUTO/SPRINT mode (was always shown as `Human` regardless of mode).
+  - Backward-compatible: old log entries without `seatOrder`, `mode`, or `seats` continue to render correctly.
+
 ### Key decisions made (session 2026-06-01) — v0601-361
 
 - **Hand log (`hand.html` + `js/handlog.js`):** Every hand result (win or draw) and every strategy change (level or scheme) is recorded to localStorage under `mahjong-hand-log`. `hand.html` reads the log live and renders it as a monospace table with coloured winner/delta columns. Hand numbers restart at H001 after each strategy change. "📋 Hand Log ↗" and "🗑 Clear Hand Log" added to Dev Tools → More tools.
