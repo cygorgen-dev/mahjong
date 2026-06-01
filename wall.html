@@ -150,14 +150,16 @@
       position:fixed; z-index:900; pointer-events:none;
       display:flex; gap:2px;
     }
-    #dash-0 { bottom:0; left:50%; transform:translateX(-50%); flex-direction:row; align-items:flex-end; }
-    #dash-2 { top:0;    left:50%; transform:translateX(-50%); flex-direction:row; align-items:flex-start; }
-    #dash-1 { right:0;  top:50%;  transform:translateY(-50%); flex-direction:column; align-items:flex-end; }
-    #dash-3 { left:0;   top:50%;  transform:translateY(-50%); flex-direction:column; align-items:flex-start; }
-    .dash-h { width:var(--tw); height:10px; background:#ffd34d; border-radius:2px 2px 0 0; opacity:0.85; }
-    .dash-v { width:10px; height:var(--th); background:#ffd34d; border-radius:0;        opacity:0.85; }
-    #dash-1 .dash-v { border-radius:2px 0 0 2px; }
-    #dash-3 .dash-v { border-radius:0 2px 2px 0; }
+    #dash-0 { bottom:18px; left:50%; transform:translateX(-50%); flex-direction:row; align-items:flex-end; }
+    #dash-2 { top:18px;   left:50%; transform:translateX(-50%); flex-direction:row; align-items:flex-start; }
+    #dash-1 { right:4px;  top:50%;  transform:translateY(-50%); flex-direction:column; align-items:flex-end; }
+    #dash-3 { left:4px;   top:50%;  transform:translateY(-50%); flex-direction:column; align-items:flex-start; }
+    .dash-h { width:var(--tw); height:14px; background:#ffd34d; border-radius:3px 3px 0 0; opacity:0.9; }
+    .dash-v { width:14px; height:var(--th); background:#ffd34d; border-radius:0;           opacity:0.9; }
+    #dash-0 .dash-h { border-radius:3px 3px 0 0; }
+    #dash-2 .dash-h { border-radius:0 0 3px 3px; }
+    #dash-1 .dash-v { border-radius:3px 0 0 3px; }
+    #dash-3 .dash-v { border-radius:0 3px 3px 0; }
 
     /* ── Deal speed slider ────────────────────────────────────────────────── */
     #deal-speed { width:70px; vertical-align:middle; cursor:pointer; }
