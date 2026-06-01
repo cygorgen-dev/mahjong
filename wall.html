@@ -145,21 +145,13 @@
     }
     .fly-tile img { width:100%; height:100%; object-fit:contain; display:block; }
 
-    /* ── Edge dash trays ──────────────────────────────────────────────────── */
+    /* ── Seat-label dash trays (JS-positioned, absolute in page space) ─────── */
     .dash-tray {
-      position:fixed; z-index:900; pointer-events:none;
+      position:absolute; z-index:900; pointer-events:none;
       display:flex; gap:2px;
     }
-    #dash-0 { bottom:18px; left:50%; transform:translateX(-50%); flex-direction:row; align-items:flex-end; }
-    #dash-2 { top:18px;   left:50%; transform:translateX(-50%); flex-direction:row; align-items:flex-start; }
-    #dash-1 { right:4px;  top:50%;  transform:translateY(-50%); flex-direction:column; align-items:flex-end; }
-    #dash-3 { left:4px;   top:50%;  transform:translateY(-50%); flex-direction:column; align-items:flex-start; }
-    .dash-h { width:var(--tw); height:14px; background:#ffd34d; border-radius:3px 3px 0 0; opacity:0.9; }
-    .dash-v { width:14px; height:var(--th); background:#ffd34d; border-radius:0;           opacity:0.9; }
-    #dash-0 .dash-h { border-radius:3px 3px 0 0; }
-    #dash-2 .dash-h { border-radius:0 0 3px 3px; }
-    #dash-1 .dash-v { border-radius:3px 0 0 3px; }
-    #dash-3 .dash-v { border-radius:0 3px 3px 0; }
+    .dash-h { width:var(--tw); height:12px; background:#ffd34d; border-radius:3px; opacity:0.9; }
+    .dash-v { width:12px; height:var(--th); background:#ffd34d; border-radius:3px; opacity:0.9; }
 
     /* ── Deal speed slider ────────────────────────────────────────────────── */
     #deal-speed { width:70px; vertical-align:middle; cursor:pointer; }
@@ -627,12 +619,50 @@
 
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-    // Clear all edge dashes (called at start of each demo)
+    // Position each dash tray adjacent to its seat label (absolute page coords).
+    function positionDashTrays() {
+      [0,1,2,3].forEach(s => {
+        const lbl  = document.getElementById(`s${s}-lbl`);
+        const tray = document.getElementById(`dash-${s}`);
+        if (!lbl || !tray) return;
+        const r  = lbl.getBoundingClientRect();
+        const sx = window.scrollX || window.pageXOffset || 0;
+        const sy = window.scrollY || window.pageYOffset || 0;
+        const gap = 5;
+        if (s === 0) {          // bottom — dashes below label
+          tray.style.left      = (r.left + sx + r.width / 2) + 'px';
+          tray.style.top       = (r.bottom + sy + gap) + 'px';
+          tray.style.transform = 'translateX(-50%)';
+          tray.style.flexDirection = 'row';
+          tray.style.alignItems    = 'flex-start';
+        } else if (s === 2) {   // top — dashes above label
+          tray.style.left      = (r.left + sx + r.width / 2) + 'px';
+          tray.style.top       = (r.top  + sy - gap) + 'px';
+          tray.style.transform = 'translateX(-50%) translateY(-100%)';
+          tray.style.flexDirection = 'row';
+          tray.style.alignItems    = 'flex-end';
+        } else if (s === 1) {   // right — dashes right of label
+          tray.style.left      = (r.right + sx + gap) + 'px';
+          tray.style.top       = (r.top   + sy + r.height / 2) + 'px';
+          tray.style.transform = 'translateY(-50%)';
+          tray.style.flexDirection = 'column';
+          tray.style.alignItems    = 'flex-start';
+        } else {                // left — dashes left of label
+          tray.style.left      = (r.left + sx - gap) + 'px';
+          tray.style.top       = (r.top  + sy + r.height / 2) + 'px';
+          tray.style.transform = 'translateX(-100%) translateY(-50%)';
+          tray.style.flexDirection = 'column';
+          tray.style.alignItems    = 'flex-end';
+        }
+      });
+    }
+
+    // Clear all dash trays.
     function clearDashes() {
       [0,1,2,3].forEach(s => { document.getElementById(`dash-${s}`).innerHTML = ''; });
     }
 
-    // Add `count` dashes to the edge for `seat`
+    // Add `count` dashes to the tray for `seat`.
     function addDashes(seat, count) {
       const tray = document.getElementById(`dash-${seat}`);
       const cls  = (seat === 0 || seat === 2) ? 'dash-h' : 'dash-v';
@@ -698,6 +728,7 @@
       standaloneMode();
       standaloneDice();
       clearDashes();
+      positionDashTrays();
       await sleep(900);
 
       const dealer   = parseInt(document.getElementById('dealer-sel').value);
