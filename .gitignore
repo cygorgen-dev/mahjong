@@ -1,4 +1,26 @@
 *.jpg
 *.gif
 *.png
+*.log
+*.1001
 ok1.txt
+
+# npm
+node_modules/
+package-lock.json
+
+# Claude Code project settings
+.claude/
+
+# Session / scratch files
+SESSION_NOTES.md
+
+# Dev / test scripts (not part of the game)
+_verify_log.js
+calibrate.js
+calibrate_500.js
+rotation_test.js
+run_all.js
+run_regression.js
+verify_*.js
+screenshot_*.js
