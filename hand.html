@@ -81,17 +81,42 @@
       return val >= 0 ? `${name}+${val}` : `${name}${val}`;
     }
 
-    function renderStrategyEntry(entry) {
-      const ts  = fmtTs(entry.ts);
-      const ps  = entry.players;
-      const lvl = `${ts}   ` + ps.map(p => esc(`${p.name} - ${p.level}`)).join('   ');
+    function modeLabel(mode) {
+      if (!mode) return 'HUMAN';
+      if (mode === 'slow')        return 'AUTO-SLOW';
+      if (mode === 'fast')        return 'AUTO-FAST';
+      if (mode === 'sprint')      return 'SPRINT';
+      if (mode === 'sprint_slow') return 'SPRINT-SL';
+      return String(mode).toUpperCase();
+    }
 
-      let html = `<span style="color:#8ad4ff">${lvl}</span>`;
+    function renderStrategyEntry(entry) {
+      const ts    = fmtTs(entry.ts);
+      const ps    = entry.players ?? [];
+      const seats = entry.seats ?? ['You','CPU1','CPU2','CPU3'];
+
+      // Build name → player-info lookup
+      const byName = {};
+      for (const p of ps) byName[p.name] = p;
+
+      // Mode tag padded to 9 chars so all tags are the same width: [AUTO-SLOW]
+      const modeTag    = '[' + pad(modeLabel(entry.mode ?? null), 9) + ']';
+      const schemeTag  = '[' + pad('schemes',                     9) + ']';
+
+      // Seat-ordered strategy: S0:You - Human  S1:CPU1 - Expert …
+      const seatParts = seats.map((name, i) => {
+        const p = byName[name] ?? { level: '?' };
+        return `S${i}:${esc(name)} - ${esc(p.level)}`;
+      });
+      let html = `<span style="color:#8ad4ff">${ts}   ${modeTag}   ${seatParts.join('   ')}</span>`;
 
       const anyScheme = ps.some(p => p.scheme);
       if (anyScheme) {
-        const schLine = `${ts}   ` + ps.map(p => esc(`${p.name} - ${p.scheme ?? 'Level AI'}`)).join('   ');
-        html += '\n' + `<span style="color:#7ac4ff">${schLine}</span>`;
+        const schemeParts = seats.map((name, i) => {
+          const p = byName[name] ?? { scheme: null };
+          return `S${i}:${esc(name)} - ${esc(p.scheme ?? 'Level AI')}`;
+        });
+        html += '\n' + `<span style="color:#7ac4ff">${ts}   ${schemeTag}   ${schemeParts.join('   ')}</span>`;
       }
 
       return html;
@@ -104,11 +129,12 @@
       const sHdr = 'Player Total Points';
       const line1 = col1 + dHdr + '   ' + sHdr;
 
-      // Line 2: player names at column positions
-      const col1b = ' '.repeat(19);
-      const dNames = PLAYERS.map((n,i) => pad(n, i < 3 ? DELTA_W : DELTA_W - 2)).join('');
+      // Line 2: seat labels for delta columns, player names for score columns
+      const col1b  = ' '.repeat(19);
+      const SEATS  = ['Seat0','Seat1','Seat2','Seat3'];
+      const dNames = SEATS.map((n,i)   => pad(n, i < 3 ? DELTA_W : DELTA_W - 2)).join('');
       const sNames = PLAYERS.map((n,i) => pad(n, SCORE_W, true) + (i < 3 ? ' ' : '')).join('');
-      const line2 = col1b + dNames + '   ' + sNames + '   Scoring label';
+      const line2  = col1b + dNames + '   ' + sNames + '   Scoring label';
 
       // Separator line
       const col1s = '─────' + ' ' + '────────' + ' ' + '──' + '   ';
@@ -117,9 +143,9 @@
       const line3 = col1s + dSep + '   ' + sSep + '   ' + '─'.repeat(34);
 
       return [
-        `<span style="color:#555">${esc(line1)}</span>`,
-        `<span style="color:#555">${esc(line2)}</span>`,
-        `<span style="color:#444">${esc(line3)}</span>`,
+        `<span style="color:#aaa">${esc(line1)}</span>`,
+        `<span style="color:#aaa">${esc(line2)}</span>`,
+        `<span style="color:#666">${esc(line3)}</span>`,
       ].join('\n');
     }
 
@@ -138,9 +164,10 @@
       // faan
       html += `<span style="color:${winColor}">${esc(pad(faan, 2, true) + '   ')}</span>`;
 
-      // deltas
-      for (let i = 0; i < PLAYERS.length; i++) {
-        const name = PLAYERS[i];
+      // deltas — in seat order so seat rotation is visible
+      const seatOrder = entry.seatOrder ?? PLAYERS;
+      for (let i = 0; i < 4; i++) {
+        const name = seatOrder[i] ?? PLAYERS[i];
         const d    = entry.deltas?.[name] ?? 0;
         const s    = fmtDeltaStr(name, d);
         const w    = i < 3 ? DELTA_W : DELTA_W - 2;

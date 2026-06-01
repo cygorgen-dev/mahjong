@@ -14,33 +14,64 @@ function _hlWrite(log) {
   try { localStorage.setItem(_HL_KEY, JSON.stringify(log)); } catch(e) {}
 }
 
-function _hlStrategy(game) {
-  return ['You','CPU1','CPU2','CPU3'].map(name => {
+function _hlModeLabel(mode) {
+  if (!mode) return 'HUMAN';
+  if (mode === 'slow')         return 'AUTO-SLOW';
+  if (mode === 'fast')         return 'AUTO-FAST';
+  if (mode === 'sprint')       return 'SPRINT';
+  if (mode === 'sprint_slow')  return 'SPRINT-SL';
+  return String(mode).toUpperCase();
+}
+
+function _hlStrategyState(game) {
+  const autoMode = window.AUTO_MODE ?? null;
+  const players = ['You','CPU1','CPU2','CPU3'].map(name => {
     const isHuman = name === 'You';
-    const level   = isHuman ? 'Human'
-      : (_HL_LEVEL[window.CPU_LEVELS_BY_NAME?.[name] ?? 1] ?? 'Beginner');
-    const sobj    = isHuman
+    let level;
+    if (isHuman) {
+      // In AUTO/SPRINT mode the You seat uses an AI level; in HUMAN mode it's human-played.
+      level = autoMode
+        ? (_HL_LEVEL[window.AUTO_USER_LEVEL ?? 1] ?? 'Beginner')
+        : 'Human';
+    } else {
+      level = _HL_LEVEL[window.CPU_LEVELS_BY_NAME?.[name] ?? 1] ?? 'Beginner';
+    }
+    const sobj = isHuman
       ? (typeof USER_SCHEME !== 'undefined' ? USER_SCHEME : null)
       : (window.CPU_SCHEMES_BY_NAME?.[name] ?? null);
     return { name, level, scheme: sobj?.name ?? null };
   });
+
+  // seats[i] = name of player currently sitting at seat i
+  const seats = game?.players ? game.players.map(p => p.name) : ['You','CPU1','CPU2','CPU3'];
+
+  return { players, mode: autoMode, seats };
 }
 
 function _hlSame(a, b) {
-  if (!a || !b || a.length !== b.length) return false;
-  return a.every((p, i) => p.name === b[i].name && p.level === b[i].level && p.scheme === b[i].scheme);
+  if (!a || !b) return false;
+  if (a.mode !== b.mode) return false;
+  if (!a.players || !b.players || a.players.length !== b.players.length) return false;
+  // Only compare seats when both entries have them (backward compat with old log entries)
+  if (a.seats && b.seats && a.seats.join(',') !== b.seats.join(',')) return false;
+  return a.players.every((p, i) =>
+    p.name === b.players[i].name && p.level === b.players[i].level && p.scheme === b.players[i].scheme
+  );
 }
 
 window.handLog = {
   checkStrategyChange(game) {
-    const cur = _hlStrategy(game);
+    const cur = _hlStrategyState(game);
     const log = _hlRead();
     let last = null;
     for (let i = log.length - 1; i >= 0; i--) {
-      if (log[i].type === 'strategy') { last = log[i].players; break; }
+      if (log[i].type === 'strategy') {
+        last = { players: log[i].players, mode: log[i].mode ?? null, seats: log[i].seats ?? null };
+        break;
+      }
     }
     if (!_hlSame(last, cur)) {
-      log.push({ type: 'strategy', ts: Date.now(), players: cur });
+      log.push({ type: 'strategy', ts: Date.now(), players: cur.players, mode: cur.mode, seats: cur.seats });
       _hlWrite(log);
     }
   },
@@ -68,6 +99,9 @@ window.handLog = {
       for (const p of game.players) { deltas[p.name] = 0; scores[p.name] = p.score; }
     }
 
+    // seatOrder[i] = name of player at seat i when this hand was played
+    const seatOrder = game.players.map(p => p.name);
+
     const log = _hlRead();
 
     // Hand number: count hand entries since last strategy entry
@@ -81,12 +115,13 @@ window.handLog = {
     }
     if (log.length === 0) handNum = 1;
 
-    log.push({ type: 'hand', handNum, winner, faan: r.faan, label: isDraw ? '' : (r.label ?? ''), deltas, scores });
+    log.push({ type: 'hand', handNum, winner, faan: r.faan, label: isDraw ? '' : (r.label ?? ''), deltas, scores, seatOrder });
     _hlWrite(log);
   },
 
   clear(game) {
-    _hlWrite([{ type: 'strategy', ts: Date.now(), players: _hlStrategy(game) }]);
+    const state = _hlStrategyState(game);
+    _hlWrite([{ type: 'strategy', ts: Date.now(), players: state.players, mode: state.mode, seats: state.seats }]);
   },
 
   open() {
