@@ -1746,14 +1746,17 @@ function populateTileGallery() {
 // in the margin OUTSIDE the 720x540 discard area.
 // viewBox: 0 0 720 540, but wall tiles drawn in the outer ~20px border
 // Mini ring — 72 tile divs (18 per side) positioned in the margins of #wall-ring-wrap
-const _RING_W = 16, _RING_H = 20, _RING_GAP = 2, _RING_M = 4;
+// TWH=32: tile unit along horizontal edges (top/bottom) → 18×32+17×2=610px of 620px edge
+// TWV=26: tile unit along vertical edges (left/right)   → 18×26+17×2=502px of 508px edge
+// TH=20:  depth into the margin (both layers fit: 4+20+2+20=46px ≤ 50px margin)
+const _RING_TWH = 32, _RING_TWV = 26, _RING_H = 20, _RING_GAP = 2, _RING_M = 4;
 let _ringOuter   = null;  // [72] outer layer elements (all sides)
 let _ringInner   = null;  // [72] inner layer elements (left/right only; null for top/bottom)
 let _ringRevealed = false;
 let _ringLastId   = null;
 
 function _buildRingTiles() {
-  const W = 720, H = 608, TW = _RING_W, TH = _RING_H, G = _RING_GAP, M = _RING_M;
+  const W = 720, H = 608, TWH = _RING_TWH, TWV = _RING_TWV, TH = _RING_H, G = _RING_GAP, M = _RING_M;
   const wrap = document.getElementById('wall-ring-wrap');
   wrap.querySelectorAll('.ring-tile').forEach(e => e.remove());
   _ringOuter = new Array(72).fill(null);
@@ -1769,29 +1772,24 @@ function _buildRingTiles() {
     return { el, img };
   }
 
-  // Outer ring positions (all 4 sides)
-  // Rotations match hand-tile convention: left=90deg, top=180deg, right=-90deg, bottom=none
-  const bx0 = (W + 18*TW + 17*G) / 2 - TW;
-  const ly0 = (H + 18*TW + 17*G) / 2 - TW;
-  const tx0 = (W - 18*TW - 17*G) / 2;
-  const ry0 = (H - 18*TW - 17*G) / 2;
+  // Outer ring — rotations match hand-tile convention: left=90deg, top=180deg, right=-90deg, bottom=none
+  const bx0 = (W + 18*TWH + 17*G) / 2 - TWH;   // bottom: x of rightmost tile
+  const ly0 = (H + 18*TWV + 17*G) / 2 - TWV;   // left:   y of bottommost tile
+  const tx0 = (W - 18*TWH - 17*G) / 2;          // top:    x of leftmost tile
+  const ry0 = (H - 18*TWV - 17*G) / 2;          // right:  y of topmost tile
 
-  for (let i = 0; i < 18; i++) _ringOuter[i]    = makeTile(bx0 - i*(TW+G), H-TH-M,        TW, TH, null);      // bottom
-  for (let i = 0; i < 18; i++) _ringOuter[18+i] = makeTile(M,               ly0-i*(TW+G),  TH, TW, '90deg');  // left
-  for (let i = 0; i < 18; i++) _ringOuter[36+i] = makeTile(tx0 + i*(TW+G),  M,             TW, TH, '180deg'); // top
-  for (let i = 0; i < 18; i++) _ringOuter[54+i] = makeTile(W-TH-M,          ry0+i*(TW+G),  TH, TW, '-90deg'); // right
+  for (let i = 0; i < 18; i++) _ringOuter[i]    = makeTile(bx0 - i*(TWH+G), H-TH-M,        TWH, TH,  null);      // bottom
+  for (let i = 0; i < 18; i++) _ringOuter[18+i] = makeTile(M,               ly0-i*(TWV+G),  TH,  TWV, '90deg');  // left
+  for (let i = 0; i < 18; i++) _ringOuter[36+i] = makeTile(tx0 + i*(TWH+G), M,              TWH, TH,  '180deg'); // top
+  for (let i = 0; i < 18; i++) _ringOuter[54+i] = makeTile(W-TH-M,          ry0+i*(TWV+G),  TH,  TWV, '-90deg'); // right
 
-  // Inner ring — all 4 sides
-  // Left  inner: x = M+TH+G = 26
-  // Right inner: x = W-TH-M-G-TH = 674
-  // Top   inner: y = M+TH+G = 26
-  // Bot   inner: y = W_WRAP-TH-M-G-TH = 608-20-4-2-20 = 562
-  const IY_T = M+TH+G;             // 26 — inner top y
-  const IY_B = 608-TH-M-G-TH;      // 562 — inner bottom y
-  for (let i = 0; i < 18; i++) _ringInner[i]    = makeTile(bx0 - i*(TW+G), IY_B,           TW, TH, null);      // bottom inner
-  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G,          ly0-i*(TW+G),  TH, TW, '90deg');  // left inner
-  for (let i = 0; i < 18; i++) _ringInner[36+i] = makeTile(tx0 + i*(TW+G), IY_T,           TW, TH, '180deg'); // top inner
-  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TH-M-G-TH,    ry0+i*(TW+G),  TH, TW, '-90deg'); // right inner
+  // Inner ring
+  const IY_T = M+TH+G;         // inner top y    = 26
+  const IY_B = H-TH-M-G-TH;   // inner bottom y = 562
+  for (let i = 0; i < 18; i++) _ringInner[i]    = makeTile(bx0 - i*(TWH+G), IY_B,           TWH, TH,  null);      // bottom inner
+  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G,          ly0-i*(TWV+G),  TH,  TWV, '90deg');  // left inner
+  for (let i = 0; i < 18; i++) _ringInner[36+i] = makeTile(tx0 + i*(TWH+G), IY_T,           TWH, TH,  '180deg'); // top inner
+  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TH-M-G-TH,     ry0+i*(TWV+G),  TH,  TWV, '-90deg'); // right inner
 }
 
 function renderWallRing() {
