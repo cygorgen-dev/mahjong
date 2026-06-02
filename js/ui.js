@@ -1057,8 +1057,8 @@ function renderDiscard() {
   const el = document.getElementById('discard-pile');
   el.innerHTML = '';
 
-  // Discard area dimensions (must match CSS #discard-pile: top:40 left:40 width:640 height:528)
-  const W = 640, H = 528;
+  // Discard area dimensions (must match CSS #discard-pile: top:26 left:26 width:668 height:556)
+  const W = 668, H = 556;
   const TW = 46, TH = 66;
   const GAP = 3;
 
@@ -1069,7 +1069,7 @@ function renderDiscard() {
     let x, y;
 
     if (seat === 0) {
-      // Bottom: rows left→right, stacking upward
+      // Bottom: 7 cols × 4 rows, stacking upward
       const cols = 7;
       const col  = idx % cols;
       const row  = Math.floor(idx / cols);
@@ -1078,7 +1078,7 @@ function renderDiscard() {
       y = H - TH - 4 - row * (TH + GAP);
 
     } else if (seat === 2) {
-      // Top: rows left→right, stacking downward
+      // Top: 7 cols × 4 rows, stacking downward
       const cols = 7;
       const col  = idx % cols;
       const row  = Math.floor(idx / cols);
@@ -1087,21 +1087,21 @@ function renderDiscard() {
       y = 4 + row * (TH + GAP);
 
     } else if (seat === 3) {
-      // Left: columns top→bottom, stacking rightward
+      // Left: 8 rows × 3 cols, stacking rightward
       const rows   = 8;
       const row    = idx % rows;
       const col    = Math.floor(idx / rows);
       const totalH = rows * TH + (rows - 1) * GAP;
-      x = 8 + col * (TW + GAP);
+      x = 20 + col * (TW + GAP);
       y = (H - totalH) / 2 + row * (TH + GAP);
 
     } else {
-      // Right (seat 1): columns top→bottom, stacking leftward
+      // Right (seat 1): 8 rows × 3 cols, stacking leftward
       const rows   = 8;
       const row    = idx % rows;
       const col    = Math.floor(idx / rows);
       const totalH = rows * TH + (rows - 1) * GAP;
-      x = W - TW - 8 - col * (TW + GAP);
+      x = W - TW - 20 - col * (TW + GAP);
       y = (H - totalH) / 2 + row * (TH + GAP);
     }
 
