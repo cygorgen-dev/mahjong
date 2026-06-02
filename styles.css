@@ -54,7 +54,7 @@ main#table {
   grid-template-columns: 200px minmax(0,1fr) 200px;
   grid-template-rows: auto auto auto;
   grid-template-areas: ". top ." "left center right" ". bottom .";
-  align-content: center;   /* pack rows tight, center vertically in leftover space */
+  align-content: space-between;   /* spread rows to use full viewport height */
   gap: 2px;
   padding: 2px 4px;
   overflow: visible;
@@ -362,7 +362,7 @@ main#table {
 }
 main#table { position: relative; }
 #action-bar button {
-  padding:7px 13px; border:0; border-radius:6px;
+  padding:4px 10px; border:0; border-radius:6px;
   background:#2a8b4e; color:white; font-weight:600; cursor:pointer; font-size:13px;
 }
 #action-bar button:disabled { background:#555; opacity:0.5; cursor:not-allowed; }
