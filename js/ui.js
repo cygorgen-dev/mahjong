@@ -1811,16 +1811,18 @@ function renderWallRing() {
     if (btn) { btn.style.background = '#1a3a3a'; btn.style.color = '#7dffff'; }
   }
 
-  const total    = 72;
-  const wallIdx  = _game.wallIdx   ?? 0;
-  const tailCol  = _game.tailCol   ?? 71;
-  const tailPhase = _game.tailPhase ?? 0;
+  const total     = 72;
+  const wallIdx   = _game.wallIdx    ?? 0;
+  const tailCol   = _game.tailCol    ?? 71;
+  const tailPhase = _game.tailPhase  ?? 0;
 
-  // next-head = column still containing the next draw (Math.floor gives the live column)
-  // next-tail = tailCol, which always points to the column with at least one tile still live
-  const nextHead  = Math.floor(wallIdx / 2);
-  const live      = Math.max(0, tailCol - nextHead + 1);
-  const exhausted = live === 0;
+  // Match wall.html applyGameState logic exactly:
+  // headCol/headPhase: which column and which tile (inner=0, outer=1) is next to draw
+  // effTP: which tile of tailCol is next to replace (inner=0, outer=1)
+  const headCol   = Math.floor(wallIdx / 2);
+  const headPhase = wallIdx % 2;
+  const effTP     = (tailPhase === 0 && tailCol * 2 < wallIdx) ? 1 : tailPhase;
+  const exhausted = Math.max(0, tailCol - headCol + 1) === 0;
 
   const breakSeat  = _game.wallBreakSeat  ?? 0;
   const breakCount = _game.wallBreakCount ?? _game.diceTotal ?? 9;
@@ -1829,35 +1831,42 @@ function renderWallRing() {
 
   for (let i = 0; i < total; i++) {
     const phys  = (headSlot + i) % total;
+    const inner = _ringInner[phys];
     const outer = _ringOuter[phys];
-    const inner = _ringInner[phys]; // null for top/bottom slots
 
-    const isHead = i < nextHead;
-    const isTail = i > tailCol;
-    const isLive = !isHead && !isTail;
+    // Per-tile head-used: inner tile (i*2) used if i*2 < wallIdx; outer (i*2+1) if i*2+1 < wallIdx
+    const innerHeadUsed = i < headCol || (i === headCol && headPhase === 1);
+    const outerHeadUsed = i * 2 + 1 < wallIdx;
 
-    function applyState(tile, isNextHead, isNextTail) {
+    // Per-tile tail-used: matching wall.html isTailUsed (inner=isTop=true)
+    const innerTailUsed = i > tailCol || (i === tailCol && effTP === 1);
+    const outerTailUsed = i > tailCol;
+
+    // next-head on the specific tile about to be drawn
+    const nextHeadInner = !exhausted && i === headCol && headPhase === 0;
+    const nextHeadOuter = !exhausted && i === headCol && headPhase === 1;
+
+    // next-tail on the specific tile about to be replaced
+    const nextTailInner = !exhausted && i === tailCol && effTP === 0;
+    const nextTailOuter = !exhausted && i === tailCol && effTP === 1;
+
+    function applyTile(tile, headUsed, tailUsed, isNextHead, isNextTail) {
       if (!tile) return;
       tile.el.className = 'ring-tile';
-      if (isHead)            tile.el.classList.add('used');
-      else if (isTail)       tile.el.classList.add('tail-used');
-      else if (!_ringRevealed) tile.el.classList.add('face-down');
-      if (isLive && !exhausted) {
-        if (isNextHead) tile.el.classList.add('next-head');
-        if (isNextTail) tile.el.classList.add('next-tail');
-      }
+      if      (headUsed)         tile.el.classList.add('used');
+      else if (tailUsed)         tile.el.classList.add('tail-used');
+      else if (!_ringRevealed)   tile.el.classList.add('face-down');
+      if (isNextHead) tile.el.classList.add('next-head');
+      if (isNextTail) tile.el.classList.add('next-tail');
     }
 
-    // Inner layer = closer to center = inner tile (drawn first from head)
-    // Outer layer = toward player = outer tile
-    applyState(inner, isLive && i === nextHead, false);
-    applyState(outer, false, isLive && i === tailCol);
+    applyTile(inner, innerHeadUsed, innerTailUsed, nextHeadInner, nextTailInner);
+    applyTile(outer, outerHeadUsed, outerTailUsed, nextHeadOuter, nextTailOuter);
 
-    // Tile images for reveal (inner tile = wall[i*2], outer = wall[i*2+1])
+    // Images for ring-reveal mode
     const t0 = _game.wall?.[i*2], t1 = _game.wall?.[i*2+1];
     if (inner && t0) inner.img.src = `img/tiles/${t0.suit}_${t0.value}.png`;
-    const outerTile = inner ? t1 : t0;
-    if (outerTile) outer.img.src = `img/tiles/${outerTile.suit}_${outerTile.value}.png`;
+    if (outer && t1) outer.img.src = `img/tiles/${t1.suit}_${t1.value}.png`;
   }
 
   const tailDrawn = (71 - tailCol) * 2 + tailPhase;
