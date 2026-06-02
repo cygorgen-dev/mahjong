@@ -310,8 +310,8 @@ main#table {
 /* DISCARD AREA — inset inside wall margin so wall tiles are always visible */
 #discard-pile {
   position:absolute;
-  top:26px; left:50px;
-  width:620px; height:556px;
+  top:50px; left:50px;
+  width:620px; height:508px;
   background:rgba(0,0,0,0.18);
   border-radius:8px;
   border:1px solid rgba(0,0,0,0.55);

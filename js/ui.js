@@ -1066,8 +1066,8 @@ function renderDiscard() {
   const el = document.getElementById('discard-pile');
   el.innerHTML = '';
 
-  // Discard area dimensions (must match CSS #discard-pile: top:26 left:50 width:620 height:556)
-  const W = 620, H = 556;
+  // Discard area dimensions (must match CSS #discard-pile: top:50 left:50 width:620 height:508)
+  const W = 620, H = 508;
   const TW = 46, TH = 66;
   const GAP = 3;
 
@@ -1096,8 +1096,8 @@ function renderDiscard() {
       y = 4 + row * (TH + GAP);
 
     } else if (seat === 3) {
-      // Left: 8 rows × 3 cols, stacking rightward
-      const rows   = 8;
+      // Left: 7 rows × 3 cols, stacking rightward
+      const rows   = 7;
       const row    = idx % rows;
       const col    = Math.floor(idx / rows);
       const totalH = rows * TH + (rows - 1) * GAP;
@@ -1105,8 +1105,8 @@ function renderDiscard() {
       y = (H - totalH) / 2 + row * (TH + GAP);
 
     } else {
-      // Right (seat 1): 8 rows × 3 cols, stacking leftward
-      const rows   = 8;
+      // Right (seat 1): 7 rows × 3 cols, stacking leftward
+      const rows   = 7;
       const row    = idx % rows;
       const col    = Math.floor(idx / rows);
       const totalH = rows * TH + (rows - 1) * GAP;
@@ -1777,10 +1777,17 @@ function _buildRingTiles() {
   for (let i = 0; i < 18; i++) _ringOuter[36+i] = makeTile(tx0 + i*(TW+G), M,              TW, TH); // top
   for (let i = 0; i < 18; i++) _ringOuter[54+i] = makeTile(W-TH-M,         ry0 + i*(TW+G), TH, TW); // right
 
-  // Inner ring: left (slots 18-35) and right (slots 54-71) only
-  // Left inner at x = M+TH+G = 26; Right inner at x = W-TH-M-G-TH = 674
-  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G,       ly0 - i*(TW+G), TH, TW);
-  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TH-M-G-TH,  ry0 + i*(TW+G), TH, TW);
+  // Inner ring — all 4 sides
+  // Left  inner: x = M+TH+G = 26
+  // Right inner: x = W-TH-M-G-TH = 674
+  // Top   inner: y = M+TH+G = 26
+  // Bot   inner: y = W_WRAP-TH-M-G-TH = 608-20-4-2-20 = 562
+  const IY_T = M+TH+G;             // 26 — inner top y
+  const IY_B = 608-TH-M-G-TH;      // 562 — inner bottom y
+  for (let i = 0; i < 18; i++) _ringInner[i]    = makeTile(bx0 - i*(TW+G), IY_B,          TW, TH); // bottom inner
+  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G,          ly0-i*(TW+G),  TH, TW); // left inner
+  for (let i = 0; i < 18; i++) _ringInner[36+i] = makeTile(tx0 + i*(TW+G), IY_T,          TW, TH); // top inner
+  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TH-M-G-TH,    ry0+i*(TW+G),  TH, TW); // right inner
 }
 
 function renderWallRing() {
@@ -1832,14 +1839,10 @@ function renderWallRing() {
       }
     }
 
-    if (inner) {
-      // Left/right: inner=next-head (inner tile drawn first), outer=next-tail
-      applyState(inner, isLive && i === nextHead, false);
-      applyState(outer, false, isLive && i === tailCol);
-    } else {
-      // Top/bottom: single layer carries both markers
-      applyState(outer, isLive && i === nextHead, isLive && i === tailCol);
-    }
+    // Inner layer = closer to center = inner tile (drawn first from head)
+    // Outer layer = toward player = outer tile
+    applyState(inner, isLive && i === nextHead, false);
+    applyState(outer, false, isLive && i === tailCol);
 
     // Tile images for reveal (inner tile = wall[i*2], outer = wall[i*2+1])
     const t0 = _game.wall?.[i*2], t1 = _game.wall?.[i*2+1];
