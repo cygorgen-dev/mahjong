@@ -361,20 +361,20 @@ main#table {
   min-height: 34px; /* pre-reserve 2-line height so win result never shifts the header */
 }
 main#table { position: relative; }
+/* Action bar anchored in lower-right armpit of the wall ring (ring-wrap is always 800×688) */
 #action-bar {
   position: absolute;
-  right: 4px;
-  bottom: 30px;
-  width: 152px;
+  right: 90px;   /* 4px inside right inner wall visual edge (~x=714) */
+  bottom: 95px;  /* 9px above bottom inner wall (~y=602) */
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 5px;
-  padding: 4px 6px;
-  z-index: 20;
+  gap: 4px;
+  padding: 3px 4px;
+  z-index: 50;
 }
 #action-bar button {
-  padding:6px 10px; border:0; border-radius:6px;
+  padding:3px 10px; border:0; border-radius:6px;
   background:#2a8b4e; color:white; font-weight:600; cursor:pointer; font-size:13px;
   text-align: center; white-space: nowrap; min-width: 100px;
 }
