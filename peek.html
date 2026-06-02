@@ -135,7 +135,7 @@
         statsEl.innerHTML = `
           <span style="color:#7dffff">${remain} live</span>
           <span style="color:#aaa">${wallIdx} drawn · ${tailUsed} replaced</span>
-          <span style="color:#ffd34d">▼ next draw</span>
+          <span style="color:#00ff66">▼ next draw</span>
           <span style="color:#ff9800">▲ next replacement</span>
           <span style="color:#555">dim = used</span>
         `;
@@ -170,8 +170,8 @@
             img.style.outline    = '3px solid #ff4444';
             img.style.boxShadow  = '0 0 8px 3px rgba(255,68,68,0.7)';
           } else if (isHead) {
-            img.style.outline    = '3px solid #ffd34d';
-            img.style.boxShadow  = '0 0 7px 2px rgba(255,211,77,0.6)';
+            img.style.outline    = '3px solid #00ff66';
+            img.style.boxShadow  = '0 0 7px 2px rgba(0,255,102,0.6)';
           } else if (isTail) {
             img.style.outline    = '3px solid #ff9800';
             img.style.boxShadow  = '0 0 7px 2px rgba(255,152,0,0.6)';
@@ -192,7 +192,7 @@
         } else if (isHeadCol && isTailColH) {
           lbl.style.color = '#fff';    lbl.textContent = '▼▲';
         } else if (isHeadCol) {
-          lbl.style.color = '#ffd34d'; lbl.textContent = '▼';
+          lbl.style.color = '#00ff66'; lbl.textContent = '▼';
         } else if (isTailColH) {
           lbl.style.color = '#ff9800'; lbl.textContent = '▲';
         } else {

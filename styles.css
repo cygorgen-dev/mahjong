@@ -451,7 +451,7 @@ main#table { position: relative; }
 }
 .ring-tile.used      { opacity:0.08; }
 .ring-tile.tail-used { opacity:0.18; background:rgba(180,100,0,0.3); border-color:rgba(255,152,0,0.4); }
-.ring-tile.next-head { outline:2px solid #ffd34d; box-shadow:0 0 5px rgba(255,211,77,0.8); z-index:3; }
+.ring-tile.next-head { outline:2px solid #00ff66; box-shadow:0 0 5px rgba(0,255,102,0.8); z-index:3; }
 .ring-tile.next-tail { outline:2px solid #ff9800; box-shadow:0 0 5px rgba(255,152,0,0.8); z-index:3; }
 
 /* Sidebar — collapsible settings panel */
