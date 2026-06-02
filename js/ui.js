@@ -1081,8 +1081,9 @@ function renderDiscard() {
   const gridH = ROWS * TH + (ROWS - 1) * GAP;  // 468
   const ox = Math.floor((W - gridW) / 2);       // 5
   const oy = Math.floor((H - gridH) / 2);       // 20
-  // Highlight: current pending claim tile, or last tile in pile once all pass and next player draws
-  const highlightId = _game.discard?.id ?? _game.discardPile.at(-1)?.id ?? null;
+  // Highlight: the last tile pushed to the pile — turns off exactly when the next player discards
+  const _pile = _game.discardPile;
+  const highlightId = _pile.length > 0 ? _pile[_pile.length - 1].id : null;
   // Per-seat overflow counters — each player fills center row from their own side
   // Seat 3 (left) and seat 2 (top): gc=3→9 (from left)
   // Seat 1 (right) and seat 0 (bottom): gc=9→3 (from right)
