@@ -1759,10 +1759,10 @@ function _buildRingTiles() {
   _ringOuter = new Array(72).fill(null);
   _ringInner = new Array(72).fill(null);
 
-  function makeTile(x, y, w, h) {
+  function makeTile(x, y, w, h, rot) {
     const el = document.createElement('div');
     el.className = 'ring-tile face-down';
-    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px` + (rot ? `;transform:rotate(${rot})` : '');
     const img = document.createElement('img'); img.alt = '';
     el.appendChild(img);
     wrap.appendChild(el);
@@ -1770,15 +1770,16 @@ function _buildRingTiles() {
   }
 
   // Outer ring positions (all 4 sides)
+  // Rotations match hand-tile convention: left=90deg, top=180deg, right=-90deg, bottom=none
   const bx0 = (W + 18*TW + 17*G) / 2 - TW;
   const ly0 = (H + 18*TW + 17*G) / 2 - TW;
   const tx0 = (W - 18*TW - 17*G) / 2;
   const ry0 = (H - 18*TW - 17*G) / 2;
 
-  for (let i = 0; i < 18; i++) _ringOuter[i]    = makeTile(bx0 - i*(TW+G), H-TH-M,       TW, TH); // bottom
-  for (let i = 0; i < 18; i++) _ringOuter[18+i] = makeTile(M,              ly0 - i*(TW+G), TH, TW); // left
-  for (let i = 0; i < 18; i++) _ringOuter[36+i] = makeTile(tx0 + i*(TW+G), M,              TW, TH); // top
-  for (let i = 0; i < 18; i++) _ringOuter[54+i] = makeTile(W-TH-M,         ry0 + i*(TW+G), TH, TW); // right
+  for (let i = 0; i < 18; i++) _ringOuter[i]    = makeTile(bx0 - i*(TW+G), H-TH-M,        TW, TH, null);      // bottom
+  for (let i = 0; i < 18; i++) _ringOuter[18+i] = makeTile(M,               ly0-i*(TW+G),  TH, TW, '90deg');  // left
+  for (let i = 0; i < 18; i++) _ringOuter[36+i] = makeTile(tx0 + i*(TW+G),  M,             TW, TH, '180deg'); // top
+  for (let i = 0; i < 18; i++) _ringOuter[54+i] = makeTile(W-TH-M,          ry0+i*(TW+G),  TH, TW, '-90deg'); // right
 
   // Inner ring — all 4 sides
   // Left  inner: x = M+TH+G = 26
@@ -1787,10 +1788,10 @@ function _buildRingTiles() {
   // Bot   inner: y = W_WRAP-TH-M-G-TH = 608-20-4-2-20 = 562
   const IY_T = M+TH+G;             // 26 — inner top y
   const IY_B = 608-TH-M-G-TH;      // 562 — inner bottom y
-  for (let i = 0; i < 18; i++) _ringInner[i]    = makeTile(bx0 - i*(TW+G), IY_B,          TW, TH); // bottom inner
-  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G,          ly0-i*(TW+G),  TH, TW); // left inner
-  for (let i = 0; i < 18; i++) _ringInner[36+i] = makeTile(tx0 + i*(TW+G), IY_T,          TW, TH); // top inner
-  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TH-M-G-TH,    ry0+i*(TW+G),  TH, TW); // right inner
+  for (let i = 0; i < 18; i++) _ringInner[i]    = makeTile(bx0 - i*(TW+G), IY_B,           TW, TH, null);      // bottom inner
+  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G,          ly0-i*(TW+G),  TH, TW, '90deg');  // left inner
+  for (let i = 0; i < 18; i++) _ringInner[36+i] = makeTile(tx0 + i*(TW+G), IY_T,           TW, TH, '180deg'); // top inner
+  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TH-M-G-TH,    ry0+i*(TW+G),  TH, TW, '-90deg'); // right inner
 }
 
 function renderWallRing() {
