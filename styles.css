@@ -361,9 +361,22 @@ main#table {
   min-height: 34px; /* pre-reserve 2-line height so win result never shifts the header */
 }
 main#table { position: relative; }
+#action-bar {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: end;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  padding: 6px 8px;
+  z-index: 20;
+}
 #action-bar button {
-  padding:4px 10px; border:0; border-radius:6px;
+  padding:6px 10px; border:0; border-radius:6px;
   background:#2a8b4e; color:white; font-weight:600; cursor:pointer; font-size:13px;
+  text-align: center; white-space: nowrap; min-width: 100px;
 }
 #action-bar button:disabled { background:#555; opacity:0.5; cursor:not-allowed; }
 #action-bar button:not(:disabled):hover { background:#38ad62; }
@@ -676,8 +689,8 @@ body.hide-tile-labels .tile-en { display:none !important; }
 /* Top/bottom seat labels and wind - positioned at outer edges */
 .seat-top    { position: relative; }
 .seat-bottom { position: relative; left: -68px; margin-top: -60px; }
-.seat-bottom .h-hand-fake-tile.h-label-tile { margin-left: calc(var(--tw) + 3px); }
 .seat-bottom .melds { margin-left: calc(var(--tw) + 3px); }
+.seat-bottom .hand  { margin-left: calc(var(--tw) + 3px); }
 
 /* Side player badge - overlaid on hand column, no flex interference */
 .side-player-badge {

@@ -1166,12 +1166,12 @@ function renderActionBar() {
     }
   } else if (window.AUTO_MODE === 'slow' && _game._pendingAutoStep) {
     // Slow mode: Pass = advance to next action
-    btnPass.textContent = 'Pass 通 ▶';
+    btnPass.textContent = 'Pass ▶';
     btnPass.disabled = false;
     btnPass.style.background = '#ffd34d';
     btnPass.style.color = '#07301a';
   } else {
-    btnPass.textContent = 'Pass 通';
+    btnPass.textContent = 'Pass';
     btnPass.style.background = '';
     btnPass.style.color = '';
   }
