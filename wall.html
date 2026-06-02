@@ -221,12 +221,8 @@
   <div id="dash-2" class="dash-tray"></div>
   <div id="dash-3" class="dash-tray"></div>
 
+  <script src="js/wall-ring.js"></script>
   <script>
-    // ── Tile image src ────────────────────────────────────────────────────
-    function tileSrc(t) {
-      return `img/tiles/${t.suit}_${t.value}.png`;
-    }
-
     // ── Build full 144-tile deck (standalone mode) ────────────────────────
     function buildDeck() {
       const d = [];
@@ -239,7 +235,7 @@
         for (let c = 0; c < 4; c++) d.push({ suit:'dragon', value:dr });
       for (let i = 0; i < 4; i++) d.push({ suit:'flower', value:i });
       for (let i = 0; i < 4; i++) d.push({ suit:'season', value:i });
-      return d; // 144
+      return d;
     }
 
     function fisherYates(arr) {
@@ -250,363 +246,20 @@
       return arr;
     }
 
-    // ── Physical layout ───────────────────────────────────────────────────
-    // Segments stored in game.js CCW order: seg0=seat0, seg1=seat3, seg2=seat2, seg3=seat1
-    // Each segment: 36 tiles = 18 columns × 2 (index 0 = inner/top, 1 = outer/bottom per column)
-    // Wall assignment: seat0=bottom, seat1=right, seat2=top, seat3=left
-    //
-    // Within each segment, columns go in the direction that makes clockwise dealing work:
-    //   seat0 (bottom): col0 = rightmost  (index 0,1 of seg)
-    //   seat3 (left):   col0 = bottommost (index 0,1 of seg)
-    //   seat2 (top):    col0 = leftmost   (index 0,1 of seg)
-    //   seat1 (right):  col0 = topmost    (index 0,1 of seg)
-
-    // Map flat 144-tile array (game order) back to {seat, col, layer}
-    // physIdx 0..143 in game's original (pre-rotation) array
-    const SEG_TO_SEAT = [0, 3, 2, 1];
-    function physToPos(physIdx) {
-      const seg  = Math.floor(physIdx / 36);
-      const seat = SEG_TO_SEAT[seg];
-      const col  = Math.floor((physIdx % 36) / 2);
-      const layer = physIdx % 2;   // 0 = inner (top of stack), 1 = outer (bottom)
-      return { seat, col, layer };
-    }
-
-    // Given game-rotated index i and the headIdx offset, get physical position
-    function gameIdxToPos(i, headIdx) {
-      return physToPos((headIdx + i) % 144);
-    }
-
-    // ── Persistent tile elements: _tiles[physIdx] = {img, wrapper} ────────
-    let _tiles = [];    // indexed by physIdx (0..143)
-    let _headIdx = 0;   // physical rotation offset (= wall[0]'s physical index)
-    let _gameConnected = false;
-
-    // ── Build the 4-wall DOM from a flat 144-tile array ───────────────────
-    // tiles[physIdx] = tile object {suit, value}
-    function buildWalls(tiles) {
-      _tiles = new Array(144);
-
-      function makeImg(physIdx) {
-        const t = tiles[physIdx];
-        const img = document.createElement('img');
-        img.src = tileSrc(t);
-        img.alt = '';
-        const div = document.createElement('div');
-        div.className = 'tile';
-        div.appendChild(img);
-        _tiles[physIdx] = { div, img };
-        return div;
-      }
-
-      function makeRot(physIdx, rotCls) {
-        const w = document.createElement('div');
-        w.className = `rw ${rotCls}`;
-        w.appendChild(makeImg(physIdx));
-        return w;
-      }
-
-      // Bottom wall (seat 0, seg 0): col0=right → col17=left, inner=top of stack
-      // physIdx: seg0 = 0..35; col c → inner=c*2, outer=c*2+1
-      // Display: col17 on left, col0 on right → iterate c=17..0
-      const bot = document.getElementById('wall-bot');
-      bot.innerHTML = '';
-      for (let c = 17; c >= 0; c--) {
-        const s = document.createElement('div');
-        s.className = 'sv';
-        s.appendChild(makeImg(c*2));       // inner (top, closer to center)
-        s.appendChild(makeImg(c*2 + 1));   // outer (bottom, toward player)
-        bot.appendChild(s);
-      }
-
-      // Left wall (seat 3, seg 1): col0=bottommost (adjacent to bottom player)
-      // physIdx: seg1 = 36..71; col c → inner=36+c*2, outer=36+c*2+1
-      // Display: col17 at top (toward top player), col0 at bottom → iterate c=17..0
-      const lft = document.getElementById('wall-lft');
-      lft.innerHTML = '';
-      for (let c = 17; c >= 0; c--) {
-        const s = document.createElement('div');
-        s.className = 'sh';
-        s.appendChild(makeRot(36+c*2 + 1, 'rl'));   // outer (left, away from center)
-        s.appendChild(makeRot(36+c*2,     'rl'));   // inner (right, toward center)
-        lft.appendChild(s);
-      }
-
-      // Top wall (seat 2, seg 2): col0=left → col17=right, inner=bottom (toward center)
-      // physIdx: seg2 = 72..107; col c → inner=72+c*2, outer=72+c*2+1
-      // Display: col0 on left, col17 on right → iterate c=0..17
-      const top = document.getElementById('wall-top');
-      top.innerHTML = '';
-      for (let c = 0; c < 18; c++) {
-        const s = document.createElement('div');
-        s.className = 'sv';
-        s.appendChild(makeImg(72+c*2 + 1));    // outer — top of column (toward seat 2 edge)
-        s.appendChild(makeImg(72+c*2));         // inner — bottom of column (toward center)
-        // Seat 2 tiles face center — rotate 180°
-        _tiles[72+c*2].div.classList.add('r180');
-        _tiles[72+c*2+1].div.classList.add('r180');
-        top.appendChild(s);
-      }
-
-      // Right wall (seat 1, seg 3): col0=top → col17=bottom, inner=left (toward center)
-      // physIdx: seg3 = 108..143; col c → inner=108+c*2, outer=108+c*2+1
-      // Display: col0 at top, col17 at bottom → iterate c=0..17
-      const rgt = document.getElementById('wall-rgt');
-      rgt.innerHTML = '';
-      for (let c = 0; c < 18; c++) {
-        const s = document.createElement('div');
-        s.className = 'sh';
-        s.appendChild(makeRot(108+c*2,     'rr'));   // inner (left, toward center)
-        s.appendChild(makeRot(108+c*2 + 1, 'rr'));   // outer (right, away from center)
-        rgt.appendChild(s);
-      }
-
-      updateCenterSize();
-    }
-
-    function updateCenterSize() {
-      const tw  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tw'));
-      const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
-      const span = 18 * tw + 17 * gap;
-      const ctr = document.getElementById('wall-center');
-      ctr.style.width  = span + 'px';
-      ctr.style.height = span + 'px';
-    }
-
-    // ── Apply live game state overlay ─────────────────────────────────────
-    function applyGameState(data) {
-      const wall      = data.wall;       // rotated tile array, game draw order
-      const wallIdx   = data.wallIdx;
-      const tailCol   = data.tailCol;
-      const tailPhase = data.tailPhase;
-      const effTP     = (tailPhase === 0 && tailCol * 2 < wallIdx) ? 1 : tailPhase;
-
-      const remain   = Math.max(0, 2 * (tailCol + 1) - wallIdx - tailPhase);
-      const tailUsed = (71 - tailCol) * 2 + effTP;
-      const exhausted = remain === 0;
-
-      // Head / tail pointer positions in game-array space
-      const headSkips = wallIdx % 2 === 0 && Math.floor(wallIdx / 2) === tailCol && tailPhase === 1;
-      const effHeadIdx = wallIdx + (headSkips ? 1 : 0);
-      const effTailIdx = tailCol * 2 + effTP;
-
-      // Reset all tile styles
-      for (let physIdx = 0; physIdx < 144; physIdx++) {
-        const el = _tiles[physIdx];
-        if (!el) continue;
-        el.div.classList.remove('used', 'tail-used', 'next-head', 'next-tail');
-        el.div.style.opacity = '';
-        el.div.style.outline = '';
-        el.div.style.boxShadow = '';
-      }
-
-      // Classify each game-array position
-      for (let i = 0; i < 144; i++) {
-        const physIdx = (_headIdx + i) % 144;
-        const el = _tiles[physIdx];
-        if (!el) continue;
-
-        const isHeadUsed = i < wallIdx;
-        const isTailUsed = (() => {
-          const c = Math.floor(i / 2);
-          const isTop = (i % 2 === 0);
-          if (c > tailCol) return true;
-          if (c === tailCol && isTop && effTP === 1) return true;
-          return false;
-        })();
-
-        if (!exhausted && i === effHeadIdx) {
-          el.div.classList.add('next-head');
-        } else if (!exhausted && i === effTailIdx) {
-          el.div.classList.add('next-tail');
-        } else if (isHeadUsed) {
-          el.div.classList.add('used');
-        } else if (isTailUsed) {
-          el.div.classList.add('tail-used');
-        }
-      }
-
-      // Stats bar
-      const statsEl = document.getElementById('stats');
-      if (exhausted) {
-        statsEl.innerHTML = `<span style="color:#ff4444;font-weight:700">🏁 WALL EXHAUSTED — 0 tiles left</span><span style="color:#aaa">${wallIdx} drawn · ${tailUsed} replaced</span>`;
-      } else {
-        statsEl.innerHTML = `
-          <span style="color:#7dffff">${remain} live</span>
-          <span style="color:#aaa">${wallIdx} drawn · ${tailUsed} replaced</span>
-          <span style="color:#ffd34d">■ next draw</span>
-          <span style="color:#ff9800">■ next replacement</span>
-          <span style="color:#555">dim = used</span>`;
-      }
-
-      document.getElementById('ctr-title').textContent = `${remain} tiles`;
-      document.getElementById('ctr-sub').textContent   = `${wallIdx} drawn · ${tailUsed} tail`;
-    }
-
-    // ── Tile sizing ───────────────────────────────────────────────────────
-    // Scene width ≈ 2*th + 18*tw + 17*gap + 2*label + padding
-    // With th ≈ 1.41*tw: total ≈ (2*1.41 + 18)*tw + margins ≈ 20.8*tw + ~80px
-    function applyTileSize() {
-      const availW = window.innerWidth  - 20;
-      const availH = window.innerHeight - 140; // controls + stats + footnote
-      const avail  = Math.min(availW, availH);
-      const tw  = Math.max(10, Math.min(40, Math.floor((avail - 80) / 20.8)));
-      const th  = Math.round(tw * 48 / 34);
-      const gap = Math.max(1, Math.round(tw / 17));
-      const root = document.documentElement;
-      root.style.setProperty('--tw',  tw  + 'px');
-      root.style.setProperty('--th',  th  + 'px');
-      root.style.setProperty('--gap', gap + 'px');
-      STEP = tw + gap;
-      MR   = Math.round(tw * 10 / 34);
-      updateCenterSize();
-      // Re-place marker with updated STEP/MR
-      if (_lastBreakSeat !== null) placeBreakMarker(_lastBreakSeat, _lastBreakCount);
-    }
-
-    // ── Render dice + break marker from game data ─────────────────────────
-    let STEP = 36;   // tile-width + gap (updated by applyTileSize)
-    let MR   = 10;   // marker half-size  (updated by applyTileSize)
-    let _lastBreakSeat  = null;
-    let _lastBreakCount = 0;
-    const DIE_FACES = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
-    const WALL_ELS = { 0:'wall-bot', 1:'wall-rgt', 2:'wall-top', 3:'wall-lft' };
-    const CCW_ORDER = [0,3,2,1];
-
-    // headCol = breakCount: the (breakCount)th column from the player's right end.
-    // Each wall's "player's right" end in segment space = col 0 (the segment starts there).
-    // Display positions (breakCount columns from player's right):
-    //   seat0 bottom: c=17..0, col 0=rightmost → display from left = 17 - breakCount
-    //   seat3 left:   c=17..0, col 0=bottom    → display from top  = 17 - breakCount
-    //   seat2 top:    c=0..17, col 0=leftmost  → display from left = breakCount
-    //   seat1 right:  c=0..17, col 0=topmost   → display from top  = breakCount
-    function headColFromBreak(breakSeat, breakCount) {
-      return breakCount; // column breakCount from player's right end (= segment col 0)
-    }
-
-    function placeBreakMarker(seat, breakCount) {
-      _lastBreakSeat  = seat;
-      _lastBreakCount = breakCount;
-      document.querySelectorAll('.break-marker').forEach(e => e.remove());
-      const wallEl = document.getElementById(WALL_ELS[seat]);
-      if (!wallEl) return;
-      const marker = document.createElement('div');
-      marker.className = 'break-marker';
-      marker.textContent = '▶';
-
-      if (seat === 0) {
-        const pos = (17 - breakCount) * STEP + 17 - MR;
-        marker.style.left = pos + 'px';
-        marker.style.top  = (-MR * 2 - 2) + 'px';
-      } else if (seat === 2) {
-        const pos = breakCount * STEP + 17 - MR;
-        marker.style.left   = pos + 'px';
-        marker.style.bottom = (-MR * 2 - 2) + 'px';
-      } else if (seat === 3) {
-        const pos = (17 - breakCount) * STEP + 17 - MR;
-        marker.style.top   = pos + 'px';
-        marker.style.right = (-MR * 2 - 2) + 'px';
-      } else { // seat 1
-        const pos = breakCount * STEP + 17 - MR;
-        marker.style.top  = pos + 'px';
-        marker.style.left = (-MR * 2 - 2) + 'px';
-      }
-      wallEl.appendChild(marker);
-    }
-
-    function showDice(dice, diceTotal, breakSeat) {
-      const facesEl = document.getElementById('dice-faces');
-      facesEl.innerHTML = '';
-      (dice || []).forEach(v => {
-        const die = document.createElement('div');
-        die.className = 'die';
-        die.textContent = DIE_FACES[v] || v;
-        facesEl.appendChild(die);
-      });
-      document.getElementById('dice-sum-lbl').textContent = `Sum: ${diceTotal}`;
-      document.getElementById('dice-result-lbl').textContent = `Break Seat ${breakSeat}'s wall`;
-      document.getElementById('dice-display').style.display = 'flex';
-    }
-
-
-
-    // ── Dealer labels ─────────────────────────────────────────────────────
-    function updateDealerLabels(dealerSeat) {
-      const d = dealerSeat !== undefined ? dealerSeat : parseInt(document.getElementById('dealer-sel').value);
-      [0,1,2,3].forEach(s => {
-        const el = document.getElementById(`s${s}-lbl`);
-        el.className = s === d ? 'seat-lbl dealer' : 'seat-lbl';
-        el.textContent = s === d ? `Seat ${s} · Dealer` : `Seat ${s}`;
-      });
-      if (dealerSeat !== undefined) {
-        document.getElementById('dealer-sel').value = dealerSeat;
-      }
-    }
-
-    // ── Rebuild tile images in-place when a new game's wall arrives ────────
-    let _lastWallId0 = null;
-
-    let _lastLiveData = null;
-
-    function renderFromGame(data) {
-      _lastLiveData = data;
-      const wall          = data.wall;           // 144 rotated tile objects
-      const wallBreakSeat = data.wallBreakSeat ?? 0;
-      const wallBreakCount= data.wallBreakCount ?? 0;
-      const dice          = data.dice          ?? [];
-      const diceTotal     = data.diceTotal     ?? 0;
-      const dealerSeat    = data.dealerSeat    ?? 0;
-
-      // Compute headIdx: physical position of wall[0] = segBase + 2*breakCount
-      // Matches game.js deal() formula: headIdx = segIdx*36 + 2*diceTotal
-      const ccwOrder = [0,3,2,1];
-      const segIdx   = ccwOrder.indexOf(wallBreakSeat);
-      _headIdx       = (segIdx * 36 + 2 * wallBreakCount) % 144;
-
-      // Rebuild physical tile grid when a new game starts (wall[0].id changed)
-      const newId0 = wall[0] ? wall[0].id : null;
-      if (newId0 !== _lastWallId0) {
-        _lastWallId0 = newId0;
-        // Unrotate the wall back to physical order for building the DOM
-        const physical = new Array(144);
-        for (let i = 0; i < 144; i++) {
-          physical[(_headIdx + i) % 144] = wall[i];
-        }
-        buildWalls(physical);
-
-        // Show dice and break marker
-        showDice(dice, diceTotal, wallBreakSeat);
-        placeBreakMarker(wallBreakSeat, headColFromBreak(wallBreakSeat, wallBreakCount));
-        updateDealerLabels(dealerSeat);
-      }
-      _liveDealerSeat = dealerSeat;
-
-      // Apply used/live/head/tail overlay
-      applyGameState(data);
-
-      // Badge + disable standalone controls in live mode
-      const badge = document.getElementById('mode-badge');
-      badge.textContent = 'live';
-      badge.className = 'live';
-      document.getElementById('shuffle-btn').disabled = true;
-      document.getElementById('dice-btn').disabled    = true;
-      _gameConnected = true;
-    }
-
     // ── Standalone mode ───────────────────────────────────────────────────
     let _standaloneTiles = null;
-    let _liveDealerSeat  = 0;
+    let _revealed = false;
 
     function standaloneMode() {
       _standaloneTiles = fisherYates(buildDeck());
-      buildWalls(_standaloneTiles);
+      WallRing.buildWalls(_standaloneTiles);
       clearDiceDisplay();
-      updateDealerLabels();
+      WallRing.updateDealerLabels();
       document.getElementById('stats').innerHTML = '<span style="color:#0b3d1f;font-size:12px;font-weight:600;line-height:1.4;">Standalone — shuffle only</span>';
       document.getElementById('ctr-title').textContent = '144 tiles';
       document.getElementById('ctr-sub').textContent   = '4 walls · 18 × 2';
-      _headIdx = 0;
-      _gameConnected = false;
+      WallRing.headIdx      = 0;
+      WallRing.gameConnected = false;
       document.getElementById('deal-btn').disabled = false;
       document.getElementById('reveal-btn').style.display = 'none';
       _revealed = false;
@@ -623,25 +276,17 @@
       const d3 = Math.ceil(Math.random()*6);
       const sum = d1 + d2 + d3;
       const dealer = parseInt(document.getElementById('dealer-sel').value);
-      // Seat selection: counterclockwise from dealer, 1-indexed
       const breakSeat = (dealer + (sum - 1) % 4) % 4;
-      showDice([d1,d2,d3], sum, breakSeat);
-      placeBreakMarker(breakSeat, headColFromBreak(breakSeat, sum));
-      // Update _headIdx so deal animation draws from the correct position
-      const ccwOrder = [0,3,2,1];
-      const segIdx = ccwOrder.indexOf(breakSeat);
-      _headIdx = (segIdx * 36 + 2 * sum) % 144;
+      WallRing.showDice([d1,d2,d3], sum, breakSeat);
+      WallRing.placeBreakMarker(breakSeat, sum);
+      const segIdx = [0,3,2,1].indexOf(breakSeat);
+      WallRing.headIdx = (segIdx * 36 + 2 * sum) % 144;
     }
 
     // ── Deal animation ────────────────────────────────────────────────────
     let _dealing = false;
-
-    // Seat→ direction: [dx, dy] normalised — tiles slide off in this direction
-    const DEAL_DIR = { 0:[0,1], 1:[1,0], 2:[0,-1], 3:[-1,0] };
-
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-    // Position each dash tray adjacent to its seat label (absolute page coords).
     function positionDashTrays() {
       [0,1,2,3].forEach(s => {
         const lbl  = document.getElementById(`s${s}-lbl`);
@@ -651,84 +296,70 @@
         const sx = window.scrollX || window.pageXOffset || 0;
         const sy = window.scrollY || window.pageYOffset || 0;
         const gap = 5;
-        if (s === 0) {          // bottom — dashes below label
-          tray.style.left      = (r.left + sx + r.width / 2) + 'px';
-          tray.style.top       = (r.bottom + sy + gap) + 'px';
+        if (s === 0) {
+          tray.style.left = (r.left + sx + r.width / 2) + 'px';
+          tray.style.top  = (r.bottom + sy + gap) + 'px';
           tray.style.transform = 'translateX(-50%)';
-          tray.style.flexDirection = 'row';
-          tray.style.alignItems    = 'flex-start';
-        } else if (s === 2) {   // top — dashes above label
-          tray.style.left      = (r.left + sx + r.width / 2) + 'px';
-          tray.style.top       = (r.top  + sy - gap) + 'px';
+          tray.style.flexDirection = 'row'; tray.style.alignItems = 'flex-start';
+        } else if (s === 2) {
+          tray.style.left = (r.left + sx + r.width / 2) + 'px';
+          tray.style.top  = (r.top + sy - gap) + 'px';
           tray.style.transform = 'translateX(-50%) translateY(-100%)';
-          tray.style.flexDirection = 'row';
-          tray.style.alignItems    = 'flex-end';
-        } else if (s === 1) {   // right — dashes right of label
-          tray.style.left      = (r.right + sx + gap) + 'px';
-          tray.style.top       = (r.top   + sy + r.height / 2) + 'px';
+          tray.style.flexDirection = 'row'; tray.style.alignItems = 'flex-end';
+        } else if (s === 1) {
+          tray.style.left = (r.right + sx + gap) + 'px';
+          tray.style.top  = (r.top + sy + r.height / 2) + 'px';
           tray.style.transform = 'translateY(-50%)';
-          tray.style.flexDirection = 'column';
-          tray.style.alignItems    = 'flex-start';
-        } else {                // left — dashes left of label
-          tray.style.left      = (r.left + sx - gap) + 'px';
-          tray.style.top       = (r.top  + sy + r.height / 2) + 'px';
+          tray.style.flexDirection = 'column'; tray.style.alignItems = 'flex-start';
+        } else {
+          tray.style.left = (r.left + sx - gap) + 'px';
+          tray.style.top  = (r.top + sy + r.height / 2) + 'px';
           tray.style.transform = 'translateX(-100%) translateY(-50%)';
-          tray.style.flexDirection = 'column';
-          tray.style.alignItems    = 'flex-end';
+          tray.style.flexDirection = 'column'; tray.style.alignItems = 'flex-end';
         }
       });
     }
 
-    // Clear all dash trays.
     function clearDashes() {
       [0,1,2,3].forEach(s => { document.getElementById(`dash-${s}`).innerHTML = ''; });
     }
 
-    // Add `count` dashes to the tray for `seat`.
     function addDashes(seat, count) {
       const tray = document.getElementById(`dash-${seat}`);
       const cls  = (seat === 0 || seat === 2) ? 'dash-h' : 'dash-v';
       for (let i = 0; i < count; i++) {
-        const d = document.createElement('div');
-        d.className = cls;
-        tray.appendChild(d);
+        const d = document.createElement('div'); d.className = cls; tray.appendChild(d);
       }
     }
 
-    // Target point: centre of the seat label (dashes land just outside it).
     function getDashTarget(seat) {
       const r = document.getElementById(`s${seat}-lbl`).getBoundingClientRect();
       return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     }
 
-    // Fly `gameIndices` tiles simultaneously to the seat's label, then add dashes.
     function flyGroup(gameIndices, seat, ms) {
       return new Promise(resolve => {
-        const tgt = getDashTarget(seat);
-
+        const tgt   = getDashTarget(seat);
+        const tiles = WallRing.tiles;
+        const hIdx  = WallRing.headIdx;
         const entries = gameIndices.map(gi => {
-          const physIdx = (_headIdx + gi) % 144;
-          const srcEl   = _tiles[physIdx]?.div;
+          const physIdx = (hIdx + gi) % 144;
+          const srcEl   = tiles[physIdx]?.div;
           if (!srcEl) return null;
           const r = srcEl.getBoundingClientRect();
           const clone = document.createElement('div');
           clone.className = 'fly-tile';
-          clone.style.left   = r.left   + 'px';
-          clone.style.top    = r.top    + 'px';
-          clone.style.width  = r.width  + 'px';
-          clone.style.height = r.height + 'px';
+          clone.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
           document.body.appendChild(clone);
           return { clone, srcEl };
         }).filter(Boolean);
 
-        // All clones fly simultaneously to the seat label centre
         requestAnimationFrame(() => requestAnimationFrame(() => {
           entries.forEach(({ clone }) => {
-            const w = parseFloat(clone.style.width);
-            const h = parseFloat(clone.style.height);
-            clone.style.transition = `left ${ms}ms ease-in, top ${ms}ms ease-in, opacity ${ms*0.3}ms ${ms*0.7}ms ease-in`;
-            clone.style.left    = (tgt.x - w / 2) + 'px';
-            clone.style.top     = (tgt.y - h / 2) + 'px';
+            const w = parseFloat(clone.style.width), h = parseFloat(clone.style.height);
+            clone.style.transition = `left ${ms}ms ease-in,top ${ms}ms ease-in,opacity ${ms*0.3}ms ${ms*0.7}ms ease-in`;
+            clone.style.left = (tgt.x - w/2) + 'px';
+            clone.style.top  = (tgt.y - h/2) + 'px';
             clone.style.opacity = '0';
           });
         }));
@@ -751,93 +382,61 @@
       document.getElementById('deal-btn').disabled    = true;
       document.getElementById('shuffle-btn').disabled = true;
       document.getElementById('dice-btn').disabled    = true;
-
       document.getElementById('reveal-btn').style.display = 'none';
       clearDashes();
-      if (_gameConnected) {
-        // Live mode: wall and _headIdx already set — reset tile visuals then blank ring
+
+      if (WallRing.gameConnected) {
         for (let i = 0; i < 144; i++) {
-          if (_tiles[i]) {
-            _tiles[i].div.classList.remove('used','tail-used','next-head','next-tail','revealed');
-            _tiles[i].div.style.opacity = '';
-            _tiles[i].div.style.outline = '';
-            _tiles[i].div.style.boxShadow = '';
-          }
+          const t = WallRing.tiles[i];
+          if (t) { t.div.classList.remove('used','tail-used','next-head','next-tail','revealed'); t.div.style.cssText = ''; }
         }
         positionDashTrays();
         await sleep(600);
       } else {
-        standaloneMode();
-        standaloneDice();
-        positionDashTrays();
-        await sleep(900);
+        standaloneMode(); standaloneDice(); positionDashTrays(); await sleep(900);
       }
 
-      // Blank the entire ring face-down before dealing
       for (let i = 0; i < 144; i++) {
-        if (_tiles[i]) _tiles[i].div.classList.add('face-down');
+        const t = WallRing.tiles[i]; if (t) t.div.classList.add('face-down');
       }
 
-      const dealer   = _gameConnected ? _liveDealerSeat : parseInt(document.getElementById('dealer-sel').value);
+      const dealer   = WallRing.gameConnected ? WallRing.liveDealerSeat : parseInt(document.getElementById('dealer-sel').value);
       const ccwSeats = [dealer, (dealer+1)%4, (dealer+2)%4, (dealer+3)%4];
       const speedVal = parseInt(document.getElementById('deal-speed').value);
       const ms       = [1200, 700, 350, 180, 80][speedVal - 1];
-      const groupGap = ms * 0.5;
-      const roundGap = ms * 1.0;
-
+      const groupGap = ms * 0.5, roundGap = ms * 1.0;
       let gameIdx = 0;
 
-      // 3 rounds of 4 tiles each
       for (let round = 0; round < 3; round++) {
         for (const seat of ccwSeats) {
           await flyGroup([gameIdx, gameIdx+1, gameIdx+2, gameIdx+3], seat, ms);
-          gameIdx += 4;
-          await sleep(groupGap);
+          gameIdx += 4; await sleep(groupGap);
         }
         await sleep(roundGap);
       }
-
-      // Single tile round
-      for (const seat of ccwSeats) {
-        await flyGroup([gameIdx++], seat, ms);
-        await sleep(groupGap);
-      }
-
-      // Dealer's extra tile
+      for (const seat of ccwSeats) { await flyGroup([gameIdx++], seat, ms); await sleep(groupGap); }
       await flyGroup([gameIdx++], dealer, ms);
 
       document.getElementById('ctr-title').textContent = `${144 - gameIdx} tiles`;
       document.getElementById('ctr-sub').textContent   = `${gameIdx} dealt · ${144 - gameIdx} remaining`;
-
       _dealing = false;
       document.getElementById('deal-btn').disabled    = false;
-      document.getElementById('shuffle-btn').disabled = _gameConnected;
-      document.getElementById('dice-btn').disabled    = _gameConnected;
+      document.getElementById('shuffle-btn').disabled = WallRing.gameConnected;
+      document.getElementById('dice-btn').disabled    = WallRing.gameConnected;
       _revealed = false;
       document.getElementById('reveal-btn').textContent = 'Restore';
       document.getElementById('reveal-btn').style.display = '';
     }
 
-    let _revealed = false;
     function toggleReveal() {
-      // Remove all deal-animation classes from every tile
       for (let i = 0; i < 144; i++) {
-        if (_tiles[i]) {
-          _tiles[i].div.classList.remove('face-down', 'used', 'revealed',
-                                          'tail-used', 'next-head', 'next-tail');
-          _tiles[i].div.style.opacity   = '';
-          _tiles[i].div.style.outline   = '';
-          _tiles[i].div.style.boxShadow = '';
-        }
+        const t = WallRing.tiles[i];
+        if (t) { t.div.classList.remove('face-down','used','revealed','tail-used','next-head','next-tail'); t.div.style.cssText = ''; }
       }
       clearDashes();
       document.getElementById('reveal-btn').style.display = 'none';
       _revealed = false;
-
-      // Restore the actual game state if we have live data
-      if (_lastLiveData) {
-        applyGameState(_lastLiveData);
-      }
+      if (WallRing.lastLiveData) WallRing.applyGameState(WallRing.lastLiveData);
     }
 
     function clearDiceDisplay() {
@@ -847,25 +446,24 @@
 
     // ── BroadcastChannel + localStorage ──────────────────────────────────
     const bc = new BroadcastChannel('mahjong-wall');
-    bc.onmessage = e => renderFromGame(e.data);
+    bc.onmessage = e => WallRing.renderFromGame(e.data);
 
-    // Self-position next to opener window, then size tiles to fit
+    // Self-position next to opener window
     (function() {
       if (!window.opener) return;
       try {
-        const op   = window.opener;
+        const op = window.opener;
         const left = op.screenLeft + op.outerWidth;
-        const w    = Math.max(300, op.screen.availWidth - left);
+        const w = Math.max(300, op.screen.availWidth - left);
         window.moveTo(left, op.screen.availTop || 0);
         window.resizeTo(w, op.screen.availHeight);
       } catch(e) {}
     })();
 
-    // Initial tile sizing (after any window.resizeTo above)
-    applyTileSize();
+    WallRing.applyTileSize();
     window.addEventListener('resize', () => {
-      applyTileSize();
-      if (document.querySelector('#dash-0 .dash-h, #dash-0 .dash-v,#dash-1 .dash-v'))
+      WallRing.applyTileSize();
+      if (document.querySelector('#dash-0 .dash-h,#dash-0 .dash-v,#dash-1 .dash-v'))
         positionDashTrays();
     });
 
@@ -873,14 +471,12 @@
       const saved = localStorage.getItem('mahjong-wall-state');
       if (saved) {
         const data = JSON.parse(saved);
-        if (data && data.wall && data.wall.length === 144) renderFromGame(data);
+        if (data && data.wall && data.wall.length === 144) WallRing.renderFromGame(data);
         else standaloneMode();
       } else {
         standaloneMode();
       }
-    } catch(e) {
-      standaloneMode();
-    }
+    } catch(e) { standaloneMode(); }
   </script>
 </body>
 </html>
