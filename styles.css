@@ -362,15 +362,15 @@ main#table {
 }
 main#table { position: relative; }
 #action-bar {
-  grid-column: 3;
-  grid-row: 2;
-  align-self: end;
-  justify-self: center;
+  position: absolute;
+  right: 4px;
+  bottom: 30px;
+  width: 152px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 5px;
-  padding: 6px 8px;
+  padding: 4px 6px;
   z-index: 20;
 }
 #action-bar button {
