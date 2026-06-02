@@ -1755,15 +1755,15 @@ function populateTileGallery() {
 // Mini ring — 72 tile divs (18 per side) positioned in the margins of #wall-ring-wrap
 // TWH=32: tile unit along horizontal edges (top/bottom) → 18×32+17×2=610px of 620px edge
 // TWV=26: tile unit along vertical edges (left/right)   → 18×26+17×2=502px of 508px edge
-// TH=20:  depth per layer, all four sides — double layer fits: 4+20+2+20=46px ≤ 50px margin
-const _RING_TWH = 32, _RING_TWV = 26, _RING_H = 20, _RING_GAP = 2, _RING_M = 4;
+// TH=30:  depth per layer, all four sides — double layer fits: 4+30+2+30+4=70px = 70px margin
+const _RING_TWH = 32, _RING_TWV = 26, _RING_H = 30, _RING_GAP = 2, _RING_M = 4;
 let _ringOuter   = null;  // [72] outer layer elements (all sides)
 let _ringInner   = null;  // [72] inner layer elements (all sides)
 let _ringRevealed = false;
 let _ringLastId   = null;
 
 function _buildRingTiles() {
-  const W = 720, H = 608, TWH = _RING_TWH, TWV = _RING_TWV, TH = _RING_H, G = _RING_GAP, M = _RING_M;
+  const W = 760, H = 648, TWH = _RING_TWH, TWV = _RING_TWV, TH = _RING_H, G = _RING_GAP, M = _RING_M;
   const wrap = document.getElementById('wall-ring-wrap');
   wrap.querySelectorAll('.ring-tile').forEach(e => e.remove());
   _ringOuter = new Array(72).fill(null);
