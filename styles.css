@@ -361,23 +361,29 @@ main#table {
   min-height: 34px; /* pre-reserve 2-line height so win result never shifts the header */
 }
 main#table { position: relative; }
-/* Action bar anchored in lower-right armpit of the wall ring (ring-wrap is always 800×688) */
+/* Action bar: outer armpit corner between right-arm and bottom-arm of the wall ring.
+   Clear zone in ring-wrap space: x=705-800, y=595-688 (95×93 px).
+   right:2px bottom:2px keeps it flush with those edges. */
 #action-bar {
   position: absolute;
-  right: 90px;   /* 4px inside right inner wall visual edge (~x=714) */
-  bottom: 95px;  /* 9px above bottom inner wall (~y=602) */
+  right: 2px;
+  bottom: 2px;
+  width: 91px;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
-  padding: 3px 4px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
   z-index: 50;
 }
 #action-bar button {
-  padding:3px 10px; border:0; border-radius:6px;
-  background:#2a8b4e; color:white; font-weight:600; cursor:pointer; font-size:13px;
-  text-align: center; white-space: nowrap; min-width: 100px;
+  flex: 1 0 calc(50% - 2px);
+  padding: 2px 4px; border: 0; border-radius: 5px;
+  background: #2a8b4e; color: white; font-weight: 600; cursor: pointer; font-size: 11px;
+  text-align: center; white-space: nowrap;
 }
+/* Pass / Next Hand spans full width */
+#btn-pass { flex: 1 0 100%; }
 #action-bar button:disabled { background:#555; opacity:0.5; cursor:not-allowed; }
 #action-bar button:not(:disabled):hover { background:#38ad62; }
 /* #message duplicate removed */
