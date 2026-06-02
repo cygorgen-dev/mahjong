@@ -1342,7 +1342,8 @@ let _tileElInUse = null;
 function _resetTileEl(el, opts = {}) {
   // el is the value stored in _tileElCache: wrapper div (rotated) or tile div (non-rotated)
   const inner = el.classList.contains('tile') ? el : (el.querySelector('.tile') || el);
-  inner.classList.remove('selected', 'clickable', 'win-tile', 'just-drawn', 'last-discard', 'small');
+  inner.classList.remove('selected', 'clickable', 'win-tile', 'just-drawn',
+    'last-discard', 'last-discard-s0', 'last-discard-s1', 'last-discard-s2', 'last-discard-s3', 'small');
   if (opts.small) inner.classList.add('small');
   // Clear inline styles from discard-pile positioning (left/top) and robbing-kong scale
   // (.tile has position:relative, so leftover style.top causes tiles to shift downward)
