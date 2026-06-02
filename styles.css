@@ -462,10 +462,16 @@ main#table { position: relative; }
   content:''; position:absolute; inset:2px;
   border:1px solid #2a8b4e; border-radius:1px; pointer-events:none;
 }
-.ring-tile.used      { opacity:0.08; }
-.ring-tile.tail-used { opacity:0.18; background:rgba(180,100,0,0.3); border-color:rgba(255,152,0,0.4); }
-.ring-tile.next-head { outline:2px solid #00ff66; box-shadow:0 0 5px rgba(0,255,102,0.8); z-index:3; }
-.ring-tile.next-tail { outline:2px solid #ff9800; box-shadow:0 0 5px rgba(255,152,0,0.8); z-index:3; }
+/* Normal game mode: used slots invisible (board shows through), no highlights */
+.ring-tile.used      { opacity:0; }
+.ring-tile.tail-used { opacity:0; }
+.ring-tile.next-head { z-index:3; }
+.ring-tile.next-tail { z-index:3; }
+/* Ring-peek mode (Ring button toggled ON): used slots slightly visible, highlights active */
+#wall-ring-wrap.ring-peek .ring-tile.used      { opacity:0.35; }
+#wall-ring-wrap.ring-peek .ring-tile.tail-used { opacity:0.3; background:rgba(180,100,0,0.3); border-color:rgba(255,152,0,0.4); }
+#wall-ring-wrap.ring-peek .ring-tile.next-head { outline:2px solid #00ff66; box-shadow:0 0 5px rgba(0,255,102,0.8); }
+#wall-ring-wrap.ring-peek .ring-tile.next-tail { outline:2px solid #ff9800; box-shadow:0 0 5px rgba(255,152,0,0.8); }
 
 /* Sidebar — collapsible settings panel */
 #sidebar {

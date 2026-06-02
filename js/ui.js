@@ -310,6 +310,7 @@ function initUI(game) {
     const btn = document.getElementById('ring-reveal-btn');
     btn.style.background = _ringRevealed ? '#003a1a' : '#1a3a3a';
     btn.style.color      = _ringRevealed ? '#00ff66' : '#7dffff';
+    document.getElementById('wall-ring-wrap')?.classList.toggle('ring-peek', _ringRevealed);
     renderWallRing();
   });
 
