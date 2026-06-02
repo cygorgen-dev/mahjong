@@ -1066,8 +1066,8 @@ function renderDiscard() {
   const el = document.getElementById('discard-pile');
   el.innerHTML = '';
 
-  // Discard area dimensions (must match CSS #discard-pile: top:26 left:26 width:668 height:556)
-  const W = 668, H = 556;
+  // Discard area dimensions (must match CSS #discard-pile: top:26 left:50 width:620 height:556)
+  const W = 620, H = 556;
   const TW = 46, TH = 66;
   const GAP = 3;
 
@@ -1744,43 +1744,47 @@ function populateTileGallery() {
 // viewBox: 0 0 720 540, but wall tiles drawn in the outer ~20px border
 // Mini ring — 72 tile divs (18 per side) positioned in the margins of #wall-ring-wrap
 const _RING_W = 16, _RING_H = 20, _RING_GAP = 2, _RING_M = 4;
-let _ringTiles    = null;
+let _ringOuter   = null;  // [72] outer layer elements (all sides)
+let _ringInner   = null;  // [72] inner layer elements (left/right only; null for top/bottom)
 let _ringRevealed = false;
-let _ringLastId   = null;  // wall[0].id of last rendered hand — resets reveal on new deal
+let _ringLastId   = null;
 
 function _buildRingTiles() {
   const W = 720, H = 608, TW = _RING_W, TH = _RING_H, G = _RING_GAP, M = _RING_M;
   const wrap = document.getElementById('wall-ring-wrap');
   wrap.querySelectorAll('.ring-tile').forEach(e => e.remove());
-  _ringTiles = [];
+  _ringOuter = new Array(72).fill(null);
+  _ringInner = new Array(72).fill(null);
 
-  const positions = [];
-  // Bottom: right→left
-  const bx0 = (W + 18*TW + 17*G) / 2 - TW;
-  for (let i = 0; i < 18; i++) positions.push({ x: bx0 - i*(TW+G), y: H-TH-M, w: TW, h: TH });
-  // Left: bottom→top
-  const ly0 = (H + 18*TW + 17*G) / 2 - TW;
-  for (let i = 0; i < 18; i++) positions.push({ x: M, y: ly0 - i*(TW+G), w: TH, h: TW });
-  // Top: left→right
-  const tx0 = (W - 18*TW - 17*G) / 2;
-  for (let i = 0; i < 18; i++) positions.push({ x: tx0 + i*(TW+G), y: M, w: TW, h: TH });
-  // Right: top→bottom
-  const ry0 = (H - 18*TW - 17*G) / 2;
-  for (let i = 0; i < 18; i++) positions.push({ x: W-TH-M, y: ry0 + i*(TW+G), w: TH, h: TW });
-
-  for (const { x, y, w, h } of positions) {
-    const el  = document.createElement('div');
+  function makeTile(x, y, w, h) {
+    const el = document.createElement('div');
     el.className = 'ring-tile face-down';
     el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
     const img = document.createElement('img'); img.alt = '';
     el.appendChild(img);
     wrap.appendChild(el);
-    _ringTiles.push({ el, img });
+    return { el, img };
   }
+
+  // Outer ring positions (all 4 sides)
+  const bx0 = (W + 18*TW + 17*G) / 2 - TW;
+  const ly0 = (H + 18*TW + 17*G) / 2 - TW;
+  const tx0 = (W - 18*TW - 17*G) / 2;
+  const ry0 = (H - 18*TW - 17*G) / 2;
+
+  for (let i = 0; i < 18; i++) _ringOuter[i]    = makeTile(bx0 - i*(TW+G), H-TH-M,       TW, TH); // bottom
+  for (let i = 0; i < 18; i++) _ringOuter[18+i] = makeTile(M,              ly0 - i*(TW+G), TH, TW); // left
+  for (let i = 0; i < 18; i++) _ringOuter[36+i] = makeTile(tx0 + i*(TW+G), M,              TW, TH); // top
+  for (let i = 0; i < 18; i++) _ringOuter[54+i] = makeTile(W-TH-M,         ry0 + i*(TW+G), TH, TW); // right
+
+  // Inner ring: left (slots 18-35) and right (slots 54-71) only
+  // Left inner at x = M+TH+G = 26; Right inner at x = W-TH-M-G-TH = 674
+  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G,       ly0 - i*(TW+G), TH, TW);
+  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TH-M-G-TH,  ry0 + i*(TW+G), TH, TW);
 }
 
 function renderWallRing() {
-  if (!_ringTiles) _buildRingTiles();
+  if (!_ringOuter) _buildRingTiles();
   if (!_game) return;
 
   // Reset reveal state when a new hand is dealt
@@ -1809,26 +1813,39 @@ function renderWallRing() {
   const headSlot   = (seatStart[breakSeat] + breakCount) % total;
 
   for (let i = 0; i < total; i++) {
-    const phys = (headSlot + i) % total;
-    const { el, img } = _ringTiles[phys];
+    const phys  = (headSlot + i) % total;
+    const outer = _ringOuter[phys];
+    const inner = _ringInner[phys]; // null for top/bottom slots
 
-    el.className = 'ring-tile';
-    if (i < nextHead) {
-      el.classList.add('used');
-    } else if (i > tailCol) {
-      el.classList.add('tail-used');
-    } else {
-      if (!_ringRevealed) el.classList.add('face-down');
-      if (!exhausted) {
-        if (i === nextHead) el.classList.add('next-head');
-        if (i === tailCol)  el.classList.add('next-tail');
+    const isHead = i < nextHead;
+    const isTail = i > tailCol;
+    const isLive = !isHead && !isTail;
+
+    function applyState(tile, isNextHead, isNextTail) {
+      tile.el.className = 'ring-tile';
+      if (isHead)            tile.el.classList.add('used');
+      else if (isTail)       tile.el.classList.add('tail-used');
+      else if (!_ringRevealed) tile.el.classList.add('face-down');
+      if (isLive && !exhausted) {
+        if (isNextHead) tile.el.classList.add('next-head');
+        if (isNextTail) tile.el.classList.add('next-tail');
       }
     }
 
-    if (_game.wall?.[i * 2]) {
-      const t = _game.wall[i * 2];
-      img.src = `img/tiles/${t.suit}_${t.value}.png`;
+    if (inner) {
+      // Left/right: inner=next-head (inner tile drawn first), outer=next-tail
+      applyState(inner, isLive && i === nextHead, false);
+      applyState(outer, false, isLive && i === tailCol);
+    } else {
+      // Top/bottom: single layer carries both markers
+      applyState(outer, isLive && i === nextHead, isLive && i === tailCol);
     }
+
+    // Tile images for reveal (inner tile = wall[i*2], outer = wall[i*2+1])
+    const t0 = _game.wall?.[i*2], t1 = _game.wall?.[i*2+1];
+    if (inner && t0) inner.img.src = `img/tiles/${t0.suit}_${t0.value}.png`;
+    const outerTile = inner ? t1 : t0;
+    if (outerTile) outer.img.src = `img/tiles/${outerTile.suit}_${outerTile.value}.png`;
   }
 
   const tailDrawn = (71 - tailCol) * 2 + tailPhase;
