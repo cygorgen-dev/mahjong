@@ -1748,8 +1748,8 @@ function populateTileGallery() {
 // Mini ring — 72 tile divs (18 per side) positioned in the margins of #wall-ring-wrap
 // TWH=32: tile unit along horizontal edges (top/bottom) → 18×32+17×2=610px of 620px edge
 // TWV=26: tile unit along vertical edges (left/right)   → 18×26+17×2=502px of 508px edge
-// TH=20:  depth into the margin (both layers fit: 4+20+2+20=46px ≤ 50px margin)
-const _RING_TWH = 32, _RING_TWV = 26, _RING_H = 20, _RING_GAP = 2, _RING_M = 4;
+// TH=40:  depth into margin — single layer only (4+40=44px ≤ 50px); tiles are portrait (TH>TW)
+const _RING_TWH = 32, _RING_TWV = 26, _RING_H = 40, _RING_GAP = 2, _RING_M = 4;
 let _ringOuter   = null;  // [72] outer layer elements (all sides)
 let _ringInner   = null;  // [72] inner layer elements (left/right only; null for top/bottom)
 let _ringRevealed = false;
@@ -1783,13 +1783,7 @@ function _buildRingTiles() {
   for (let i = 0; i < 18; i++) _ringOuter[36+i] = makeTile(tx0 + i*(TWH+G), M,              TWH, TH,  '180deg'); // top
   for (let i = 0; i < 18; i++) _ringOuter[54+i] = makeTile(W-TH-M,          ry0+i*(TWV+G),  TH,  TWV, '-90deg'); // right
 
-  // Inner ring
-  const IY_T = M+TH+G;         // inner top y    = 26
-  const IY_B = H-TH-M-G-TH;   // inner bottom y = 562
-  for (let i = 0; i < 18; i++) _ringInner[i]    = makeTile(bx0 - i*(TWH+G), IY_B,           TWH, TH,  null);      // bottom inner
-  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G,          ly0-i*(TWV+G),  TH,  TWV, '90deg');  // left inner
-  for (let i = 0; i < 18; i++) _ringInner[36+i] = makeTile(tx0 + i*(TWH+G), IY_T,           TWH, TH,  '180deg'); // top inner
-  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TH-M-G-TH,     ry0+i*(TWV+G),  TH,  TWV, '-90deg'); // right inner
+  // No inner ring — single layer; _ringInner stays all-null
 }
 
 function renderWallRing() {
@@ -1831,6 +1825,7 @@ function renderWallRing() {
     const isLive = !isHead && !isTail;
 
     function applyState(tile, isNextHead, isNextTail) {
+      if (!tile) return;
       tile.el.className = 'ring-tile';
       if (isHead)            tile.el.classList.add('used');
       else if (isTail)       tile.el.classList.add('tail-used');
