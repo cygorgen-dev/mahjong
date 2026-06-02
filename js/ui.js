@@ -1057,72 +1057,66 @@ function renderDiscard() {
   const el = document.getElementById('discard-pile');
   el.innerHTML = '';
 
-  // Discard area dimensions (must match CSS #discard-pile)
-  // Discard area dimensions — inset from wall (matches CSS top:26 left:26 width:668 height:488)
-  const W = 668, H = 556;
+  // Discard area dimensions (must match CSS #discard-pile: top:70 left:70 width:580 height:468)
+  const W = 580, H = 468;
   const TW = 46, TH = 66;
-  const GAP = 3;            // gap between tiles
-
-  // Each seat gets a triangular zone. Tiles are placed in rows/columns
-  // starting near the player's edge and working inward.
-  // The layout never reflows — position is calculated from the tile index.
+  const GAP = 3;
+  // Rotated tiles (90°/-90°) have visual size TH×TW; CSS origin shifts by (TH-TW)/2 to compensate
+  const RD = (TH - TW) / 2; // = 10
 
   for (const t of _game.discardPile) {
     const seat = t._discardSeat ?? 0;
-    // Use stable index stamped at discard time — never shifts when tiles are claimed/spliced out
-    const idx = t._discardIdxBySeat ?? 0;
+    const idx  = t._discardIdxBySeat ?? 0;
 
-    let x, y;
+    let x, y, rot = 0;
 
     if (seat === 0) {
-      // Bottom: 4 rows x 7 cols, stacking upward from bottom edge
+      // Bottom: rows left→right, stacking upward; no rotation
       const cols = 7;
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      const totalRowW = cols * TW + (cols - 1) * GAP;
-      const startX = (W - totalRowW) / 2;
-      const startY = H - TH - 4;
-      x = startX + col * (TW + GAP);
-      y = startY - row * (TH + GAP);
+      const col  = idx % cols;
+      const row  = Math.floor(idx / cols);
+      const totalW = cols * TW + (cols - 1) * GAP;
+      x = (W - totalW) / 2 + col * (TW + GAP);
+      y = H - TH - 4 - row * (TH + GAP);
 
     } else if (seat === 2) {
-      // Top: 4 rows x 7 cols, stacking downward from top edge
+      // Top: rows left→right, stacking downward; rotated 180°
       const cols = 7;
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      const totalRowW = cols * TW + (cols - 1) * GAP;
-      const startX = (W - totalRowW) / 2;
-      const startY = 4;
-      x = startX + col * (TW + GAP);
-      y = startY + row * (TH + GAP);
+      const col  = idx % cols;
+      const row  = Math.floor(idx / cols);
+      const totalW = cols * TW + (cols - 1) * GAP;
+      x = (W - totalW) / 2 + col * (TW + GAP);
+      y = 4 + row * (TH + GAP);
+      rot = 180;
 
     } else if (seat === 3) {
-      // Left: 8 rows x 3 cols — innermost col's right edge aligns with center startX
-      const rows = 8;
-      const row = idx % rows;
-      const col = Math.floor(idx / rows);
-      const totalColH = rows * TH + (rows - 1) * GAP;
-      const startY = (H - totalColH) / 2;
-      const startX = 20;
-      x = startX + col * (TW + GAP);
-      y = startY + row * (TH + GAP);
+      // Left: columns top→bottom, stacking rightward; rotated -90°
+      // Visual tile is TH wide × TW tall; position compensated by RD
+      const rows   = 8;
+      const row    = idx % rows;
+      const col    = Math.floor(idx / rows);
+      const totalH = rows * TW + (rows - 1) * GAP;
+      const vx     = 8 + col * (TH + GAP);
+      const vy     = (H - totalH) / 2 + row * (TW + GAP);
+      x = vx + RD; y = vy - RD;
+      rot = -90;
 
     } else {
-      // Right (seat 1): 8 rows x 3 cols — innermost col's left edge aligns with center end
-      const rows = 8;
-      const row = idx % rows;
-      const col = Math.floor(idx / rows);
-      const totalColH = rows * TH + (rows - 1) * GAP;
-      const startY = (H - totalColH) / 2;
-      const startX = W - TW - 20;
-      x = startX - col * (TW + GAP);
-      y = startY + row * (TH + GAP);
+      // Right (seat 1): columns top→bottom, stacking leftward; rotated 90°
+      const rows   = 8;
+      const row    = idx % rows;
+      const col    = Math.floor(idx / rows);
+      const totalH = rows * TW + (rows - 1) * GAP;
+      const vx     = W - TH - 8 - col * (TH + GAP);
+      const vy     = (H - totalH) / 2 + row * (TW + GAP);
+      x = vx + RD; y = vy - RD;
+      rot = 90;
     }
-
 
     const te = makeTileEl(t, { small: true });
     te.style.left = x + 'px';
     te.style.top  = y + 'px';
+    if (rot) te.style.transform = `rotate(${rot}deg)`;
     if (_game.discard && t.id === _game.discard.id) te.classList.add('last-discard');
     el.appendChild(te);
   }
