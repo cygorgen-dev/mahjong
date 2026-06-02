@@ -1066,58 +1066,61 @@ function renderDiscard() {
   const el = document.getElementById('discard-pile');
   el.innerHTML = '';
 
-  // Discard area dimensions (must match CSS #discard-pile: top:50 left:50 width:620 height:508)
+  // Unified 7-row × 13-col grid  (GAP=1 → 610×468 inside the 620×508 area)
+  // Non-overlapping zones (0-based gc=col, gr=row):
+  //   Seat 3 (left):   gc 0-2,   gr 0-6  — 3 cols × 7 rows = 21, stacks rightward
+  //   Seat 1 (right):  gc 10-12, gr 0-6  — 3 cols × 7 rows = 21, stacks leftward
+  //   Seat 2 (top):    gc 3-9,   gr 0-2  — 7 cols × 3 rows = 21, stacks downward
+  //   Seat 0 (bottom): gc 3-9,   gr 4-6  — 7 cols × 3 rows = 21, stacks upward
+  //   gr=3 center row (gc 3-9): 7-cell shared overflow pool for any seat exceeding 21
   const W = 620, H = 508;
   const TW = 46, TH = 66;
-  const GAP = 3;
+  const GAP = 1;
+  const COLS = 13, ROWS = 7;
+  const gridW = COLS * TW + (COLS - 1) * GAP;  // 610
+  const gridH = ROWS * TH + (ROWS - 1) * GAP;  // 468
+  const ox = Math.floor((W - gridW) / 2);       // 5
+  const oy = Math.floor((H - gridH) / 2);       // 20
+  let overflowSlot = 0;
 
   for (const t of _game.discardPile) {
     const seat = t._discardSeat ?? 0;
     const idx  = t._discardIdxBySeat ?? 0;
 
-    let x, y;
+    let gc, gr;
 
-    if (seat === 0) {
-      // Bottom: 7 cols × 4 rows, stacking upward
-      const cols = 7;
-      const col  = idx % cols;
-      const row  = Math.floor(idx / cols);
-      const totalW = cols * TW + (cols - 1) * GAP;
-      x = (W - totalW) / 2 + col * (TW + GAP);
-      y = H - TH - 4 - row * (TH + GAP);
-
+    if (idx >= 21) {
+      // Overflow — any seat: shared center row pool (gr=3, gc=3..9, 7 cells)
+      // Tiles are assigned in discard order; if all 7 cells used, pile on gc=9
+      gc = 3 + Math.min(overflowSlot++, 6);
+      gr = 3;
+    } else if (seat === 0) {
+      // Bottom: cols 3-9, rows 6→4 (row 6 outermost, row 4 closest to center)
+      gc = 3 + (idx % 7);
+      gr = 6 - Math.floor(idx / 7);
     } else if (seat === 2) {
-      // Top: 7 cols × 4 rows, stacking downward
-      const cols = 7;
-      const col  = idx % cols;
-      const row  = Math.floor(idx / cols);
-      const totalW = cols * TW + (cols - 1) * GAP;
-      x = (W - totalW) / 2 + col * (TW + GAP);
-      y = 4 + row * (TH + GAP);
-
+      // Top: cols 3-9, rows 0→2 (row 0 outermost, row 2 closest to center)
+      gc = 3 + (idx % 7);
+      gr = Math.floor(idx / 7);
     } else if (seat === 3) {
-      // Left: 7 rows × 3 cols, stacking rightward
-      const rows   = 7;
-      const row    = idx % rows;
-      const col    = Math.floor(idx / rows);
-      const totalH = rows * TH + (rows - 1) * GAP;
-      x = 20 + col * (TW + GAP);
-      y = (H - totalH) / 2 + row * (TH + GAP);
-
+      // Left: cols 0→2, rows 0-6 (col 0 outermost, col 2 closest to center)
+      gc = Math.floor(idx / 7);
+      gr = idx % 7;
     } else {
-      // Right (seat 1): 7 rows × 3 cols, stacking leftward
-      const rows   = 7;
-      const row    = idx % rows;
-      const col    = Math.floor(idx / rows);
-      const totalH = rows * TH + (rows - 1) * GAP;
-      x = W - TW - 20 - col * (TW + GAP);
-      y = (H - totalH) / 2 + row * (TH + GAP);
+      // Right (seat 1): cols 12→10, rows 0-6 (col 12 outermost, col 10 closest to center)
+      gc = 12 - Math.floor(idx / 7);
+      gr = idx % 7;
     }
+
+    const x = ox + gc * (TW + GAP);
+    const y = oy + gr * (TH + GAP);
 
     const te = makeTileEl(t, { small: true });
     te.style.left = x + 'px';
     te.style.top  = y + 'px';
-    if (_game.discard && t.id === _game.discard.id) te.classList.add('last-discard');
+    if (_game.discard && t.id === _game.discard.id) {
+      te.classList.add('last-discard', `last-discard-s${seat}`);
+    }
     el.appendChild(te);
   }
 }

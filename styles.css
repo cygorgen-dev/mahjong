@@ -51,7 +51,7 @@ main#table {
   grid-area: table;
   background: radial-gradient(ellipse at center, #14572b 0%, #0b3d1f 80%);
   display: grid;
-  grid-template-columns: 200px minmax(0,1fr) 200px;
+  grid-template-columns: 160px minmax(0,1fr) 160px;
   grid-template-rows: auto auto auto;
   grid-template-areas: ". top ." "left center right" ". bottom .";
   align-content: space-between;   /* spread rows to use full viewport height */
@@ -133,9 +133,9 @@ main#table {
   justify-content: flex-end;
   gap: 10px;
   padding-top: 4px;
-  width: 200px;
-  min-width: 200px;
-  max-width: 200px;
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
   box-sizing: border-box;
 }
 .seat-right {
@@ -146,9 +146,9 @@ main#table {
   justify-content: flex-start;
   gap: 10px;
   padding-top: 4px;
-  width: 200px;
-  min-width: 200px;
-  max-width: 200px;
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
   box-sizing: border-box;
 }
 
@@ -325,11 +325,11 @@ main#table {
   margin:0 !important;
   transform:none !important;
 }
-#discard-pile .tile.last-discard {
-  outline:3px solid #ff2020;
-  box-shadow:0 0 12px 5px rgba(255,40,40,0.9);
-  z-index:20;
-}
+#discard-pile .tile.last-discard { z-index:20; }
+#discard-pile .tile.last-discard-s0 { outline:3px solid #ff2020; box-shadow:0 0 12px 5px rgba(255,40,40,0.9); }
+#discard-pile .tile.last-discard-s1 { outline:3px solid #00aaff; box-shadow:0 0 12px 5px rgba(0,170,255,0.9); }
+#discard-pile .tile.last-discard-s2 { outline:3px solid #ff8800; box-shadow:0 0 12px 5px rgba(255,136,0,0.9); }
+#discard-pile .tile.last-discard-s3 { outline:3px solid #44ff44; box-shadow:0 0 12px 5px rgba(68,255,68,0.9); }
 
 /* 4.3+4.4: claim-row holds [seat-label] [wind?] [dice?] in one horizontal row */
 .claim-row {
@@ -676,6 +676,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 /* Top/bottom seat labels and wind - positioned at outer edges */
 .seat-top    { position: relative; }
 .seat-bottom { position: relative; left: -68px; margin-top: -60px; }
+.seat-bottom .h-hand-fake-tile.h-label-tile { margin-left: calc(var(--tw) + 3px); }
 
 /* Side player badge - overlaid on hand column, no flex interference */
 .side-player-badge {
