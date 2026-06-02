@@ -304,6 +304,15 @@ function initUI(game) {
     }
   });
 
+  document.getElementById('ring-reveal-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _ringRevealed = !_ringRevealed;
+    const btn = document.getElementById('ring-reveal-btn');
+    btn.style.background = _ringRevealed ? '#003a1a' : '#1a3a3a';
+    btn.style.color      = _ringRevealed ? '#00ff66' : '#7dffff';
+    renderWallRing();
+  });
+
   document.getElementById('wall-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     _broadcastWallState();
@@ -1735,7 +1744,9 @@ function populateTileGallery() {
 // viewBox: 0 0 720 540, but wall tiles drawn in the outer ~20px border
 // Mini ring — 72 tile divs (18 per side) positioned in the margins of #wall-ring-wrap
 const _RING_W = 16, _RING_H = 20, _RING_GAP = 2, _RING_M = 4;
-let _ringTiles = null;
+let _ringTiles    = null;
+let _ringRevealed = false;
+let _ringLastId   = null;  // wall[0].id of last rendered hand — resets reveal on new deal
 
 function _buildRingTiles() {
   const W = 720, H = 608, TW = _RING_W, TH = _RING_H, G = _RING_GAP, M = _RING_M;
@@ -1772,6 +1783,15 @@ function renderWallRing() {
   if (!_ringTiles) _buildRingTiles();
   if (!_game) return;
 
+  // Reset reveal state when a new hand is dealt
+  const curId = _game.wall?.[0]?.id ?? null;
+  if (curId !== _ringLastId) {
+    _ringLastId   = curId;
+    _ringRevealed = false;
+    const btn = document.getElementById('ring-reveal-btn');
+    if (btn) { btn.style.background = '#1a3a3a'; btn.style.color = '#7dffff'; }
+  }
+
   const total    = 72;
   const wallIdx  = _game.wallIdx   ?? 0;
   const tailCol  = _game.tailCol   ?? 71;
@@ -1798,7 +1818,7 @@ function renderWallRing() {
     } else if (i > tailCol) {
       el.classList.add('tail-used');
     } else {
-      el.classList.add('face-down');
+      if (!_ringRevealed) el.classList.add('face-down');
       if (!exhausted) {
         if (i === nextHead) el.classList.add('next-head');
         if (i === tailCol)  el.classList.add('next-tail');
