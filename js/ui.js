@@ -1772,14 +1772,16 @@ function renderWallRing() {
   if (!_ringTiles) _buildRingTiles();
   if (!_game) return;
 
-  const total     = 72;
-  const wallIdx   = _game.wallIdx   ?? 0;
-  const tailCol   = _game.tailCol   ?? 71;
+  const total    = 72;
+  const wallIdx  = _game.wallIdx   ?? 0;
+  const tailCol  = _game.tailCol   ?? 71;
   const tailPhase = _game.tailPhase ?? 0;
-  const effTP     = (tailPhase === 0 && tailCol * 2 < wallIdx) ? 1 : tailPhase;
-  const headSlots = Math.ceil(wallIdx / 2);
-  const tailSlots = (71 - tailCol) + (effTP > 0 ? 1 : 0);
-  const live      = Math.max(0, total - headSlots - tailSlots);
+
+  // next-head = column still containing the next draw (Math.floor gives the live column)
+  // next-tail = tailCol, which always points to the column with at least one tile still live
+  const nextHead  = Math.floor(wallIdx / 2);
+  const live      = Math.max(0, tailCol - nextHead + 1);
+  const exhausted = live === 0;
 
   const breakSeat  = _game.wallBreakSeat  ?? 0;
   const breakCount = _game.wallBreakCount ?? _game.diceTotal ?? 9;
@@ -1789,13 +1791,18 @@ function renderWallRing() {
   for (let i = 0; i < total; i++) {
     const phys = (headSlot + i) % total;
     const { el, img } = _ringTiles[phys];
-    const isHead = i < headSlots;
-    const isTail = tailSlots > 0 && i >= total - tailSlots;
 
-    el.className = 'ring-tile' + (isHead ? ' used' : isTail ? ' tail-used' : ' face-down');
-    if (!isHead && !isTail) {
-      if (live > 0 && i === headSlots)           el.classList.add('next-head');
-      if (live > 0 && i === total - tailSlots - 1) el.classList.add('next-tail');
+    el.className = 'ring-tile';
+    if (i < nextHead) {
+      el.classList.add('used');
+    } else if (i > tailCol) {
+      el.classList.add('tail-used');
+    } else {
+      el.classList.add('face-down');
+      if (!exhausted) {
+        if (i === nextHead) el.classList.add('next-head');
+        if (i === tailCol)  el.classList.add('next-tail');
+      }
     }
 
     if (_game.wall?.[i * 2]) {
@@ -1804,7 +1811,7 @@ function renderWallRing() {
     }
   }
 
-  const tailDrawn = (71 - tailCol) * 2 + effTP;
+  const tailDrawn = (71 - tailCol) * 2 + tailPhase;
   const wi = document.getElementById('wall-info');
   if (wi) wi.textContent = `Wall: ${_game.wallRemaining()}` + (tailDrawn > 0 ? `  +${tailDrawn} tail` : '');
 }
