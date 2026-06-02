@@ -1083,7 +1083,10 @@ function renderDiscard() {
   const oy = Math.floor((H - gridH) / 2);       // 20
   // Highlight: current pending claim tile, or last tile in pile once all pass and next player draws
   const highlightId = _game.discard?.id ?? _game.discardPile.at(-1)?.id ?? null;
-  let overflowSlot = 0;
+  // Per-seat overflow counters — each player fills center row from their own side
+  // Seat 3 (left) and seat 2 (top): gc=3→9 (from left)
+  // Seat 1 (right) and seat 0 (bottom): gc=9→3 (from right)
+  const ovf = [0, 0, 0, 0];
 
   for (const t of _game.discardPile) {
     const seat = t._discardSeat ?? 0;
@@ -1092,9 +1095,9 @@ function renderDiscard() {
     let gc, gr;
 
     if (idx >= 21) {
-      // Overflow — any seat: shared center row pool (gr=3, gc=3..9, 7 cells)
-      // Tiles are assigned in discard order; if all 7 cells used, pile on gc=9
-      gc = 3 + Math.min(overflowSlot++, 6);
+      // Overflow: center row gr=3, gc 3-9 (7 cells), from player's own side
+      const oi = Math.min(ovf[seat]++, 6);
+      gc = (seat === 1 || seat === 0) ? 9 - oi : 3 + oi;
       gr = 3;
     } else if (seat === 0) {
       // Bottom: cols 3-9, rows 6→4 (row 6 outermost, row 4 closest to center)
