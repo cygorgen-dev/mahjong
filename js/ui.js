@@ -1733,106 +1733,80 @@ function populateTileGallery() {
 // The SVG viewBox is larger than the discard area — wall tiles are drawn
 // in the margin OUTSIDE the 720x540 discard area.
 // viewBox: 0 0 720 540, but wall tiles drawn in the outer ~20px border
-const WALL_SLOTS = { top:18, bottom:18, left:18, right:18 };
-const WALL_TOTAL_SLOTS = 18*4; // 72
-const WT_W = 16, WT_H = 20, WT_GAP = 2;
-const WALL_MARGIN = 4; // px from edge of viewBox
+// Mini ring — 72 tile divs (18 per side) positioned in the margins of #wall-ring-wrap
+const _RING_W = 16, _RING_H = 20, _RING_GAP = 2, _RING_M = 4;
+let _ringTiles = null;
+
+function _buildRingTiles() {
+  const W = 720, H = 608, TW = _RING_W, TH = _RING_H, G = _RING_GAP, M = _RING_M;
+  const wrap = document.getElementById('wall-ring-wrap');
+  wrap.querySelectorAll('.ring-tile').forEach(e => e.remove());
+  _ringTiles = [];
+
+  const positions = [];
+  // Bottom: right→left
+  const bx0 = (W + 18*TW + 17*G) / 2 - TW;
+  for (let i = 0; i < 18; i++) positions.push({ x: bx0 - i*(TW+G), y: H-TH-M, w: TW, h: TH });
+  // Left: bottom→top
+  const ly0 = (H + 18*TW + 17*G) / 2 - TW;
+  for (let i = 0; i < 18; i++) positions.push({ x: M, y: ly0 - i*(TW+G), w: TH, h: TW });
+  // Top: left→right
+  const tx0 = (W - 18*TW - 17*G) / 2;
+  for (let i = 0; i < 18; i++) positions.push({ x: tx0 + i*(TW+G), y: M, w: TW, h: TH });
+  // Right: top→bottom
+  const ry0 = (H - 18*TW - 17*G) / 2;
+  for (let i = 0; i < 18; i++) positions.push({ x: W-TH-M, y: ry0 + i*(TW+G), w: TH, h: TW });
+
+  for (const { x, y, w, h } of positions) {
+    const el  = document.createElement('div');
+    el.className = 'ring-tile face-down';
+    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+    const img = document.createElement('img'); img.alt = '';
+    el.appendChild(img);
+    wrap.appendChild(el);
+    _ringTiles.push({ el, img });
+  }
+}
 
 function renderWallRing() {
-  const svg = document.getElementById('wall-ring-svg');
-  if (!svg || !_game) return;
+  if (!_ringTiles) _buildRingTiles();
+  if (!_game) return;
 
-  const W = 720, H = 608;
-  const remaining = Math.max(0, _game.wallRemaining());
-  const total = WALL_TOTAL_SLOTS;
-
-  // Exact head/tail column counts (no rounding — matches peek.html logic)
+  const total     = 72;
   const wallIdx   = _game.wallIdx   ?? 0;
   const tailCol   = _game.tailCol   ?? 71;
   const tailPhase = _game.tailPhase ?? 0;
   const effTP     = (tailPhase === 0 && tailCol * 2 < wallIdx) ? 1 : tailPhase;
-  // headSlots = number of ring columns fully or partially consumed from the head
   const headSlots = Math.ceil(wallIdx / 2);
-  // tailSlots = number of ring columns fully or partially consumed from the tail
   const tailSlots = (71 - tailCol) + (effTP > 0 ? 1 : 0);
+  const live      = Math.max(0, total - headSlots - tailSlots);
 
-  // Build clockwise ring
-  const ring = [];
-  const botCount = WALL_SLOTS.bottom;
-  const botTotalW = botCount * WT_W + (botCount-1) * WT_GAP;
-  const botEndX = (W + botTotalW) / 2 - WT_W;
-  for (let i = 0; i < botCount; i++)
-    ring.push({ x: botEndX - i*(WT_W+WT_GAP), y: H - WT_H - WALL_MARGIN, w: WT_W, h: WT_H });
-
-  const leftCount = WALL_SLOTS.left;
-  const leftTotalH = leftCount * WT_W + (leftCount-1) * WT_GAP;
-  const leftEndY = (H + leftTotalH) / 2 - WT_W;
-  for (let i = 0; i < leftCount; i++)
-    ring.push({ x: WALL_MARGIN, y: leftEndY - i*(WT_W+WT_GAP), w: WT_H, h: WT_W });
-
-  const topCount = WALL_SLOTS.top;
-  const topTotalW = topCount * WT_W + (topCount-1) * WT_GAP;
-  const topStartX = (W - topTotalW) / 2;
-  for (let i = 0; i < topCount; i++)
-    ring.push({ x: topStartX + i*(WT_W+WT_GAP), y: WALL_MARGIN, w: WT_W, h: WT_H });
-
-  const rightCount = WALL_SLOTS.right;
-  const rightTotalH = rightCount * WT_W + (rightCount-1) * WT_GAP;
-  const rightStartY = (H - rightTotalH) / 2;
-  for (let i = 0; i < rightCount; i++)
-    ring.push({ x: W - WT_H - WALL_MARGIN, y: rightStartY + i*(WT_W+WT_GAP), w: WT_H, h: WT_W });
-
-  const seatSlotStart = { 0: 0, 3: botCount, 2: botCount + leftCount, 1: botCount + leftCount + topCount };
   const breakSeat  = _game.wallBreakSeat  ?? 0;
   const breakCount = _game.wallBreakCount ?? _game.diceTotal ?? 9;
-  const headSlot   = (seatSlotStart[breakSeat] + breakCount) % total;
-  const slots = [...ring.slice(headSlot), ...ring.slice(0, headSlot)];
-
-  // slots[0..headSlots-1]               = head gap (normal draws consumed)
-  // slots[headSlots..total-tailSlots-1]  = live wall (green)
-  // slots[total-tailSlots..total-1]      = tail gap (kong/bonus consumed, shown amber)
-
-  let svgContent = '';
+  const seatStart  = { 0: 0, 3: 18, 2: 36, 1: 54 };
+  const headSlot   = (seatStart[breakSeat] + breakCount) % total;
 
   for (let i = 0; i < total; i++) {
-    const s = slots[i];
-    const {x, y, w, h} = s;
-    const isHeadGap = i < headSlots;
-    const isTailGap = i >= total - tailSlots;
+    const phys = (headSlot + i) % total;
+    const { el, img } = _ringTiles[phys];
+    const isHead = i < headSlots;
+    const isTail = tailSlots > 0 && i >= total - tailSlots;
 
-    if (!isHeadGap && !isTailGap) {
-      // Live wall tile — green back
-      svgContent += `<rect x="${(x+1.5).toFixed(1)}" y="${(y+1.5).toFixed(1)}" width="${w}" height="${h}" rx="2" fill="rgba(0,0,0,0.4)"/>`;
-      svgContent += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${h}" rx="2" fill="#1a6b3a" stroke="#042510" stroke-width="1"/>`;
-      svgContent += `<rect x="${(x+2).toFixed(1)}" y="${(y+2).toFixed(1)}" width="${w-4}" height="${h-4}" rx="1" fill="none" stroke="#2a8b4e" stroke-width="1"/>`;
-      svgContent += `<rect x="${(x+1).toFixed(1)}" y="${(y+1).toFixed(1)}" width="${w-2}" height="${Math.ceil(h*0.3)}" rx="1" fill="rgba(255,255,255,0.15)"/>`;
-    } else if (isTailGap && tailSlots > 0) {
-      // Tail consumed — faint amber ghost
-      svgContent += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${h}" rx="2" fill="rgba(180,100,0,0.18)" stroke="rgba(255,152,0,0.4)" stroke-width="1"/>`;
+    el.className = 'ring-tile' + (isHead ? ' used' : isTail ? ' tail-used' : ' face-down');
+    if (!isHead && !isTail) {
+      if (live > 0 && i === headSlots)           el.classList.add('next-head');
+      if (live > 0 && i === total - tailSlots - 1) el.classList.add('next-tail');
     }
-    // head gap: empty, no render
+
+    if (_game.wall?.[i * 2]) {
+      const t = _game.wall[i * 2];
+      img.src = `img/tiles/${t.suit}_${t.value}.png`;
+    }
   }
 
-  // Yellow dot = next normal draw (head end)
-  if (remaining > 0 && headSlots < total - tailSlots) {
-    const s = slots[headSlots];
-    svgContent += `<circle cx="${(s.x+s.w/2).toFixed(1)}" cy="${(s.y+s.h/2).toFixed(1)}" r="3.5" fill="#ffd34d" opacity="0.9"/>`;
-  }
-
-  // Orange dot = next tail draw (tail end) — always show to orient the player
-  if (total - tailSlots - 1 >= headSlots) {
-    const s = slots[total - tailSlots - 1];
-    const op = tailSlots > 0 ? 0.85 : 0.3;
-    svgContent += `<circle cx="${(s.x+s.w/2).toFixed(1)}" cy="${(s.y+s.h/2).toFixed(1)}" r="3" fill="#ff9800" opacity="${op}"/>`;
-  }
-
-  // Center text — tail replacement count
   const tailDrawn = (71 - tailCol) * 2 + effTP;
-  if (tailDrawn > 0) {
-    svgContent += `<text x="360" y="320" text-anchor="middle" font-size="11" fill="rgba(255,152,0,0.5)" font-family="sans-serif">+${tailDrawn} tail</text>`;
-  }
-
-  svg.innerHTML = svgContent;
+  const wi = document.getElementById('wall-info');
+  if (wi) wi.textContent = `Wall: ${_game.wallRemaining()}` + (tailDrawn > 0 ? `  +${tailDrawn} tail` : '');
 }
 
 function setShowSeatParens(v) { _showSeatParens = v; }

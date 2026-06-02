@@ -434,12 +434,25 @@ main#table { position: relative; }
 /* Invisible ghost slots — hold fixed space in CPU seat columns */
 .tile-ghost-rot { width:66px; height:46px; flex-shrink:0; visibility:hidden; }
 
-/* WALL RING — SVG behind discard, drawing tile backs in the margins */
+/* WALL RING — real tile divs in the margins around the discard pile */
 #wall-ring-wrap { position:relative; width:720px; height:608px; flex-shrink:0; }
-#wall-ring-svg {
-  position:absolute; top:0; left:0; width:100%; height:100%;
-  pointer-events:none; z-index:1; overflow:visible;
+
+.ring-tile {
+  position:absolute; border-radius:2px; overflow:hidden;
+  border:1px solid #042510;
+  background:linear-gradient(135deg,#1a6b3a 0%,#0b3d1f 100%);
+  pointer-events:none; z-index:1;
 }
+.ring-tile img { width:100%; height:100%; object-fit:contain; display:block; }
+.ring-tile.face-down img { display:none; }
+.ring-tile.face-down::after {
+  content:''; position:absolute; inset:2px;
+  border:1px solid #2a8b4e; border-radius:1px; pointer-events:none;
+}
+.ring-tile.used      { opacity:0.08; }
+.ring-tile.tail-used { opacity:0.18; background:rgba(180,100,0,0.3); border-color:rgba(255,152,0,0.4); }
+.ring-tile.next-head { outline:2px solid #ffd34d; box-shadow:0 0 5px rgba(255,211,77,0.8); z-index:3; }
+.ring-tile.next-tail { outline:2px solid #ff9800; box-shadow:0 0 5px rgba(255,152,0,0.8); z-index:3; }
 
 /* Sidebar — collapsible settings panel */
 #sidebar {
