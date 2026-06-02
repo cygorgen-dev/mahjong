@@ -6,6 +6,7 @@ let _game = null;
 let _selectedTileId = null;
 let _chowChoices = []; // tiles the player picks for chow
 let _peekWin = null;
+let _wallWin = null;
 let _wallBC = null;
 let _sprintLogWin = null;
 let _sprintLogBC = null;
@@ -294,14 +295,25 @@ function initUI(game) {
     e.stopPropagation();
     _broadcastWallState();
     if (!_peekWin || _peekWin.closed) {
-      // Pass rough dimensions so Chrome opens a popup window (not a tab).
-      // peek.html self-positions via window.opener for accuracy.
       const _pl = window.screenLeft + window.outerWidth;
       const _pw = Math.max(300, screen.availWidth - _pl);
-      _peekWin = window.open('wall.html', 'mahjong-peek',
+      _peekWin = window.open('peek.html', 'mahjong-peek',
         `width=${_pw},height=${screen.availHeight},left=${_pl},top=${screen.availTop||0},resizable=yes,scrollbars=yes`);
     } else {
       _peekWin.focus();
+    }
+  });
+
+  document.getElementById('wall-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _broadcastWallState();
+    if (!_wallWin || _wallWin.closed) {
+      const _pl = window.screenLeft + window.outerWidth;
+      const _pw = Math.max(300, screen.availWidth - _pl);
+      _wallWin = window.open('wall.html', 'mahjong-wall',
+        `width=${_pw},height=${screen.availHeight},left=${_pl},top=${screen.availTop||0},resizable=yes,scrollbars=yes`);
+    } else {
+      _wallWin.focus();
     }
   });
   document.getElementById('close-peek')?.addEventListener('click', (e) => {

@@ -380,7 +380,7 @@ class Game {
     } else if (window.AUTO_MODE === 'sprint' || window.AUTO_MODE === 'sprint_slow') {
       fn(); // synchronous — entire hand computes in one call stack, no delay
     } else {
-      setTimeout(fn, 700);  // normal manual-mode timing
+      setTimeout(fn, 0);  // normal manual-mode timing
     }
   }
 
