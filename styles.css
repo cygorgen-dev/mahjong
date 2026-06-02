@@ -310,7 +310,7 @@ main#table {
 /* DISCARD AREA — inset inside wall margin so wall tiles are always visible */
 #discard-pile {
   position:absolute;
-  top:70px; left:70px;
+  top:90px; left:90px;
   width:620px; height:508px;
   background:rgba(0,0,0,0.18);
   border-radius:8px;
@@ -435,7 +435,7 @@ main#table { position: relative; }
 .tile-ghost-rot { width:66px; height:46px; flex-shrink:0; visibility:hidden; }
 
 /* WALL RING — real tile divs in the margins around the discard pile */
-#wall-ring-wrap { position:relative; width:760px; height:648px; flex-shrink:0; }
+#wall-ring-wrap { position:relative; width:800px; height:688px; flex-shrink:0; }
 
 .ring-tile {
   position:absolute; border-radius:2px; overflow:hidden;
@@ -677,6 +677,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 .seat-top    { position: relative; }
 .seat-bottom { position: relative; left: -68px; margin-top: -60px; }
 .seat-bottom .h-hand-fake-tile.h-label-tile { margin-left: calc(var(--tw) + 3px); }
+.seat-bottom .melds { margin-left: calc(var(--tw) + 3px); }
 
 /* Side player badge - overlaid on hand column, no flex interference */
 .side-player-badge {
