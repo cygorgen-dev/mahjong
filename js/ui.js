@@ -1783,19 +1783,24 @@ function _buildRingTiles() {
   // Rotations: left=90deg, top=180deg, right=-90deg, bottom=none
   const bx0 = (W + 18*TWH + 17*G) / 2 - TWH;
   const tx0 = (W - 18*TWH - 17*G) / 2;
-  const ly0 = (H + 18*TWV + 17*G) / 2 - TWV;
-  const ry0 = (H - 18*TWV - 17*G) / 2;
-  const IY_T = M+TH+G;          // inner top row y    = 26
-  const IY_B = H-TH-M-G-TH;    // inner bottom row y = 562
+  const IY_T = M+TH+G;
+  const IY_B = H-TH-M-G-TH;
 
-  for (let i = 0; i < 18; i++) _ringOuter[i]    = makeTile(bx0 - i*(TWH+G), H-TH-M,       TWH, TH,  null);      // bottom outer
-  for (let i = 0; i < 18; i++) _ringOuter[18+i] = makeTile(M,               ly0-i*(TWV+G), TH,  TWV, '90deg');  // left outer
-  for (let i = 0; i < 18; i++) _ringOuter[36+i] = makeTile(tx0 + i*(TWH+G), M,             TWH, TH,  '180deg'); // top outer
-  for (let i = 0; i < 18; i++) _ringOuter[54+i] = makeTile(W-TH-M,          ry0+i*(TWV+G), TH,  TWV, '-90deg'); // right outer
-  for (let i = 0; i < 18; i++) _ringInner[i]    = makeTile(bx0 - i*(TWH+G), IY_B,          TWH, TH,  null);      // bottom inner
-  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G,          ly0-i*(TWV+G), TH,  TWV, '90deg');  // left inner
-  for (let i = 0; i < 18; i++) _ringInner[36+i] = makeTile(tx0 + i*(TWH+G), IY_T,          TWH, TH,  '180deg'); // top inner
-  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TH-M-G-TH,     ry0+i*(TWV+G), TH,  TWV, '-90deg'); // right inner
+  // Left/right tiles use portrait CSS (TWV×TH) so the portrait tile image fills the
+  // box fully before rotation — landscape CSS caused heavy pillarboxing of the image.
+  // sideAdj shifts x by (TH-TWV)/2 to keep the visual position identical.
+  const sideAdj = (TH - TWV) / 2;
+  const ly0 = (H + 18*TWV + 17*G) / 2 - TWV - sideAdj;
+  const ry0 = (H - 18*TWV - 17*G) / 2 - sideAdj;
+
+  for (let i = 0; i < 18; i++) _ringOuter[i]    = makeTile(bx0 - i*(TWH+G),      H-TH-M,        TWH, TH,  null);      // bottom outer
+  for (let i = 0; i < 18; i++) _ringOuter[18+i] = makeTile(M+sideAdj,            ly0-i*(TWV+G), TWV, TH,  '90deg');  // left outer
+  for (let i = 0; i < 18; i++) _ringOuter[36+i] = makeTile(tx0 + i*(TWH+G),      M,             TWH, TH,  '180deg'); // top outer
+  for (let i = 0; i < 18; i++) _ringOuter[54+i] = makeTile(W-TWV-M-sideAdj,      ry0+i*(TWV+G), TWV, TH,  '-90deg'); // right outer
+  for (let i = 0; i < 18; i++) _ringInner[i]    = makeTile(bx0 - i*(TWH+G),      IY_B,          TWH, TH,  null);      // bottom inner
+  for (let i = 0; i < 18; i++) _ringInner[18+i] = makeTile(M+TH+G+sideAdj,       ly0-i*(TWV+G), TWV, TH,  '90deg');  // left inner
+  for (let i = 0; i < 18; i++) _ringInner[36+i] = makeTile(tx0 + i*(TWH+G),      IY_T,          TWH, TH,  '180deg'); // top inner
+  for (let i = 0; i < 18; i++) _ringInner[54+i] = makeTile(W-TWV-M-G-TH-sideAdj, ry0+i*(TWV+G), TWV, TH,  '-90deg'); // right inner
 }
 
 function renderWallRing() {
