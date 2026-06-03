@@ -855,16 +855,18 @@ class Game {
         this.pendingClaims = [];
         this._completeKong(seat, tiles, idx);
       }
-    } else if (this.discard === null) {
+    } else if (this.discard === null && this.phase === PHASE.CLAIM) {
       // Was a self-draw win prompt — player declined, just discard normally
       this.phase = PHASE.DISCARD;
       this.onUpdate('your-turn');
+    } else if (this.discard === null) {
+      // Stale double-click: robbing-kong Pass 1 already resolved (phase is END or DISCARD) — no-op
     } else if (this.discardSeat === 0) {
       // Human just discarded — processClaims already auto-scheduled resolution
       // via _scheduleOrStep. Ignore this Pass to prevent double-resolveAIClaims.
     } else {
       // Snapshot and clear before resolving so a rapid double-Pass is a no-op
-      // on the second call (discard===null → harmless self-draw-declined branch).
+      // on the second call (discard===null, phase still CLAIM → harmless branch above).
       const fromSeat = this.discardSeat;
       const tile     = this.discard;
       const claims   = this.pendingClaims;
