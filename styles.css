@@ -362,7 +362,7 @@ main#table {
 }
 main#table { position: relative; }
 /* Action bar: outer armpit corner between right-arm and bottom-arm of the wall ring.
-   Clear zone in ring-wrap space: x=705-800, y=595-688 (95×93 px).
+   Clear zone in ring-wrap space: x=705-800, y=602-688 (95×86 px).
    right:2px bottom:2px keeps it flush with those edges. */
 #action-bar {
   position: absolute;
@@ -379,10 +379,10 @@ main#table { position: relative; }
 #action-bar button {
   flex: 1 0 calc(50% - 2px);
   padding: 2px 4px; border: 0; border-radius: 5px;
-  background: #2a8b4e; color: white; font-weight: 600; cursor: pointer; font-size: 11px;
+  background: #2a8b4e; color: white; font-weight: 600; cursor: pointer; font-size: 13px;
   text-align: center; white-space: nowrap;
 }
-/* Pass / Next Hand spans full width */
+/* Pass spans full width */
 #btn-pass { flex: 1 0 100%; }
 #action-bar button:disabled { background:#555; opacity:0.5; cursor:not-allowed; }
 #action-bar button:not(:disabled):hover { background:#38ad62; }
