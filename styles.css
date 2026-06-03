@@ -311,7 +311,7 @@ main#table {
 #discard-pile {
   position:absolute;
   top:90px; left:90px;
-  width:620px; height:508px;
+  width:620px; height:468px;
   background:rgba(0,0,0,0.18);
   border-radius:8px;
   border:1px solid rgba(0,0,0,0.55);
@@ -361,29 +361,29 @@ main#table {
   min-height: 34px; /* pre-reserve 2-line height so win result never shifts the header */
 }
 main#table { position: relative; }
-/* Action bar: outer armpit corner between right-arm and bottom-arm of the wall ring.
-   Clear zone in ring-wrap space: x=705-800, y=602-688 (95×86 px).
-   right:2px bottom:2px keeps it flush with those edges. */
+/* Action bar: centered at the bottom of wall-ring-wrap, overlapping the bottom ring
+   tile row. z-index:50 keeps it above ring tiles (z-index:1) so buttons are always
+   clickable. Background panel separates them visually from the ring tiles beneath. */
 #action-bar {
   position: absolute;
-  right: 2px;
-  bottom: 2px;
-  width: 91px;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  gap: 3px;
-  padding: 3px;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding: 4px 10px;
   z-index: 50;
+  background: rgba(7, 48, 26, 0.82);
+  border-radius: 7px;
+  border: 1px solid rgba(42, 139, 78, 0.5);
 }
 #action-bar button {
-  flex: 1 0 calc(50% - 2px);
-  padding: 2px 4px; border: 0; border-radius: 5px;
-  background: #2a8b4e; color: white; font-weight: 600; cursor: pointer; font-size: 13px;
-  text-align: center; white-space: nowrap;
+  padding: 6px 18px; border: 0; border-radius: 5px;
+  background: #2a8b4e; color: white; font-weight: 600; cursor: pointer; font-size: 14px;
+  text-align: center; white-space: nowrap; flex-shrink: 0;
 }
-/* Pass spans full width */
-#btn-pass { flex: 1 0 100%; }
 #action-bar button:disabled { background:#555; opacity:0.5; cursor:not-allowed; }
 #action-bar button:not(:disabled):hover { background:#38ad62; }
 /* #message duplicate removed */

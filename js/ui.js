@@ -1074,7 +1074,7 @@ function renderDiscard() {
   //   Seat 2 (top):    gc 3-9,   gr 0-2  — 7 cols × 3 rows = 21, stacks downward
   //   Seat 0 (bottom): gc 3-9,   gr 4-6  — 7 cols × 3 rows = 21, stacks upward
   //   gr=3 center row (gc 3-9): 7-cell shared overflow pool for any seat exceeding 21
-  const W = 620, H = 508;
+  const W = 620, H = 468;
   const TW = 46, TH = 66;
   const GAP = 1;
   const COLS = 13, ROWS = 7;
