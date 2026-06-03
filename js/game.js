@@ -863,7 +863,15 @@ class Game {
       // Human just discarded — processClaims already auto-scheduled resolution
       // via _scheduleOrStep. Ignore this Pass to prevent double-resolveAIClaims.
     } else {
-      this.resolveAIClaims(this.discardSeat, this.discard, this.pendingClaims);
+      // Snapshot and clear before resolving so a rapid double-Pass is a no-op
+      // on the second call (discard===null → harmless self-draw-declined branch).
+      const fromSeat = this.discardSeat;
+      const tile     = this.discard;
+      const claims   = this.pendingClaims;
+      this.discard     = null;
+      this.discardSeat = null;
+      this.pendingClaims = [];
+      this.resolveAIClaims(fromSeat, tile, claims);
     }
   }
 
