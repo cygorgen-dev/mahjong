@@ -1101,14 +1101,20 @@ function renderDiscard() {
 
     if (idx >= 21) {
       // Overflow into center row gr=3: scan from seat's preferred start, skip occupied slots.
-      // Left (gc=3→) and Right (gc=9←) cover the full 7-slot range in their primary scan.
-      // Top (gc=5→9) and Bottom (gc=7→3) stay in their half — no fallback into the other
-      // side, so Left always owns gc=3-4 and Right always owns gc=8-9.
+      // Each seat scans from its preferred start in its preferred direction, then falls
+      // back in the opposite direction so all 7 slots are checked before any overlap.
+      //   Left  gc=3→9, fallback none needed (full range)
+      //   Top   gc=5→9, fallback gc=4→3
+      //   Bottom gc=7→3, fallback gc=8→9
+      //   Right  gc=9→3, fallback none needed (full range)
       const start = OVF_START[seat], dir = OVF_DIR[seat];
       let found = -1;
       for (let c = start; c >= 3 && c <= 9; c += dir)
         if (!centerOccupied.has(c)) { found = c; break; }
-      gc = found !== -1 ? found : start; // range exhausted — overlap at start (rare)
+      if (found === -1)
+        for (let c = start - dir; c >= 3 && c <= 9; c -= dir)
+          if (!centerOccupied.has(c)) { found = c; break; }
+      gc = found !== -1 ? found : start; // all 7 slots taken — overlap at start (extremely rare)
       gr = 3;
       centerOccupied.add(gc);
     } else if (seat === 0) {
