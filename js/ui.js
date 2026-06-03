@@ -1085,10 +1085,13 @@ function renderDiscard() {
   // Highlight: the last tile pushed to the pile — turns off exactly when the next player discards
   const _pile = _game.discardPile;
   const highlightId = _pile.length > 0 ? _pile[_pile.length - 1].id : null;
-  // Per-seat overflow counters — each player fills center row from their own side
-  // Seat 3 (left) and seat 2 (top): gc=3→9 (from left)
-  // Seat 1 (right) and seat 0 (bottom): gc=9→3 (from right)
-  const ovf = [0, 0, 0, 0];
+  // Overflow scan: each seat has a preferred start and direction in the 7-cell center row (gc 3-9).
+  // Primary scan walks toward the far edge; fallback reverses so all 7 slots are tried before overlap.
+  //   Left  (seat 3): start gc=3, scan →   Top    (seat 2): start gc=5, scan →
+  //   Right (seat 1): start gc=9, scan ←   Bottom (seat 0): start gc=7, scan ←
+  const OVF_START = [7, 9, 5, 3]; // indexed by seat
+  const OVF_DIR   = [-1, -1, 1, 1];
+  const centerOccupied = new Set();
 
   for (const t of _game.discardPile) {
     const seat = t._discardSeat ?? 0;
@@ -1097,10 +1100,17 @@ function renderDiscard() {
     let gc, gr;
 
     if (idx >= 21) {
-      // Overflow: center row gr=3, gc 3-9 (7 cells), from player's own side
-      const oi = Math.min(ovf[seat]++, 6);
-      gc = (seat === 1 || seat === 0) ? 9 - oi : 3 + oi;
+      // Overflow into center row gr=3: scan from seat's preferred start, skip occupied slots.
+      const start = OVF_START[seat], dir = OVF_DIR[seat];
+      let found = -1;
+      for (let c = start; c >= 3 && c <= 9; c += dir)
+        if (!centerOccupied.has(c)) { found = c; break; }
+      if (found === -1)
+        for (let c = start - dir; c >= 3 && c <= 9; c -= dir)
+          if (!centerOccupied.has(c)) { found = c; break; }
+      gc = found !== -1 ? found : start; // all 7 slots taken — overlap at start (extremely rare)
       gr = 3;
+      centerOccupied.add(gc);
     } else if (seat === 0) {
       // Bottom: cols 3-9, rows 6→4 (row 6 outermost, row 4 closest to center)
       gc = 3 + (idx % 7);
