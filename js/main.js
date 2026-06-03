@@ -1159,6 +1159,41 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
+  // ---- Demo Discard Ovf: fill discard pile to show center-row overflow scanning ----
+  // Each seat gets 7 normal discards (first row) then 3 overflow tiles, interleaved
+  // in time order so the scan-and-skip logic plays out exactly as it would in a real game.
+  // Seat colours: bottom=bamboo, right=circle, top=char, left=wind.
+  document.getElementById('demo-discard-ovf-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    let _id = 8000;
+    const T = (suit, val, seat, idx) => ({
+      id: _id++, suit, value: val, _justDrawn: false,
+      _discardSeat: seat, _discardIdxBySeat: idx,
+    });
+    for (let i = 0; i < 4; i++) {
+      game.players[i].hand = []; game.players[i].melds = []; game.players[i].bonus = [];
+    }
+    game.discardPile = []; game.discard = null; game.discardSeat = null;
+    game.lastResult = null; game.phase = PHASE.DISCARD;
+    game.currentSeat = 0; game.dealerSeat = 0;
+
+    const SEAT_SUIT = [SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR, SUIT.WIND];
+    const WINDS     = ['East','South','West','North'];
+    const tileVal   = (suit, n) => suit === SUIT.WIND ? WINDS[n % 4] : (n % 9) + 1;
+
+    // 7 normal tiles per seat (fills outermost discard row for each zone), interleaved
+    for (let idx = 0; idx < 7; idx++)
+      for (let seat = 0; seat < 4; seat++)
+        game.discardPile.push(T(SEAT_SUIT[seat], tileVal(SEAT_SUIT[seat], idx), seat, idx));
+
+    // 3 overflow tiles per seat, interleaved — tests scan-and-skip across all 7 center slots
+    for (let oi = 0; oi < 3; oi++)
+      for (let seat = 0; seat < 4; seat++)
+        game.discardPile.push(T(SEAT_SUIT[seat], tileVal(SEAT_SUIT[seat], oi), seat, 21 + oi));
+
+    renderAll();
+  });
+
   // ---- Run All Tests 🧪 -------------------------------------------------------
   // Runs the in-browser demo test suite and stores results in window._testResults.
   // AI agents: click #run-all-tests-btn, then poll window._testResults.done.
