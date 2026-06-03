@@ -859,6 +859,9 @@ class Game {
       // Was a self-draw win prompt — player declined, just discard normally
       this.phase = PHASE.DISCARD;
       this.onUpdate('your-turn');
+    } else if (this.discardSeat === 0) {
+      // Human just discarded — processClaims already auto-scheduled resolution
+      // via _scheduleOrStep. Ignore this Pass to prevent double-resolveAIClaims.
     } else {
       this.resolveAIClaims(this.discardSeat, this.discard, this.pendingClaims);
     }

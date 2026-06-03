@@ -276,6 +276,26 @@ function restoreGameState() {
     game.robbingKongTiles = s.robbingKongTiles ?? null;
     game.robbingKongPungIdx = s.robbingKongPungIdx ?? null;
     game.log = s.log || [];
+
+    // Validate hand counts before accepting restored state.
+    // A corrupted restore with wrong counts would poison the whole hand.
+    const PHASE_END = 'end';
+    if (game.phase !== PHASE_END) {
+      const isDiscard = game.phase === 'discard';
+      for (const p of game.players) {
+        const bonusInHand = (p.hand || []).filter(t => t.suit === 'flower' || t.suit === 'season').length;
+        const h = (p.hand || []).length - bonusInHand;
+        const melds = (p.melds || []).length;
+        // After draw / after claim: expected 14 - 3*melds; after discard / waiting: 13 - 3*melds
+        const hi = 14 - 3 * melds;
+        const lo = 13 - 3 * melds;
+        if (h < lo - 1 || h > hi + 1) {
+          console.warn(`[restoreGameState] INVALID: ${p.name} h=${h} melds=${melds} phase=${game.phase} — discarding saved state`);
+          sessionStorage.removeItem('mahjongGameState');
+          return false;
+        }
+      }
+    }
     return true;
   } catch(e) { return false; }
 }
