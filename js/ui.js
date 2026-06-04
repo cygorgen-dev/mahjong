@@ -1982,14 +1982,11 @@ async function _runSlowDeal() {
     wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Fly dice bubble toward dealer's claim-row (always has content + visible size),
-    // then land real SVG dice in the dice-slot
-    const dealerDiceSlot  = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
-    const dealerClaimRow  = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .claim-row`);
-    const dealerTarget    = dealerClaimRow || dealerDiceSlot;
-    if (dealerTarget) {
+    // Fly dice bubble to the dealer's hand area — same target tiles use, guaranteed
+    // correct direction for all four dealer seats.
+    const tgt = sdTarget(_game.dealerSeat);
+    {
       const sr = diceEl.getBoundingClientRect();
-      const tr = dealerTarget.getBoundingClientRect();
       const clone = diceEl.cloneNode(true);
       clone.style.cssText = [
         `position:fixed;left:${sr.left}px;top:${sr.top}px;`,
@@ -2003,17 +2000,20 @@ async function _runSlowDeal() {
       document.body.appendChild(clone);
       diceEl.style.opacity = '0';
       await sdSleep(30);
-      clone.style.left      = (tr.left + tr.width  / 2 - sr.width  / 2) + 'px';
-      clone.style.top       = (tr.top  + tr.height / 2 - sr.height / 2) + 'px';
+      clone.style.left      = (tgt.x - sr.width  / 2) + 'px';
+      clone.style.top       = (tgt.y - sr.height / 2) + 'px';
       clone.style.transform = 'scale(0.45)';
       await sdSleep(560);
       clone.remove();
       // Land: populate dealer's dice-slot with real SVG dice (stays until renderAll)
-      const dc = document.createElement('div');
-      dc.className = 'dice-display';
-      dc.innerHTML = diceVals.map(v => makeDieSVG(v)).join('');
-      dealerDiceSlot.innerHTML = '';
-      dealerDiceSlot.appendChild(dc);
+      const dealerDiceSlot = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
+      if (dealerDiceSlot) {
+        const dc = document.createElement('div');
+        dc.className = 'dice-display';
+        dc.innerHTML = diceVals.map(v => makeDieSVG(v)).join('');
+        dealerDiceSlot.innerHTML = '';
+        dealerDiceSlot.appendChild(dc);
+      }
     }
     diceEl.remove();
   }
