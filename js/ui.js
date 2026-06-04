@@ -1922,6 +1922,21 @@ function renderWallRing() {
   if (wi) wi.textContent = `Wall: ${_game.wallRemaining()}` + (tailDrawn > 0 ? `  +${tailDrawn} tail` : '');
 }
 
+function _sdPlaceholder(seat) {
+  const tile = document.createElement('div');
+  tile.className = 'tile back';
+  if (seat === 1 || seat === 3) {
+    const wrap = document.createElement('div');
+    wrap.className = 'tile-rot-wrap';
+    wrap.style.cssText = 'flex-shrink:0;display:flex;align-items:center;justify-content:center;width:66px;height:46px;';
+    tile.style.cssText = `flex-shrink:0;transform:rotate(${seat === 1 ? '-90deg' : '90deg'});`;
+    wrap.appendChild(tile);
+    return wrap;
+  }
+  if (seat === 2) tile.style.transform = 'rotate(180deg)';
+  return tile;
+}
+
 async function _runSlowDeal() {
   if (!_ringOuter) _buildRingTiles();
   const sdSleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1967,11 +1982,14 @@ async function _runSlowDeal() {
     wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Fly dice bubble to dealer's dice slot, then land there
-    const dealerDiceSlot = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
-    if (dealerDiceSlot) {
+    // Fly dice bubble toward dealer's claim-row (always has content + visible size),
+    // then land real SVG dice in the dice-slot
+    const dealerDiceSlot  = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
+    const dealerClaimRow  = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .claim-row`);
+    const dealerTarget    = dealerClaimRow || dealerDiceSlot;
+    if (dealerTarget) {
       const sr = diceEl.getBoundingClientRect();
-      const tr = dealerDiceSlot.getBoundingClientRect();
+      const tr = dealerTarget.getBoundingClientRect();
       const clone = diceEl.cloneNode(true);
       clone.style.cssText = [
         `position:fixed;left:${sr.left}px;top:${sr.top}px;`,
@@ -2052,14 +2070,10 @@ async function _runSlowDeal() {
       }));
       setTimeout(() => {
         entries.forEach(({ c, el }) => { c.remove(); el.classList.remove('face-down'); el.classList.add('used'); });
-        // Materialize face-down tile placeholders in the hand
+        // Materialize face-down placeholders with correct seat rotation
         const handEl = document.querySelector(`.seat[data-seat="${seat}"] .hand`);
         if (handEl) {
-          entries.forEach(() => {
-            const t = document.createElement('div');
-            t.className = 'tile back';
-            handEl.appendChild(t);
-          });
+          entries.forEach(() => handEl.appendChild(_sdPlaceholder(seat)));
         }
         resolve();
       }, MS + 60);
