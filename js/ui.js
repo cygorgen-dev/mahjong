@@ -1934,18 +1934,68 @@ async function _runSlowDeal() {
   if (msgEl) msgEl.textContent = '';
   document.querySelectorAll('#action-bar button').forEach(b => b.disabled = true);
 
-  // ── 2. Shuffle + dice display in wall-info ────────────────────────────
+  // ── 2. Shuffle message ───────────────────────────────────────────────
   const wi = document.getElementById('wall-info');
   const DIE = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
   if (wi) wi.textContent = '🀄 Shuffling wall…';
-  await sdSleep(700);
-  const breakSeat  = _game.wallBreakSeat  ?? 0;
-  const dstr = (_game.dice || []).map(d => DIE[d] || d).join(' ');
-  if (wi) wi.textContent = `🎲 ${dstr} = ${_game.diceTotal}   Break: Seat ${breakSeat}`;
-  await sdSleep(1200);
+  await sdSleep(800);
   if (wi) wi.textContent = '';
 
-  // ── 3. Reset ring to face-down ────────────────────────────────────────
+  // ── 3. Dice display in center → fly to dealer's dice slot ────────────
+  const breakSeat  = _game.wallBreakSeat  ?? 0;
+  const diceVals   = _game.dice || [];
+  const wrap = document.getElementById('wall-ring-wrap');
+  let diceEl = null;
+  if (wrap && diceVals.length) {
+    diceEl = document.createElement('div');
+    diceEl.style.cssText = [
+      'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);',
+      'display:flex;gap:8px;align-items:center;z-index:200;',
+      'background:rgba(0,0,0,0.75);padding:10px 16px;border-radius:8px;',
+      'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);'
+    ].join('');
+    diceVals.forEach(v => {
+      const d = document.createElement('span');
+      d.style.cssText = 'font-size:32px;line-height:1;';
+      d.textContent = DIE[v] || v;
+      diceEl.appendChild(d);
+    });
+    const sum = document.createElement('span');
+    sum.style.cssText = 'font-size:18px;font-weight:700;color:#ffd34d;margin-left:6px;';
+    sum.textContent = `= ${_game.diceTotal}`;
+    diceEl.appendChild(sum);
+    wrap.appendChild(diceEl);
+    await sdSleep(1100);
+
+    // Fly dice bubble to dealer's dice slot
+    const dealerDiceSlot = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
+    if (dealerDiceSlot) {
+      const sr = diceEl.getBoundingClientRect();
+      const tr = dealerDiceSlot.getBoundingClientRect();
+      const clone = diceEl.cloneNode(true);
+      clone.style.cssText = [
+        `position:fixed;left:${sr.left}px;top:${sr.top}px;`,
+        `width:${sr.width}px;height:${sr.height}px;`,
+        'display:flex;gap:8px;align-items:center;z-index:9999;pointer-events:none;',
+        'background:rgba(0,0,0,0.75);padding:10px 16px;border-radius:8px;',
+        'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);',
+        'transform-origin:center;transition:left 500ms ease-in,top 500ms ease-in,',
+        'opacity 150ms 350ms,transform 500ms ease-in;'
+      ].join('');
+      document.body.appendChild(clone);
+      diceEl.style.opacity = '0';
+      await sdSleep(30);
+      clone.style.left    = (tr.left + tr.width  / 2 - sr.width  / 2) + 'px';
+      clone.style.top     = (tr.top  + tr.height / 2 - sr.height / 2) + 'px';
+      clone.style.opacity = '0';
+      clone.style.transform = 'scale(0.4)';
+      await sdSleep(560);
+      clone.remove();
+    }
+    diceEl.remove();
+  }
+
+  // ── 4. Reset ring to face-down ────────────────────────────────────────
   const breakCount = _game.wallBreakCount ?? (_game.diceTotal ?? 9);
   const headSlot   = ({ 0:0, 3:18, 2:36, 1:54 }[breakSeat] + breakCount) % 72;
   const dealer     = _game.dealerSeat ?? 0;
@@ -1955,7 +2005,7 @@ async function _runSlowDeal() {
     if (_ringOuter[i]) _ringOuter[i].el.className = 'ring-tile face-down';
   }
 
-  // ── 4. Fly-tile overlay ───────────────────────────────────────────────
+  // ── 5. Fly-tile overlay ───────────────────────────────────────────────
   // Appended to body (sibling of #app) with position:fixed so it sits above
   // all stacking contexts inside #app and is unaffected by #app's scale transform.
   const flyOverlay = document.createElement('div');
@@ -2002,7 +2052,7 @@ async function _runSlowDeal() {
     });
   }
 
-  // ── 5. Deal animation ─────────────────────────────────────────────────
+  // ── 6. Deal animation ─────────────────────────────────────────────────
   let gi = 0;
   for (let round = 0; round < 3; round++) {
     for (const seat of ccwSeats) { await sdFly([gi, gi+1, gi+2, gi+3], seat); gi += 4; await sdSleep(100); }
