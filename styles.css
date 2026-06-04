@@ -326,7 +326,7 @@ main#table {
   transform:none !important;
 }
 #discard-pile .tile.last-discard { z-index:20; }
-#discard-pile .tile.last-discard-s0 { outline:3px solid #ff2020; box-shadow:0 0 12px 5px rgba(255,40,40,0.9); }
+#discard-pile .tile.last-discard-s0 { outline:3px solid #cc44ff; box-shadow:0 0 12px 5px rgba(204,68,255,0.9); }
 #discard-pile .tile.last-discard-s1 { outline:3px solid #00aaff; box-shadow:0 0 12px 5px rgba(0,170,255,0.9); }
 #discard-pile .tile.last-discard-s2 { outline:3px solid #ff8800; box-shadow:0 0 12px 5px rgba(255,136,0,0.9); }
 #discard-pile .tile.last-discard-s3 { outline:3px solid #44ff44; box-shadow:0 0 12px 5px rgba(68,255,68,0.9); }
@@ -423,9 +423,8 @@ main#table { position: relative; }
 .tile.clickable { cursor:pointer; transition:transform 0.1s; }
 .tile.clickable:hover { transform:translateY(-6px); box-shadow:2px 6px 8px rgba(0,0,0,0.4); }
 .tile.just-drawn {
-  background:linear-gradient(180deg,#fff176 0%,#ffe033 100%);
-  outline:3px solid #ff9800;
-  box-shadow:0 0 10px 3px rgba(255,152,0,0.7),2px 2px 0 #2a1a0a;
+  outline:3px solid #cc44ff;
+  box-shadow:0 0 10px 3px rgba(204,68,255,0.7),2px 2px 0 #2a1a0a;
   margin-left: 8px; /* small gap to separate from sorted tiles */
 }
 .tile.selected { outline:3px solid #ffd34d; }
@@ -440,7 +439,17 @@ main#table { position: relative; }
   box-shadow:0 0 18px 6px rgba(255,211,77,0.9);
   background:linear-gradient(180deg,#fffde7 0%,#fff176 100%) !important;
 }
-.tile.last-discard { outline:3px solid #ff2020; box-shadow:0 0 12px 5px rgba(255,40,40,0.85); }
+.tile.last-discard { outline:3px solid #cc44ff; box-shadow:0 0 12px 5px rgba(204,68,255,0.85); }
+.tile.last-discard-s0 { outline:3px solid #cc44ff; box-shadow:0 0 12px 5px rgba(204,68,255,0.85); }
+.tile.last-discard-s1 { outline:3px solid #00aaff; box-shadow:0 0 12px 5px rgba(0,170,255,0.85); }
+.tile.last-discard-s2 { outline:3px solid #ff8800; box-shadow:0 0 12px 5px rgba(255,136,0,0.85); }
+.tile.last-discard-s3 { outline:3px solid #44ff44; box-shadow:0 0 12px 5px rgba(68,255,68,0.85); }
+
+/* Seat color borders on player label tiles */
+.seat-s0 { box-shadow: inset 0 0 0 2px #cc44ff; }
+.seat-s1 { box-shadow: inset 0 0 0 2px #00aaff; }
+.seat-s2 { box-shadow: inset 0 0 0 2px #ff8800; }
+.seat-s3 { box-shadow: inset 0 0 0 2px #44ff44; }
 
 .tile.tile-img { padding:2px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
 .tile.tile-img img { width:100%; flex:1; object-fit:contain; display:block; min-height:0; }
@@ -534,14 +543,10 @@ main#table { position: relative; }
 .gallery-row { display:flex; flex-wrap:wrap; gap:5px; align-items:flex-end; }
 
 /* Winner */
-.seat-label.winner { background:#ffd34d; color:#07301a; animation:winner-pulse 0.8s ease-in-out infinite alternate; }
-@keyframes winner-pulse { from{box-shadow:0 0 6px 2px rgba(160,0,255,0.6);} to{box-shadow:0 0 22px 10px rgba(160,0,255,0.98);} }
-/* Side/top winners reuse the same keyframe — rotation is held by the static CSS transform */
-.seat-left  .seat-label.winner { animation:winner-pulse 0.8s ease-in-out infinite alternate; }
-.seat-right .seat-label.winner { animation:winner-pulse 0.8s ease-in-out infinite alternate; }
-.seat-top   .seat-label.winner { animation:winner-pulse 0.8s ease-in-out infinite alternate; }
-.seat.celebrating { animation:seat-glow 1s ease-in-out infinite alternate; }
-@keyframes seat-glow { from{filter:drop-shadow(0 0 4px rgba(160,0,255,0.4));} to{filter:drop-shadow(0 0 20px rgba(160,0,255,0.98));} }
+.seat-label.winner { background:#ffd34d; color:#07301a; box-shadow:0 0 0 2px #ffd34d, 0 0 10px 3px rgba(255,211,77,0.8); }
+.seat.celebrating .tile,
+.seat.celebrating .side-hand-fake-tile,
+.seat.celebrating .h-hand-fake-tile { box-shadow:0 0 0 2px #ffd34d, 0 0 8px 3px rgba(255,211,77,0.75); }
 
 /* Chow picker floats in the empty bottom-left corner, away from the hand */
 #chow-picker {
@@ -732,7 +737,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 .seat-left  .side-player-badge .badge-label { transform: rotate(180deg); }
 .seat-right .side-player-badge .badge-label { transform: none; }
 .side-player-badge .badge-label.active { background: #ffd34d; color: #07301a; }
-.side-player-badge .badge-label.winner { background: #ffd34d; color: #07301a; animation: winner-pulse 0.8s ease-in-out infinite alternate; }
+.side-player-badge .badge-label.winner { background: #ffd34d; color: #07301a; box-shadow:0 0 0 2px #ffd34d, 0 0 8px 2px rgba(255,211,77,0.8); }
 
 /* Wind circle */
 .side-player-badge .badge-wind {
@@ -779,7 +784,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 .seat-top-badge    .badge-label-h.active,
 .seat-bottom-badge .badge-label-h.active { background: #ffd34d; color: #07301a; }
 .seat-top-badge    .badge-label-h.winner,
-.seat-bottom-badge .badge-label-h.winner { background: #ffd34d; color: #07301a; animation: winner-pulse 0.8s ease-in-out infinite alternate; }
+.seat-bottom-badge .badge-label-h.winner { background: #ffd34d; color: #07301a; box-shadow:0 0 0 2px #ffd34d, 0 0 8px 2px rgba(255,211,77,0.8); }
 .seat-top-badge    { left: 4px; }
 .seat-bottom-badge { left: 4px; }
 .seat-top-badge    .badge-wind-right,
@@ -839,7 +844,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 /* Side player label injected as first tile in hand column */
 .seat-label-tile.active { background: #ffd34d !important; color: #07301a !important; }
 .seat-label-tile.winner { background: #ffd34d !important; color: #07301a !important;
-  animation: winner-pulse 0.8s ease-in-out infinite alternate; }
+  box-shadow:0 0 0 2px #ffd34d, 0 0 8px 2px rgba(255,211,77,0.8) !important; }
 
 /* ===== Side player hand-column label ===== */
 
@@ -863,8 +868,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 }
 .side-hand-label.active { background: #ffd34d; }
 .side-hand-label.active .side-hand-label-text { color: #07301a; }
-.side-hand-label.winner { background: #ffd34d;
-  animation: winner-pulse 0.8s ease-in-out infinite alternate; }
+.side-hand-label.winner { background: #ffd34d; box-shadow:0 0 0 2px #ffd34d, 0 0 8px 2px rgba(255,211,77,0.8); }
 .side-hand-label.winner .side-hand-label-text { color: #07301a; }
 
 /* Text: horizontal, then rotated to read vertically */
@@ -950,7 +954,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 .h-hand-fake-tile.h-label-tile.active { background: #ffd34d; color: #07301a; }
 .h-hand-fake-tile.h-label-tile.winner {
   background: #ffd34d; color: #07301a;
-  animation: winner-pulse 0.8s ease-in-out infinite alternate;
+  box-shadow:0 0 0 2px #ffd34d, 0 0 8px 2px rgba(255,211,77,0.8);
 }
 
 
