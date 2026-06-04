@@ -1941,13 +1941,23 @@ async function _runSlowDeal() {
   if (!_ringOuter) _buildRingTiles();
   const sdSleep = ms => new Promise(r => setTimeout(r, ms));
 
-  // ── 1. Clear the board ────────────────────────────────────────────────
+  // ── 1. Clear the board, then re-ghost all hands to hold layout ──────────
   document.querySelectorAll('.seat .hand, .seat .melds').forEach(el => el.innerHTML = '');
   const dpEl = document.getElementById('discard-pile');
   if (dpEl) dpEl.innerHTML = '';
   const msgEl = document.getElementById('message');
   if (msgEl) msgEl.textContent = '';
   document.querySelectorAll('#action-bar button').forEach(b => b.disabled = true);
+  // Ghost tiles keep every seat's hand at full size so the layout (especially
+  // seat 0 at the bottom) stays within the viewport before any tiles arrive.
+  [0, 1, 2, 3].forEach(s => {
+    const h = document.querySelector(`.seat[data-seat="${s}"] .hand`);
+    if (!h) return;
+    const cls = (s === 1 || s === 3) ? 'tile-ghost-rot' : 'tile-ghost';
+    for (let i = 0; i < 14; i++) {
+      const g = document.createElement('div'); g.className = cls; h.appendChild(g);
+    }
+  });
 
   // ── 2. Shuffle message ───────────────────────────────────────────────
   const wi = document.getElementById('wall-info');
@@ -2062,7 +2072,11 @@ async function _runSlowDeal() {
         // Materialize face-down placeholders with correct seat rotation
         const handEl = document.querySelector(`.seat[data-seat="${seat}"] .hand`);
         if (handEl) {
-          entries.forEach(() => handEl.appendChild(_sdPlaceholder(seat)));
+          entries.forEach(() => {
+            const ghost = handEl.querySelector('.tile-ghost,.tile-ghost-rot');
+            if (ghost) ghost.remove();
+            handEl.appendChild(_sdPlaceholder(seat));
+          });
         }
         resolve();
       }, MS + 60);
