@@ -317,7 +317,18 @@ function initUI(game) {
     btn.style.background = _ringRevealed ? '#003a1a' : '#1a3a3a';
     btn.style.color      = _ringRevealed ? '#00ff66' : '#7dffff';
     document.getElementById('wall-ring-wrap')?.classList.toggle('ring-peek', _ringRevealed);
-    renderWallRing();
+    if (_slowDealActive) {
+      // During deal animation renderWallRing() would use the real post-deal wallIdx
+      // and mark 26+ tiles as used — incorrect for the visual replay.
+      // Instead just toggle face-down on undealt ring tiles directly.
+      document.querySelectorAll('#wall-ring-wrap .ring-tile:not(.used):not(.tail-used)').forEach(el => {
+        if (_ringRevealed) el.classList.remove('face-down');
+        else if (!el.classList.contains('next-head') && !el.classList.contains('next-tail'))
+          el.classList.add('face-down');
+      });
+    } else {
+      renderWallRing();
+    }
   });
 
   document.getElementById('wall-btn')?.addEventListener('click', (e) => {
@@ -2117,14 +2128,17 @@ async function _runSlowDeal() {
     }
   }
 
-  // ── 4. Reset ring to face-down ────────────────────────────────────────
+  // ── 4. Reset ring — dice pointer at headSlot, respect ring-reveal ────────
   const breakCount = _game.wallBreakCount ?? (_game.diceTotal ?? 9);
   const headSlot   = ({ 0:0, 3:18, 2:36, 1:54 }[breakSeat] + breakCount) % 72;
   const dealer     = _game.dealerSeat ?? 0;
   const ccwSeats   = [dealer, (dealer+1)%4, (dealer+2)%4, (dealer+3)%4];
-  for (let i = 0; i < 72; i++) {
-    if (_ringInner[i]) _ringInner[i].el.className = 'ring-tile face-down';
-    if (_ringOuter[i]) _ringOuter[i].el.className = 'ring-tile face-down';
+  { const cls = _ringRevealed ? 'ring-tile' : 'ring-tile face-down';
+    for (let i = 0; i < 72; i++) {
+      if (_ringInner[i]) _ringInner[i].el.className = cls;
+      if (_ringOuter[i]) _ringOuter[i].el.className = cls;
+    }
+    if (_ringInner[headSlot]) _ringInner[headSlot].el.classList.add('next-head');
   }
 
   // flyOverlay was created in step 3 — reused here for tile animation
@@ -2349,14 +2363,17 @@ async function _runSingleStepDeal() {
     }
   }
 
-  // ── 4. Reset ring to face-down ─────────────────────────────────────────
+  // ── 4. Reset ring — dice pointer at hdSlot2, respect ring-reveal ──────────
   const bkCnt2  = _game.wallBreakCount ?? (_game.diceTotal ?? 9);
   const hdSlot2 = ({ 0:0, 3:18, 2:36, 1:54 }[breakSeat2] + bkCnt2) % 72;
   const dlr2    = _game.dealerSeat ?? 0;
   const ccw2    = [dlr2, (dlr2+1)%4, (dlr2+2)%4, (dlr2+3)%4];
-  for (let i = 0; i < 72; i++) {
-    if (_ringInner[i]) _ringInner[i].el.className = 'ring-tile face-down';
-    if (_ringOuter[i]) _ringOuter[i].el.className = 'ring-tile face-down';
+  { const cls2 = _ringRevealed ? 'ring-tile' : 'ring-tile face-down';
+    for (let i = 0; i < 72; i++) {
+      if (_ringInner[i]) _ringInner[i].el.className = cls2;
+      if (_ringOuter[i]) _ringOuter[i].el.className = cls2;
+    }
+    if (_ringInner[hdSlot2]) _ringInner[hdSlot2].el.classList.add('next-head');
   }
 
   function ssdEl(gi) {
