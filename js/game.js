@@ -77,7 +77,8 @@ class Game {
       if (_ext) {
         const e = JSON.parse(_ext);
         localStorage.removeItem('mahjong-wall-pending');
-        this.wall           = e.wall.map((t, i) => ({ id: i, suit: t.suit, value: t.value }));
+        const _base = Date.now();
+        this.wall           = e.wall.map((t, i) => ({ id: _base + i, suit: t.suit, value: t.value }));
         this.dice           = e.dice;
         this.diceTotal      = e.diceTotal;
         this.wallBreakSeat  = e.breakSeat;

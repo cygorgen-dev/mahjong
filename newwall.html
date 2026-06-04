@@ -527,8 +527,12 @@
         positionDashTrays();
     });
 
-    standaloneMode();
-    generatePending();   // prime localStorage for the game's first deal
+    if (window.opener) {
+      setMode('game');   // opened from the game — go live immediately
+    } else {
+      standaloneMode();
+      generatePending(); // opened standalone — prime localStorage for first deal
+    }
   </script>
 </body>
 </html>
