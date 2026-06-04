@@ -510,7 +510,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const slowDealChk = document.getElementById('slow-deal-toggle');
   if (slowDealChk) {
     slowDealChk.checked = false;
-    slowDealChk.addEventListener('change', () => { window.SLOW_DEAL = slowDealChk.checked; });
+    slowDealChk.addEventListener('change', () => {
+      window.SLOW_DEAL = slowDealChk.checked;
+      if (slowDealChk.checked) {
+        const ss = document.getElementById('single-step-toggle');
+        if (ss) { ss.checked = false; window.SINGLE_STEP_DEAL = false; }
+      }
+    });
+  }
+  const singleStepChk = document.getElementById('single-step-toggle');
+  if (singleStepChk) {
+    singleStepChk.checked = false;
+    singleStepChk.addEventListener('change', () => {
+      window.SINGLE_STEP_DEAL = singleStepChk.checked;
+      if (singleStepChk.checked) {
+        const sd = document.getElementById('slow-deal-toggle');
+        if (sd) { sd.checked = false; window.SLOW_DEAL = false; }
+      }
+    });
   }
 
   // ---- Demo Heavenly Hand 天胡: dealer's 14 dealt tiles form a winning hand ----

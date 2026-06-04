@@ -6,6 +6,8 @@ let _game = null;
 let _selectedTileId = null;
 let _slowDealActive = false;
 let _slowDealWallId = null;
+let _ssdResolve = null;   // pending step-advance resolver
+let _ssdAborted = false;  // set true when a new deal is triggered mid-animation
 let _chowChoices = []; // tiles the player picks for chow
 let _peekWin = null;
 let _wallWin = null;
@@ -273,6 +275,7 @@ function initUI(game) {
     // Reset any demo-activated toggles
     const ltChk = document.getElementById('last-tile-toggle');
     if (ltChk) { ltChk.checked = false; window.LAST_TILE_WIN = false; }
+    _ssdAborted = true; if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); }
     _game.reset(); renderAll();
   });
 
@@ -283,6 +286,7 @@ function initUI(game) {
     const ainp = document.getElementById('autorun-count');
     if (ainp) ainp.value = '0';
     try { sessionStorage.removeItem('mahjongGameState'); } catch(e2) {}
+    _ssdAborted = true; if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); }
     _tileElCache.clear();
     _game.redeal(); renderAll();
   });
@@ -479,6 +483,8 @@ function initUI(game) {
   document.getElementById('btn-win').addEventListener('click',  () => { _game.humanClaim('win',  null); renderAll(); });
   document.getElementById('btn-pass').addEventListener('click', () => {
     dismissHint();
+    // Single-step deal: advance the waiting step
+    if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); return; }
     // Slow mode: fire the next queued step
     if (window.AUTO_MODE === 'slow' && _game && _game._pendingAutoStep) {
       _game.stepAuto(); return;
@@ -492,8 +498,10 @@ function initUI(game) {
           if (sl) sl.textContent = `✅ Done — ${window._sprintDone} hands`;
           renderAll(); return;
         }
+        _ssdAborted = true; if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); }
         _tileElCache.clear(); _game.nextDeal(); renderAll(); return;
       }
+      _ssdAborted = true; if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); }
       _tileElCache.clear(); _game.nextDeal(); renderAll(); return;
     }
     // Auto mode: hand this turn over to CPU-You
@@ -621,6 +629,7 @@ function tickAutorun() {
     if (inp) inp.value = window._autorunLeft;
     const lbl2 = document.getElementById('autorun-label');
     if (lbl2) lbl2.textContent = window._autorunLeft > 0 ? `${window._autorunLeft} left` : '';
+    _ssdAborted = true; if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); }
     _tileElCache.clear();
     _game.nextDeal();
     renderAll();
@@ -643,10 +652,13 @@ function renderAll() {
   if (!_game) return;
   if (_slowDealActive) return;
   const _sdWid = _game.wall?.[0]?.id ?? null;
-  if (window.SLOW_DEAL && !window.AUTO_MODE && _sdWid !== null && _sdWid !== _slowDealWallId) {
+  const _dealAnimMode = window.SLOW_DEAL ? 'slow' : (window.SINGLE_STEP_DEAL ? 'step' : null);
+  if (_dealAnimMode && !window.AUTO_MODE && _sdWid !== null && _sdWid !== _slowDealWallId) {
     _slowDealWallId = _sdWid;
     _slowDealActive = true;
-    _runSlowDeal().then(() => { _slowDealActive = false; renderAll(); });
+    _ssdAborted = false;
+    (_dealAnimMode === 'step' ? _runSingleStepDeal() : _runSlowDeal())
+      .then(() => { _slowDealActive = false; renderAll(); });
     return;
   }
   _tileElInUse = new Set();
@@ -1950,6 +1962,9 @@ async function _runSlowDeal() {
   const msgEl = document.getElementById('message');
   if (msgEl) msgEl.textContent = '';
   document.querySelectorAll('#action-bar button').forEach(b => b.disabled = true);
+  // Assign tile images to ring slots now so the 👁 Ring button works for
+  // the new hand even though renderAll() is blocked by _slowDealActive.
+  renderWallRing();
   // Ghost tiles keep every seat's hand at full size so the layout (especially
   // seat 0 at the bottom) stays within the viewport before any tiles arrive.
   [0, 1, 2, 3].forEach(s => {
@@ -2173,6 +2188,260 @@ async function _runSlowDeal() {
   await sdFly([gi++], dealer);
 
   flyOverlay.remove();
+}
+
+// ── Single Step Deal ─────────────────────────────────────────────────────
+// Like _runSlowDeal but pauses at each phase (btn-pass = "Step ▶") and flies
+// tiles face-up, landing face-up in each seat's hand.  The game engine has
+// already dealt everything; this is purely a visual replay.
+async function _runSingleStepDeal() {
+  if (!_ringOuter) _buildRingTiles();
+  const sdSleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // Show btn-pass as "Step ▶" and wait for click (or abort).
+  function ssdStep(label) {
+    if (_ssdAborted) return Promise.resolve();
+    return new Promise(r => {
+      _ssdResolve = r;
+      const btn = document.getElementById('btn-pass');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = label ?? 'Step ▶';
+        btn.style.cssText += ';background:#ffd34d;color:#07301a;border:2px solid #b89000;';
+      }
+    });
+  }
+  function ssdBtnReset() {
+    _ssdResolve = null;
+    const btn = document.getElementById('btn-pass');
+    if (btn) { btn.disabled = true; btn.textContent = 'Pass';
+               btn.style.background = ''; btn.style.color = ''; btn.style.border = ''; }
+  }
+
+  // ── 1. Clear board + ring images ───────────────────────────────────────
+  document.querySelectorAll('.seat').forEach(el => el.classList.remove('celebrating'));
+  document.querySelectorAll('.seat-label').forEach(el => el.classList.remove('winner'));
+  document.querySelectorAll('.seat .hand, .seat .melds').forEach(el => el.innerHTML = '');
+  const dpEl2 = document.getElementById('discard-pile'); if (dpEl2) dpEl2.innerHTML = '';
+  const msgEl2 = document.getElementById('message');     if (msgEl2) msgEl2.textContent = '';
+  document.querySelectorAll('#action-bar button').forEach(b => b.disabled = true);
+  renderWallRing(); // assign face images to ring slots for 👁 Ring button
+  [0, 1, 2, 3].forEach(s => {
+    const h = document.querySelector(`.seat[data-seat="${s}"] .hand`);
+    if (!h) return;
+    const cls = (s === 1 || s === 3) ? 'tile-ghost-rot' : 'tile-ghost';
+    for (let i = 0; i < 14; i++) { const g = document.createElement('div'); g.className = cls; h.appendChild(g); }
+  });
+
+  // ── 2. Step: Shuffle → Roll Dice ──────────────────────────────────────
+  const wi2 = document.getElementById('wall-info');
+  if (wi2) wi2.textContent = '🀄 Shuffling wall…';
+  await ssdStep('Roll Dice ▶');
+  if (wi2) wi2.textContent = '';
+  if (_ssdAborted) { ssdBtnReset(); return; }
+
+  // ── 3. Show dice → step to Deal Round 1 ──────────────────────────────
+  const breakSeat2 = _game.wallBreakSeat ?? 0;
+  const diceVals2  = _game.dice || [];
+  const wrap2 = document.getElementById('wall-ring-wrap');
+
+  const flyOverlay2 = document.createElement('div');
+  flyOverlay2.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:visible;';
+  document.body.appendChild(flyOverlay2);
+
+  if (wrap2 && diceVals2.length) {
+    const diceEl2 = document.createElement('div');
+    diceEl2.style.cssText = [
+      'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);',
+      'display:flex;gap:6px;align-items:center;z-index:200;',
+      'background:rgba(0,0,0,0.8);padding:8px 14px;border-radius:8px;',
+      'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);'
+    ].join('');
+    const dr2 = document.createElement('div'); dr2.className = 'dice-display';
+    dr2.style.cssText = 'display:flex;gap:5px;align-items:center;';
+    dr2.innerHTML = diceVals2.map(v => makeDieSVG(v)).join('');
+    diceEl2.appendChild(dr2);
+    const ds2 = document.createElement('span');
+    ds2.style.cssText = 'font-size:16px;font-weight:700;color:#ffd34d;margin-left:4px;';
+    ds2.textContent = `= ${_game.diceTotal}`;
+    diceEl2.appendChild(ds2);
+    wrap2.appendChild(diceEl2);
+
+    await ssdStep('Deal Round 1 ▶');
+    if (_ssdAborted) { diceEl2.remove(); flyOverlay2.remove(); ssdBtnReset(); return; }
+
+    // Fly dice clone to dealer (same as _runSlowDeal)
+    const srcR2 = diceEl2.getBoundingClientRect(); diceEl2.remove();
+    const dcFly = document.createElement('div');
+    dcFly.style.cssText = [
+      `position:absolute;left:${srcR2.left}px;top:${srcR2.top}px;`,
+      'display:flex;gap:6px;align-items:center;white-space:nowrap;pointer-events:none;',
+      'background:rgba(0,0,0,0.8);padding:8px 14px;border-radius:8px;',
+      'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);',
+    ].join('');
+    const dfr2 = document.createElement('div'); dfr2.className = 'dice-display';
+    dfr2.style.cssText = 'display:flex;gap:5px;align-items:center;';
+    dfr2.innerHTML = diceVals2.map(v => makeDieSVG(v)).join('');
+    dcFly.appendChild(dfr2);
+    const dfs2 = document.createElement('span');
+    dfs2.style.cssText = 'font-size:16px;font-weight:700;color:#ffd34d;margin-left:4px;';
+    dfs2.textContent = `= ${_game.diceTotal}`;
+    dcFly.appendChild(dfs2);
+    flyOverlay2.appendChild(dcFly);
+
+    const _ds2 = _game.dealerSeat;
+    const _dh2 = document.querySelector(`.seat[data-seat="${_ds2}"] .hand`);
+    const _tr2 = _dh2 ? _dh2.getBoundingClientRect() : null;
+    const _tx2 = _tr2 ? _tr2.left + _tr2.width  / 2 : window.innerWidth  / 2;
+    const _ty2 = _tr2 ? _tr2.top  + _tr2.height / 2 : window.innerHeight / 2;
+    const DFMS = 500;
+    await new Promise(resolve => {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const fr = dcFly.getBoundingClientRect();
+        dcFly.style.transition = [
+          `left ${DFMS}ms ease-in`, `top ${DFMS}ms ease-in`,
+          `opacity ${Math.round(DFMS*.35)}ms ${Math.round(DFMS*.65)}ms ease-in`,
+        ].join(',');
+        dcFly.style.left = (_tx2 - fr.width  / 2) + 'px';
+        dcFly.style.top  = (_ty2 - fr.height / 2) + 'px';
+        dcFly.style.opacity = '0';
+      }));
+      setTimeout(resolve, DFMS + 80);
+    });
+    dcFly.remove();
+
+    // Inject label+wind+dice into dealer's hand
+    const _dHand2 = document.querySelector(`.seat[data-seat="${_ds2}"] .hand`);
+    if (_dHand2) {
+      const isSide2 = (_ds2 === 1 || _ds2 === 3);
+      const _d2 = _game.dice || [1,1,1]; const _p2 = _game.players[_ds2];
+      let lbl2El;
+      if (isSide2) {
+        lbl2El = document.createElement('div');
+        const sd2 = document.querySelector(`.seat[data-seat="${_ds2}"]`)?.classList.contains('seat-left') ? ' left' : ' right';
+        lbl2El.className = `side-hand-label seat-s${_ds2}${sd2}`;
+        const lt2 = document.createElement('div'); lt2.className = 'side-hand-label-text'; lt2.textContent = _p2.name;
+        lbl2El.appendChild(lt2);
+      } else {
+        lbl2El = document.createElement('div');
+        lbl2El.className = `h-hand-fake-tile h-label-tile seat-s${_ds2}`;
+        lbl2El.textContent = _p2.name;
+      }
+      const wnd2El = document.createElement('div');
+      wnd2El.className = isSide2 ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
+      const zhW2 = { East:'東',South:'南',West:'西',North:'北' }, enW2 = { East:'E',South:'S',West:'W',North:'N' };
+      const wt2 = (_windIndicatorChinese ? zhW2 : enW2)[_game.roundWind] ?? _game.roundWind.charAt(0);
+      const wb2 = document.createElement('div'); wb2.className = 'badge-wind dealer';
+      wb2.innerHTML = `<span class="wind-inner">${wt2}</span>`; wnd2El.appendChild(wb2);
+      const fCls2 = isSide2 ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
+      const db1 = document.createElement('div'); db1.className = fCls2;
+      const dc1b = document.createElement('div'); dc1b.className = 'dice-display';
+      dc1b.innerHTML = makeDieSVG(_d2[0]) + makeDieSVG(_d2[1]); db1.appendChild(dc1b);
+      const db2 = document.createElement('div'); db2.className = fCls2;
+      const dc2b = document.createElement('div'); dc2b.className = 'dice-display';
+      dc2b.innerHTML = makeDieSVG(_d2[2]); db2.appendChild(dc2b);
+      for (let i = 0; i < 4; i++) { const g = _dHand2.querySelector('.tile-ghost,.tile-ghost-rot'); if (g) g.remove(); }
+      _dHand2.prepend(lbl2El);
+      _dHand2.insertBefore(wnd2El, _dHand2.children[1] || null);
+      _dHand2.insertBefore(db1,    _dHand2.children[2] || null);
+      _dHand2.insertBefore(db2,    _dHand2.children[3] || null);
+      if (isSide2) _dHand2.style.marginTop = '-138px';
+    }
+  }
+
+  // ── 4. Reset ring to face-down ─────────────────────────────────────────
+  const bkCnt2  = _game.wallBreakCount ?? (_game.diceTotal ?? 9);
+  const hdSlot2 = ({ 0:0, 3:18, 2:36, 1:54 }[breakSeat2] + bkCnt2) % 72;
+  const dlr2    = _game.dealerSeat ?? 0;
+  const ccw2    = [dlr2, (dlr2+1)%4, (dlr2+2)%4, (dlr2+3)%4];
+  for (let i = 0; i < 72; i++) {
+    if (_ringInner[i]) _ringInner[i].el.className = 'ring-tile face-down';
+    if (_ringOuter[i]) _ringOuter[i].el.className = 'ring-tile face-down';
+  }
+
+  function ssdEl(gi) {
+    const phys = (hdSlot2 + Math.floor(gi / 2)) % 72;
+    return (gi % 2 === 0 ? _ringInner[phys] : _ringOuter[phys])?.el;
+  }
+  function ssdTarget(seat) {
+    const el = document.querySelector(`.seat[data-seat="${seat}"] .hand`);
+    if (!el) return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  // ── 5. Open-face fly: tiles show face while flying AND land face-up ─────
+  const SSD_MS = 280;
+  function ssdFly(indices, seat) {
+    return new Promise(resolve => {
+      const tgt = ssdTarget(seat);
+      const entries = indices.map(gi => {
+        const el = ssdEl(gi); if (!el) return null;
+        const r = el.getBoundingClientRect();
+        const wallTile = _game.wall[gi];
+        let c;
+        if (wallTile) {
+          c = makeTileEl(wallTile, { skipCache: true });
+          c.style.position = 'absolute';
+          c.style.left = (r.left + r.width  / 2 - 23) + 'px'; // center 46px tile over ring slot
+          c.style.top  = (r.top  + r.height / 2 - 33) + 'px'; // center 66px tile over ring slot
+          c.style.pointerEvents = 'none';
+          c.style.zIndex = '100';
+        } else {
+          c = document.createElement('div');
+          c.className = 'fly-tile';
+          c.style.cssText = `position:absolute;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+        }
+        flyOverlay2.appendChild(c);
+        return { c, el, gi };
+      }).filter(Boolean);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        entries.forEach(({ c }) => {
+          const cr = c.getBoundingClientRect();
+          c.style.transition = `left ${SSD_MS}ms ease-in,top ${SSD_MS}ms ease-in,opacity ${SSD_MS*.3}ms ${SSD_MS*.7}ms`;
+          c.style.left = (tgt.x - cr.width  / 2) + 'px';
+          c.style.top  = (tgt.y - cr.height / 2) + 'px';
+          c.style.opacity = '0';
+        });
+      }));
+      setTimeout(() => {
+        entries.forEach(({ c, el }) => { c.remove(); el.classList.remove('face-down'); el.classList.add('used'); });
+        const handEl = document.querySelector(`.seat[data-seat="${seat}"] .hand`);
+        if (handEl) {
+          entries.forEach(({ gi }) => {
+            const ghost = handEl.querySelector('.tile-ghost,.tile-ghost-rot');
+            if (ghost) ghost.remove();
+            const wt = _game.wall[gi];
+            handEl.appendChild(wt
+              ? makeTileEl(wt, { skipCache: true, seatRotation: seat })
+              : _sdPlaceholder(seat));
+          });
+        }
+        resolve();
+      }, SSD_MS + 60);
+    });
+  }
+
+  // ── 6. Deal rounds — already waited "Deal Round 1 ▶" before dice fly ───
+  let gi2 = 0;
+  for (let round = 0; round < 3; round++) {
+    if (round > 0) {
+      await ssdStep(`Deal Round ${round + 1} ▶`);
+      if (_ssdAborted) { flyOverlay2.remove(); ssdBtnReset(); return; }
+    }
+    for (const seat of ccw2) { await ssdFly([gi2, gi2+1, gi2+2, gi2+3], seat); gi2 += 4; await sdSleep(80); }
+  }
+
+  await ssdStep('Deal +1 Each ▶');
+  if (_ssdAborted) { flyOverlay2.remove(); ssdBtnReset(); return; }
+  for (const seat of ccw2) { await ssdFly([gi2++], seat); await sdSleep(80); }
+
+  await ssdStep("Dealer's 14th ▶");
+  if (_ssdAborted) { flyOverlay2.remove(); ssdBtnReset(); return; }
+  await ssdFly([gi2++], dlr2);
+
+  ssdBtnReset();
+  flyOverlay2.remove();
 }
 
 function setShowSeatParens(v) { _showSeatParens = v; }
