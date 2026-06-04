@@ -1996,10 +1996,17 @@ async function _runSlowDeal() {
     wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Fly to dealer's hand area (same target as tiles — correct for all seats)
-    const tgt = sdTarget(_game.dealerSeat);
+    // Fly directly to dealer's dice-slot; fall back to claim-row if slot has no size
+    const _ds  = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
+    const _cr  = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .claim-row`);
+    const _dsr = _ds?.getBoundingClientRect();
+    const _crr = _cr?.getBoundingClientRect();
+    const _slot = (_dsr && (_dsr.width > 0 || _dsr.height > 0)) ? _dsr : (_crr ?? null);
+    const tgt = _slot
+      ? { x: _slot.left + _slot.width  / 2, y: _slot.top  + _slot.height / 2 }
+      : sdTarget(_game.dealerSeat);
+
     const sr  = diceEl.getBoundingClientRect();
-    // Clone goes into flyOverlay so it persists through the entire tile deal
     const diceClone = diceEl.cloneNode(true);
     diceClone.style.cssText = [
       `position:absolute;left:${sr.left}px;top:${sr.top}px;`,
@@ -2013,10 +2020,10 @@ async function _runSlowDeal() {
     flyOverlay.appendChild(diceClone);
     diceEl.style.opacity = '0';
     await sdSleep(30);
-    const _dcTop = Math.min(tgt.y - sr.height / 2, window.innerHeight - sr.height * 0.5 - 8);
+    const _dcTop = Math.min(tgt.y - sr.height / 2, window.innerHeight - sr.height * 0.35 - 8);
     diceClone.style.left      = (tgt.x - sr.width  / 2) + 'px';
     diceClone.style.top       = _dcTop + 'px';
-    diceClone.style.transform = 'scale(0.5)';
+    diceClone.style.transform = 'scale(0.35)';
     await sdSleep(560);
     // diceClone stays in flyOverlay — visible throughout dealing, removed with overlay at end
     diceEl.remove();
