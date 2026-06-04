@@ -1997,28 +1997,33 @@ async function _runSlowDeal() {
     wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Clone into flyOverlay (viewport coords) — stays visible through entire deal
-    const tgt = sdTarget(_game.dealerSeat);
-    const sr  = diceEl.getBoundingClientRect();
-    const diceClone = diceEl.cloneNode(true);
-    diceClone.style.cssText = [
-      `position:absolute;left:${sr.left}px;top:${sr.top}px;`,
-      `width:${sr.width}px;height:${sr.height}px;`,
-      'display:flex;gap:6px;align-items:center;pointer-events:none;',
-      'background:rgba(0,0,0,0.8);padding:8px 14px;border-radius:8px;',
-      'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);',
-      'transform-origin:center;transition:left 500ms ease-in,top 500ms ease-in,',
-      'transform 500ms ease-in;'
-    ].join('');
-    flyOverlay.appendChild(diceClone);
+    // Inject dice into dealer's dice-slot (same DOM approach as renderSeats),
+    // then animate them flying in from the bubble's position using a relative
+    // translate — no viewport coordinate math, no scale-space mismatch.
+    const diceSlotEl = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
+    if (diceSlotEl) {
+      const bubbleR = diceEl.getBoundingClientRect();
+      const slotR   = diceSlotEl.getBoundingClientRect();
+      // Offset in viewport px → convert to layout px by dividing by #app scale
+      const appEl   = document.getElementById('app');
+      const appScale = (appEl && appEl.offsetWidth > 0)
+                       ? appEl.getBoundingClientRect().width / appEl.offsetWidth : 1;
+      const dx = ((bubbleR.left + bubbleR.width  / 2) - (slotR.left + slotR.width  / 2)) / appScale;
+      const dy = ((bubbleR.top  + bubbleR.height / 2) - (slotR.top  + slotR.height / 2)) / appScale;
+      const dc = document.createElement('div');
+      dc.className = 'dice-display';
+      dc.innerHTML = diceVals.map(v => makeDieSVG(v)).join('');
+      diceSlotEl.innerHTML = '';
+      diceSlotEl.appendChild(dc);
+      // Fly from bubble center to natural DOM position
+      dc.animate([
+        { transform: `translate(${dx}px,${dy}px) scale(2)`, opacity: 0 },
+        { transform: 'translate(0,0) scale(1)',              opacity: 1 }
+      ], { duration: 500, easing: 'ease-in', fill: 'forwards' });
+    }
+    diceEl.style.transition = 'opacity 400ms';
     diceEl.style.opacity = '0';
-    await sdSleep(30);
-    const _dcTop = Math.min(tgt.y - sr.height / 2, window.innerHeight - sr.height * 0.5 - 8);
-    diceClone.style.left      = (tgt.x - sr.width  / 2) + 'px';
-    diceClone.style.top       = _dcTop + 'px';
-    diceClone.style.transform = 'scale(0.5)';
-    await sdSleep(560);
-    // diceClone stays in flyOverlay until flyOverlay.remove() at end
+    await sdSleep(520);
     diceEl.remove();
   }
 
