@@ -4,6 +4,8 @@
 
 let _game = null;
 let _selectedTileId = null;
+let _slowDealActive = false;
+let _slowDealWallId = null;
 let _chowChoices = []; // tiles the player picks for chow
 let _peekWin = null;
 let _wallWin = null;
@@ -639,6 +641,14 @@ function _autorunFinish() {
 
 function renderAll() {
   if (!_game) return;
+  if (_slowDealActive) return;
+  const _sdWid = _game.wall?.[0]?.id ?? null;
+  if (window.SLOW_DEAL && _sdWid !== null && _sdWid !== _slowDealWallId) {
+    _slowDealWallId = _sdWid;
+    _slowDealActive = true;
+    _runSlowDeal().then(() => { _slowDealActive = false; renderAll(); });
+    return;
+  }
   _tileElInUse = new Set();
   if (_game.phase !== PHASE.CLAIM || !_game.claimOptions?.chow) {
     const p = document.getElementById('chow-picker');
@@ -1910,6 +1920,70 @@ function renderWallRing() {
   const tailDrawn = (71 - tailCol) * 2 + tailPhase;
   const wi = document.getElementById('wall-info');
   if (wi) wi.textContent = `Wall: ${_game.wallRemaining()}` + (tailDrawn > 0 ? `  +${tailDrawn} tail` : '');
+}
+
+async function _runSlowDeal() {
+  if (!_ringOuter) _buildRingTiles();
+  const seatStart  = { 0: 0, 3: 18, 2: 36, 1: 54 };
+  const breakSeat  = _game.wallBreakSeat  ?? 0;
+  const breakCount = _game.wallBreakCount ?? (_game.diceTotal ?? 9);
+  const headSlot   = (seatStart[breakSeat] + breakCount) % 72;
+  const dealer     = _game.dealerSeat ?? 0;
+  const ccwSeats   = [dealer, (dealer+1)%4, (dealer+2)%4, (dealer+3)%4];
+
+  for (let i = 0; i < 72; i++) {
+    if (_ringInner[i]) _ringInner[i].el.className = 'ring-tile face-down';
+    if (_ringOuter[i]) _ringOuter[i].el.className = 'ring-tile face-down';
+  }
+
+  function sdEl(gi) {
+    const phys = (headSlot + Math.floor(gi / 2)) % 72;
+    return (gi % 2 === 0 ? _ringInner[phys] : _ringOuter[phys])?.el;
+  }
+  function sdTarget(seat) {
+    const el = document.querySelector(`.seat[data-seat="${seat}"] .hand`);
+    if (!el) return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  const MS = 320;
+  function sdFly(indices, seat) {
+    return new Promise(resolve => {
+      const tgt = sdTarget(seat);
+      const entries = indices.map(gi => {
+        const el = sdEl(gi); if (!el) return null;
+        const r = el.getBoundingClientRect();
+        const c = document.createElement('div');
+        c.className = 'fly-tile';
+        c.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+        document.body.appendChild(c);
+        return { c, el };
+      }).filter(Boolean);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        entries.forEach(({ c }) => {
+          const w = parseFloat(c.style.width), h = parseFloat(c.style.height);
+          c.style.transition = `left ${MS}ms ease-in,top ${MS}ms ease-in,opacity ${MS*.3}ms ${MS*.7}ms`;
+          c.style.left = (tgt.x - w / 2) + 'px';
+          c.style.top  = (tgt.y - h / 2) + 'px';
+          c.style.opacity = '0';
+        });
+      }));
+      setTimeout(() => {
+        entries.forEach(({ c, el }) => { c.remove(); el.classList.remove('face-down'); el.classList.add('used'); });
+        resolve();
+      }, MS + 60);
+    });
+  }
+
+  const sdSleep = ms => new Promise(r => setTimeout(r, ms));
+  let gi = 0;
+  for (let round = 0; round < 3; round++) {
+    for (const seat of ccwSeats) { await sdFly([gi, gi+1, gi+2, gi+3], seat); gi += 4; await sdSleep(100); }
+    await sdSleep(220);
+  }
+  for (const seat of ccwSeats) { await sdFly([gi++], seat); await sdSleep(100); }
+  await sdFly([gi++], dealer);
 }
 
 function setShowSeatParens(v) { _showSeatParens = v; }

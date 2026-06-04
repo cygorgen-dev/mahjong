@@ -1007,3 +1007,14 @@ body.hide-tile-labels .tile-en { display:none !important; }
 }
 /* The drawn-tile slot ghost needs the same left margin as .tile.just-drawn */
 .tile-ghost.draw-slot { margin-left: 8px; }
+
+/* ── Slow Deal flying tile ──────────────────────────────────────────────── */
+.fly-tile {
+  position: fixed; z-index: 1000; pointer-events: none;
+  border: 1.5px solid #042510; border-radius: 3px;
+  background: linear-gradient(135deg, #1a6b3a 0%, #0b3d1f 100%);
+}
+.fly-tile::after {
+  content: ""; position: absolute; inset: 4px;
+  border: 1.5px solid #2a8b4e; border-radius: 2px; pointer-events: none;
+}

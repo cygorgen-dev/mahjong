@@ -507,6 +507,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const slowDealChk = document.getElementById('slow-deal-toggle');
+  if (slowDealChk) {
+    slowDealChk.checked = false;
+    slowDealChk.addEventListener('change', () => { window.SLOW_DEAL = slowDealChk.checked; });
+  }
+
   // ---- Demo Heavenly Hand 天胡: dealer's 14 dealt tiles form a winning hand ----
   document.getElementById('demo-heavenly-btn').addEventListener('click', (e) => { e.stopPropagation();
     game.reset();
