@@ -706,7 +706,7 @@ function renderSeats() {
         // Update label
         const lbl = claimRow.querySelector('.seat-label');
         if (lbl) {
-          lbl.className = 'seat-label' + winnerClass;
+          lbl.className = `seat-label seat-s${seat}` + winnerClass;
           lbl.textContent = labelText;
         }
         // Update wind circle (dealer only)
@@ -779,6 +779,8 @@ function renderSeats() {
         if (_game.lastClaimedTile && t.id === _game.lastClaimedTile.id) {
           const inner = tEl.querySelector('.tile') || tEl;
           inner.classList.add('last-discard');
+          const fromSeat = _game.lastClaimedTile._discardSeat;
+          if (fromSeat != null) inner.classList.add(`last-discard-s${fromSeat}`);
         }
         meldDiv.appendChild(tEl);
       }
@@ -831,7 +833,7 @@ function renderSeats() {
     if (seat === 1 || seat === 3) {
       const wrap = document.createElement('div');
       const sideDir = el.classList.contains('seat-left') ? ' left' : ' right';
-      wrap.className = 'side-hand-label' + sideDir + winnerClass;
+      wrap.className = `side-hand-label seat-s${seat}` + sideDir + winnerClass;
 
       const lbl = document.createElement('div');
       lbl.className = 'side-hand-label-text';
@@ -874,7 +876,7 @@ function renderSeats() {
     if (seat === 0 || seat === 2) {
       // Label fake tile
       const lblTile = document.createElement('div');
-      lblTile.className = 'h-hand-fake-tile h-label-tile' + winnerClass;
+      lblTile.className = `h-hand-fake-tile h-label-tile seat-s${seat}` + winnerClass;
       lblTile.textContent = p.name;
       handEl.prepend(lblTile);
 

@@ -202,7 +202,7 @@ class Game {
     this.handActionCount = 0;
     this._isFirstDealerDraw = true;
     this._drewLastTile = false;
-    this.discard = null; this.discardSeat = null; this.lastClaimedTile = null;
+    this.discard = null; this.discardSeat = null; this.lastClaimedTile = null; this.lastClaimedFromSeat = null;
 
     const dealerP = this.players[d];
     for (const pl of this.players) for (const t of pl.hand) t._justDrawn = false;
@@ -321,6 +321,7 @@ class Game {
     this.discard = null;
     this.discardSeat = null;
     this.lastClaimedTile = null;
+    this.lastClaimedFromSeat = null;
 
     // Clear just-drawn highlight from all players before marking the new draw
     for (const player of this.players) {
@@ -931,6 +932,7 @@ class Game {
     const dIdx = this.discardPile.findIndex(t => t.id === tile.id);
     if (dIdx !== -1) this.discardPile.splice(dIdx, 1);
     this.lastClaimedTile = tile;
+    this.lastClaimedFromSeat = this.discardSeat;
     // Clear stale just-drawn highlights — startTurn won't fire for this cycle
     for (const pl of this.players) for (const t of pl.hand) t._justDrawn = false;
 
