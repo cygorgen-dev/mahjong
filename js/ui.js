@@ -1997,33 +1997,39 @@ async function _runSlowDeal() {
     wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Inject dice into dealer's dice-slot (same DOM approach as renderSeats),
-    // then animate them flying in from the bubble's position using a relative
-    // translate — no viewport coordinate math, no scale-space mismatch.
-    const diceSlotEl = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
-    if (diceSlotEl) {
-      const bubbleR = diceEl.getBoundingClientRect();
-      const slotR   = diceSlotEl.getBoundingClientRect();
-      // Offset in viewport px → convert to layout px by dividing by #app scale
-      const appEl   = document.getElementById('app');
-      const appScale = (appEl && appEl.offsetWidth > 0)
-                       ? appEl.getBoundingClientRect().width / appEl.offsetWidth : 1;
-      const dx = ((bubbleR.left + bubbleR.width  / 2) - (slotR.left + slotR.width  / 2)) / appScale;
-      const dy = ((bubbleR.top  + bubbleR.height / 2) - (slotR.top  + slotR.height / 2)) / appScale;
-      const dc = document.createElement('div');
-      dc.className = 'dice-display';
-      dc.innerHTML = diceVals.map(v => makeDieSVG(v)).join('');
-      diceSlotEl.innerHTML = '';
-      diceSlotEl.appendChild(dc);
-      // Fly from bubble center to natural DOM position
-      dc.animate([
-        { transform: `translate(${dx}px,${dy}px) scale(2)`, opacity: 0 },
-        { transform: 'translate(0,0) scale(1)',              opacity: 1 }
-      ], { duration: 500, easing: 'ease-in', fill: 'forwards' });
+    // Inject dice fake tiles into dealer's hand exactly as renderSeats() does —
+    // no coordinates needed, correct position guaranteed by DOM structure.
+    const _ds = _game.dealerSeat;
+    const _dHandEl = document.querySelector(`.seat[data-seat="${_ds}"] .hand`);
+    if (_dHandEl) {
+      const isSide  = (_ds === 1 || _ds === 3);
+      const fakeCls = isSide ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
+      const _d = _game.dice || [1,1,1];
+      const blk1 = document.createElement('div'); blk1.className = fakeCls;
+      const _dc1 = document.createElement('div'); _dc1.className = 'dice-display';
+      _dc1.innerHTML = makeDieSVG(_d[0]) + makeDieSVG(_d[1]);
+      blk1.appendChild(_dc1);
+      const blk2 = document.createElement('div'); blk2.className = fakeCls;
+      const _dc2 = document.createElement('div'); _dc2.className = 'dice-display';
+      _dc2.innerHTML = makeDieSVG(_d[2]);
+      blk2.appendChild(_dc2);
+      // Remove 2 ghost tiles to make room, insert dice at start
+      for (let i = 0; i < 2; i++) {
+        const g = _dHandEl.querySelector('.tile-ghost,.tile-ghost-rot');
+        if (g) g.remove();
+      }
+      _dHandEl.prepend(blk2);
+      _dHandEl.prepend(blk1);
+      if (isSide) _dHandEl.style.marginTop = '-138px';
+      // Fade in from nothing — no coordinates required
+      [blk1, blk2].forEach(b => b.animate(
+        [{ opacity:0, transform:'scale(0.4)' }, { opacity:1, transform:'scale(1)' }],
+        { duration:400, easing:'ease-out', fill:'forwards' }
+      ));
     }
     diceEl.style.transition = 'opacity 400ms';
     diceEl.style.opacity = '0';
-    await sdSleep(520);
+    await sdSleep(450);
     diceEl.remove();
   }
 
