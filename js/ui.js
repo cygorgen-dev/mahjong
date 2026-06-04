@@ -1942,6 +1942,8 @@ async function _runSlowDeal() {
   const sdSleep = ms => new Promise(r => setTimeout(r, ms));
 
   // ── 1. Clear the board, then re-ghost all hands to hold layout ──────────
+  document.querySelectorAll('.seat').forEach(el => el.classList.remove('celebrating'));
+  document.querySelectorAll('.seat-label').forEach(el => el.classList.remove('winner'));
   document.querySelectorAll('.seat .hand, .seat .melds').forEach(el => el.innerHTML = '');
   const dpEl = document.getElementById('discard-pile');
   if (dpEl) dpEl.innerHTML = '';
@@ -1997,17 +1999,58 @@ async function _runSlowDeal() {
     wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Inject label + wind + dice fake tiles in the exact same order/classes as
-    // renderSeats() — so the final renderAll() rebuild lands them in the same
-    // positions and no shift occurs.
+    // Clone diceEl into flyOverlay at its viewport position, fly to dealer's hand
+    const srcRect = diceEl.getBoundingClientRect();
+    diceEl.remove();
+    const diceFlyEl = document.createElement('div');
+    diceFlyEl.style.cssText = [
+      `position:absolute;left:${srcRect.left}px;top:${srcRect.top}px;`,
+      'display:flex;gap:6px;align-items:center;white-space:nowrap;pointer-events:none;',
+      'background:rgba(0,0,0,0.8);padding:8px 14px;border-radius:8px;',
+      'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);',
+    ].join('');
+    const _fdr = document.createElement('div');
+    _fdr.className = 'dice-display';
+    _fdr.style.cssText = 'display:flex;gap:5px;align-items:center;';
+    _fdr.innerHTML = diceVals.map(v => makeDieSVG(v)).join('');
+    diceFlyEl.appendChild(_fdr);
+    const _fds = document.createElement('span');
+    _fds.style.cssText = 'font-size:16px;font-weight:700;color:#ffd34d;margin-left:4px;';
+    _fds.textContent = `= ${_game.diceTotal}`;
+    diceFlyEl.appendChild(_fds);
+    flyOverlay.appendChild(diceFlyEl);
+
+    // Fly diceFlyEl from center to dealer's hand
     const _ds = _game.dealerSeat;
+    const _dealerHand = document.querySelector(`.seat[data-seat="${_ds}"] .hand`);
+    const _tgtR = _dealerHand ? _dealerHand.getBoundingClientRect() : null;
+    const _tgtX = _tgtR ? _tgtR.left + _tgtR.width  / 2 : window.innerWidth  / 2;
+    const _tgtY = _tgtR ? _tgtR.top  + _tgtR.height / 2 : window.innerHeight / 2;
+    const DICE_FLY_MS = 500;
+    await new Promise(resolve => {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const fr = diceFlyEl.getBoundingClientRect();
+        diceFlyEl.style.transition = [
+          `left ${DICE_FLY_MS}ms ease-in`,
+          `top ${DICE_FLY_MS}ms ease-in`,
+          `opacity ${Math.round(DICE_FLY_MS * 0.35)}ms ${Math.round(DICE_FLY_MS * 0.65)}ms ease-in`,
+        ].join(',');
+        diceFlyEl.style.left = (_tgtX - fr.width  / 2) + 'px';
+        diceFlyEl.style.top  = (_tgtY - fr.height / 2) + 'px';
+        diceFlyEl.style.opacity = '0';
+      }));
+      setTimeout(resolve, DICE_FLY_MS + 80);
+    });
+    diceFlyEl.remove();
+
+    // Inject label + wind + dice fake tiles in the same order as renderSeats()
+    // so renderAll() rebuild lands them in the same positions without shift.
     const _dHandEl = document.querySelector(`.seat[data-seat="${_ds}"] .hand`);
     if (_dHandEl) {
       const isSide = (_ds === 1 || _ds === 3);
       const _d = _game.dice || [1,1,1];
       const _p = _game.players[_ds];
 
-      // ── Build the 4 fake items ──────────────────────────────────────────
       // 1. Label
       let lblEl;
       if (isSide) {
@@ -2047,7 +2090,6 @@ async function _runSlowDeal() {
       _dc2.innerHTML = makeDieSVG(_d[2]);
       dblk2.appendChild(_dc2);
 
-      // Remove 4 ghost tiles and insert all 4 items at the correct positions
       for (let i = 0; i < 4; i++) {
         const g = _dHandEl.querySelector('.tile-ghost,.tile-ghost-rot');
         if (g) g.remove();
@@ -2057,17 +2099,7 @@ async function _runSlowDeal() {
       _dHandEl.insertBefore(dblk1, _dHandEl.children[2] || null);   // pos 2
       _dHandEl.insertBefore(dblk2, _dHandEl.children[3] || null);   // pos 3
       if (isSide) _dHandEl.style.marginTop = '-138px';
-
-      // Animate only the dice tiles in
-      [dblk1, dblk2].forEach(b => b.animate(
-        [{ opacity:0, transform:'scale(0.4)' }, { opacity:1, transform:'scale(1)' }],
-        { duration:400, easing:'ease-out', fill:'forwards' }
-      ));
     }
-    diceEl.style.transition = 'opacity 400ms';
-    diceEl.style.opacity = '0';
-    await sdSleep(450);
-    diceEl.remove();
   }
 
   // ── 4. Reset ring to face-down ────────────────────────────────────────
