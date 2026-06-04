@@ -1940,11 +1940,17 @@ async function _runSlowDeal() {
     const phys = (headSlot + Math.floor(gi / 2)) % 72;
     return (gi % 2 === 0 ? _ringInner[phys] : _ringOuter[phys])?.el;
   }
+  // Use main#table as container (position:relative, overflow:visible, holds all seats
+  // and ring) so fly-tiles use table-relative coords and are never clipped by #app.
+  const tableEl  = document.querySelector('main#table');
+  const tableRect = tableEl.getBoundingClientRect();
+
   function sdTarget(seat) {
     const el = document.querySelector(`.seat[data-seat="${seat}"] .hand`);
-    if (!el) return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    if (!el) return { x: tableRect.width / 2, y: tableRect.height / 2 };
     const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    return { x: r.left - tableRect.left + r.width / 2,
+             y: r.top  - tableRect.top  + r.height / 2 };
   }
 
   const MS = 320;
@@ -1956,8 +1962,8 @@ async function _runSlowDeal() {
         const r = el.getBoundingClientRect();
         const c = document.createElement('div');
         c.className = 'fly-tile';
-        c.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
-        document.body.appendChild(c);
+        c.style.cssText = `position:absolute;left:${r.left - tableRect.left}px;top:${r.top - tableRect.top}px;width:${r.width}px;height:${r.height}px`;
+        tableEl.appendChild(c);
         return { c, el };
       }).filter(Boolean);
       requestAnimationFrame(() => requestAnimationFrame(() => {

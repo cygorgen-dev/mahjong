@@ -1010,7 +1010,7 @@ body.hide-tile-labels .tile-en { display:none !important; }
 
 /* ── Slow Deal flying tile ──────────────────────────────────────────────── */
 .fly-tile {
-  position: fixed; z-index: 1000; pointer-events: none;
+  z-index: 1000; pointer-events: none;
   border: 1.5px solid #042510; border-radius: 3px;
   background: linear-gradient(135deg, #1a6b3a 0%, #0b3d1f 100%);
 }
