@@ -125,9 +125,9 @@ class Game {
     this.wallBreakSeat  = breakSeat;   // which seat's wall was broken
     this.wallBreakCount = this.diceTotal; // how many tiles from right end of that segment
 
-    this.addLog(`144 tiles shuffled — wall built.`);
-    this.addLog(`${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
-    this.addLog(`Wall broken at ${playerTag(this.players[breakSeat])}'s wall, ${this.diceTotal} tiles from right end.`);
+    this.addLog(`Wall built and shuffled — 144 tiles.`);
+    this.addLog(`Dealer ${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
+    this.addLog(`Wall break: ${playerTag(this.players[breakSeat])}'s side, ${this.diceTotal} stacks from right — dealing starts here.`);
 
     // Rotate wall so index 0 = head (first tile drawn)
     this.wall = [...this.wall.slice(headIdx), ...this.wall.slice(0, headIdx)];
