@@ -2028,9 +2028,12 @@ async function _runSlowDeal() {
       // 2. Wind
       const wndEl = document.createElement('div');
       wndEl.className = isSide ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
+      const _zhW = { East:'東', South:'南', West:'西', North:'北' };
+      const _enW = { East:'E', South:'S', West:'W', North:'N' };
+      const _wt  = (_windIndicatorChinese ? _zhW : _enW)[_game.roundWind] ?? _game.roundWind.charAt(0);
       const wb = document.createElement('div');
       wb.className = 'badge-wind dealer';
-      wb.innerHTML = `<span class="wind-inner">${_game.roundWind.charAt(0)}</span>`;
+      wb.innerHTML = `<span class="wind-inner">${_wt}</span>`;
       wndEl.appendChild(wb);
 
       // 3+4. Dice
