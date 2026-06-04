@@ -1967,7 +1967,7 @@ async function _runSlowDeal() {
     wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Fly dice bubble to dealer's dice slot
+    // Fly dice bubble to dealer's dice slot, then land there
     const dealerDiceSlot = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
     if (dealerDiceSlot) {
       const sr = diceEl.getBoundingClientRect();
@@ -1980,17 +1980,22 @@ async function _runSlowDeal() {
         'background:rgba(0,0,0,0.75);padding:10px 16px;border-radius:8px;',
         'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);',
         'transform-origin:center;transition:left 500ms ease-in,top 500ms ease-in,',
-        'opacity 150ms 350ms,transform 500ms ease-in;'
+        'transform 500ms ease-in;'
       ].join('');
       document.body.appendChild(clone);
       diceEl.style.opacity = '0';
       await sdSleep(30);
-      clone.style.left    = (tr.left + tr.width  / 2 - sr.width  / 2) + 'px';
-      clone.style.top     = (tr.top  + tr.height / 2 - sr.height / 2) + 'px';
-      clone.style.opacity = '0';
-      clone.style.transform = 'scale(0.4)';
+      clone.style.left      = (tr.left + tr.width  / 2 - sr.width  / 2) + 'px';
+      clone.style.top       = (tr.top  + tr.height / 2 - sr.height / 2) + 'px';
+      clone.style.transform = 'scale(0.45)';
       await sdSleep(560);
       clone.remove();
+      // Land: populate dealer's dice-slot with real SVG dice (stays until renderAll)
+      const dc = document.createElement('div');
+      dc.className = 'dice-display';
+      dc.innerHTML = diceVals.map(v => makeDieSVG(v)).join('');
+      dealerDiceSlot.innerHTML = '';
+      dealerDiceSlot.appendChild(dc);
     }
     diceEl.remove();
   }
@@ -2047,6 +2052,15 @@ async function _runSlowDeal() {
       }));
       setTimeout(() => {
         entries.forEach(({ c, el }) => { c.remove(); el.classList.remove('face-down'); el.classList.add('used'); });
+        // Materialize face-down tile placeholders in the hand
+        const handEl = document.querySelector(`.seat[data-seat="${seat}"] .hand`);
+        if (handEl) {
+          entries.forEach(() => {
+            const t = document.createElement('div');
+            t.className = 'tile back';
+            handEl.appendChild(t);
+          });
+        }
         resolve();
       }, MS + 60);
     });
