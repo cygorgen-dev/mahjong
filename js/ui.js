@@ -314,10 +314,7 @@ function initUI(game) {
   document.getElementById('ring-reveal-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     _ringRevealed = !_ringRevealed;
-    const btn = document.getElementById('ring-reveal-btn');
-    btn.style.background = _ringRevealed ? '#003a1a' : '#1a3a3a';
-    btn.style.color      = _ringRevealed ? '#00ff66' : '#7dffff';
-    document.getElementById('wall-ring-wrap')?.classList.toggle('ring-peek', _ringRevealed);
+    _updateRingBtn();
     if (_slowDealActive) {
       // During deal animation renderWallRing() would use the real post-deal wallIdx
       // and mark 26+ tiles as used — incorrect for the visual replay.
@@ -666,8 +663,9 @@ function renderAll() {
   const _sdWid = _game.wall?.[0]?.id ?? null;
   const _dealAnimMode = window.SLOW_DEAL ? 'slow' : (window.SINGLE_STEP_DEAL ? 'step' : null);
   if (_dealAnimMode && !window.AUTO_MODE && _sdWid !== null && _sdWid !== _slowDealWallId) {
-    _slowDealWallId = _sdWid;
-    _slowDealActive = true;
+    _slowDealWallId  = _sdWid;
+    _ringInitWallId  = _sdWid;  // prevent _resetRingFull() after animation; renderWallRing() will run
+    _slowDealActive  = true;
     _ssdAborted = false;
     (_dealAnimMode === 'step' ? _runSingleStepDeal() : _runSlowDeal())
       .then(() => { _slowDealActive = false; renderAll(); });
@@ -1839,6 +1837,18 @@ let _ringInner   = null;  // [72] inner layer elements (all sides)
 let _ringRevealed = false;
 let _ringLastId   = null;
 
+function _updateRingBtn() {
+  const btn  = document.getElementById('ring-reveal-btn');
+  const wrap = document.getElementById('wall-ring-wrap');
+  if (_ringRevealed) {
+    if (btn) { btn.style.background = '#003a1a'; btn.style.color = '#00ff66'; btn.textContent = 'ring is on'; }
+    wrap?.classList.add('ring-peek');
+  } else {
+    if (btn) { btn.style.background = '#1a3a3a'; btn.style.color = '#7dffff'; btn.textContent = 'ring is off'; }
+    wrap?.classList.remove('ring-peek');
+  }
+}
+
 function _buildRingTiles() {
   const W = 800, H = 688, TWH = _RING_TWH, TWV = _RING_TWV, TH = _RING_H, G = _RING_GAP, M = _RING_M;
   const wrap = document.getElementById('wall-ring-wrap');
@@ -1889,8 +1899,7 @@ function renderWallRing() {
   if (curId !== _ringLastId) {
     _ringLastId   = curId;
     _ringRevealed = false;
-    const btn = document.getElementById('ring-reveal-btn');
-    if (btn) { btn.style.background = '#1a3a3a'; btn.style.color = '#7dffff'; }
+    _updateRingBtn();
   }
 
   const total     = 72;
