@@ -71,6 +71,25 @@ class Game {
   }
 
   deal() {
+    // Use externally provided wall+dice from newwall.html if available
+    try {
+      const _ext = localStorage.getItem('mahjong-wall-pending');
+      if (_ext) {
+        const e = JSON.parse(_ext);
+        localStorage.removeItem('mahjong-wall-pending');
+        this.wall           = e.wall.map((t, i) => ({ id: i, suit: t.suit, value: t.value }));
+        this.dice           = e.dice;
+        this.diceTotal      = e.diceTotal;
+        this.wallBreakSeat  = e.breakSeat;
+        this.wallBreakCount = e.breakCount;
+        this.wallIdx = 0;
+        this.addLog(`144 tiles shuffled — wall built.`);
+        this.addLog(`${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
+        this.addLog(`Wall broken at ${playerTag(this.players[this.wallBreakSeat])}'s wall, ${this.diceTotal} tiles from right end.`);
+        return this._dealTiles();
+      }
+    } catch(e) {}
+
     // Roll three dice to determine wall break point
     this.dice = [
       Math.floor(Math.random()*6)+1,
@@ -132,7 +151,10 @@ class Game {
     // Rotate wall so index 0 = head (first tile drawn)
     this.wall = [...this.wall.slice(headIdx), ...this.wall.slice(0, headIdx)];
     this.wallIdx = 0;
+    return this._dealTiles();
+  }
 
+  _dealTiles() {
     // Round-robin deal: 3 rounds of 4 tiles each, then 1 tile each, then dealer's extra.
     const d = this.dealerSeat;
     const ccwSeats = [d, (d+1)%4, (d+2)%4, (d+3)%4];

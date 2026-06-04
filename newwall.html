@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mahjong Wall</title>
+  <style>
+    :root { --tw:34px; --th:48px; --gap:2px; }  /* overridden by JS on load/resize */
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:"Segoe UI",system-ui,sans-serif;
+      background:#0b3d1f; color:#f5f5f5;
+      min-height:100vh;
+      display:flex; flex-direction:column; align-items:center;
+      padding:10px; gap:8px;
+    }
+
+    /* ── Controls bar ─────────────────────────────────────────────────────── */
+    .controls {
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center;
+    }
+    h1 { margin:0; font-size:18px; color:#ffd34d; }
+    .btn {
+      background:#ffd34d; color:#07301a; border:0;
+      padding:5px 14px; border-radius:4px; font-weight:700; cursor:pointer; font-size:13px;
+    }
+    .btn:hover { background:#ffc620; }
+    .btn:disabled { opacity:0.4; cursor:default; }
+    .mode-btn { background:#1a6b3a; color:#aaa; border:2px solid transparent; }
+    .mode-btn:hover { background:#235e30; color:#fff; }
+    .mode-btn.active { background:#0b3d1f; color:#ffd34d; border-color:#ffd34d; }
+    .mode-sep { width:1px; height:24px; background:rgba(255,255,255,0.2); margin:0 2px; }
+    label { font-size:13px; color:#ccc; }
+    select {
+      background:#1a6b3a; color:#fff; border:1px solid #ffd34d;
+      border-radius:4px; padding:3px 8px; font-size:13px; font-weight:600; cursor:pointer;
+    }
+
+    /* ── Stats bar ────────────────────────────────────────────────────────── */
+    #stats {
+      display:flex; gap:14px; flex-wrap:wrap; justify-content:center;
+      padding:4px 10px;
+      background:rgba(0,0,0,.4); border-radius:6px;
+      font-size:12px; font-weight:600; min-height:24px;
+    }
+
+    /* ── Scene grid ───────────────────────────────────────────────────────── */
+    .scene {
+      display:grid;
+      grid-template-areas:
+        ".      .        s2-lbl   .        .    "
+        ".      .        wall-top .        .    "
+        "s3-lbl wall-lft center   wall-rgt s1-lbl"
+        ".      .        wall-bot .        .    "
+        ".      .        s0-lbl   .        .    ";
+      align-items:center; justify-items:center; gap:6px;
+    }
+
+    /* ── Tile ─────────────────────────────────────────────────────────────── */
+    .tile {
+      width:var(--tw); height:var(--th);
+      border:1.5px solid #aaa; border-radius:3px;
+      flex-shrink:0; position:relative;
+      background:#fff; overflow:hidden;
+      transition: opacity 0.15s;
+    }
+    .tile img { width:100%; height:100%; object-fit:contain; display:block; }
+    .tile.used       { opacity:0.15; }
+    .tile.tail-used  { opacity:0.20; outline:1px solid rgba(255,152,0,0.35); }
+    .tile.next-head  { outline:3px solid #00ff66; box-shadow:0 0 7px 2px rgba(0,255,102,0.7); }
+    .tile.next-tail  { outline:3px solid #ff9800; box-shadow:0 0 7px 2px rgba(255,152,0,0.7); }
+
+    /* ── Rotated wrapper (left / right walls) ─────────────────────────────── */
+    .rw { width:var(--th); height:var(--tw); position:relative; flex-shrink:0; }
+    .rw .tile { position:absolute; top:50%; left:50%; }
+    .rw.rl .tile { transform:translate(-50%,-50%) rotate( 90deg); }
+    .rw.rr .tile { transform:translate(-50%,-50%) rotate(-90deg); }
+    .tile.r180 { transform:rotate(180deg); }
+
+    /* ── Wall containers ──────────────────────────────────────────────────── */
+    #wall-top, #wall-bot { display:flex; flex-direction:row; gap:var(--gap); }
+    #wall-lft, #wall-rgt { display:flex; flex-direction:column; gap:var(--gap); }
+    #wall-top, #wall-bot, #wall-lft, #wall-rgt { position:relative; overflow:visible; }
+    #wall-top { grid-area:wall-top; }
+    #wall-bot { grid-area:wall-bot; }
+    #wall-lft { grid-area:wall-lft; }
+    #wall-rgt { grid-area:wall-rgt; }
+    .sv { display:flex; flex-direction:column; gap:var(--gap); }
+    .sh { display:flex; flex-direction:row;    gap:var(--gap); }
+
+    /* ── Center ───────────────────────────────────────────────────────────── */
+    #wall-center {
+      grid-area:center;
+      background:radial-gradient(ellipse at center,#14572b 0%,#0b3d1f 80%);
+      border:1px solid rgba(255,211,77,0.15);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+    }
+    .ctr-title { font-size:14px; font-weight:700; color:rgba(255,211,77,0.7); }
+    .ctr-sub   { font-size:11px; color:rgba(255,255,255,0.3); }
+
+    /* ── Seat labels ──────────────────────────────────────────────────────── */
+    .seat-lbl {
+      font-size:12px; font-weight:700;
+      color:rgba(255,255,255,0.8);
+      background:rgba(0,0,0,0.45);
+      padding:4px 10px; border-radius:4px;
+      white-space:nowrap; text-align:center;
+    }
+    .seat-lbl.dealer { background:#ffd34d; color:#07301a; }
+    #s0-lbl { grid-area:s0-lbl; }
+    #s2-lbl { grid-area:s2-lbl; }
+    #s1-lbl { grid-area:s1-lbl; writing-mode:vertical-rl; }
+    #s3-lbl { grid-area:s3-lbl; writing-mode:vertical-rl; transform:rotate(180deg); }
+
+    .footnote { font-size:11px; color:rgba(255,255,255,0.3); text-align:center; }
+
+    /* ── Break-point marker ──────────────────────────────────────────────── */
+    .break-marker {
+      position:absolute; width:20px; height:20px;
+      z-index:200; pointer-events:none;
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px; line-height:1; color:#4dff88;
+      filter: drop-shadow(0 0 3px rgba(0,200,80,0.7));
+    }
+
+    /* ── Dice display ─────────────────────────────────────────────────────── */
+    .dice-row   { display:flex; gap:6px; align-items:center; justify-content:center; }
+    .die {
+      width:28px; height:28px; background:#fff; border:2px solid #333;
+      border-radius:5px; display:flex; align-items:center; justify-content:center;
+      font-size:18px; line-height:1; color:#111; box-shadow:1px 2px 4px rgba(0,0,0,0.5);
+    }
+    .dice-sum    { font-size:15px; font-weight:700; color:#ffd34d; }
+    .dice-result { font-size:11px; color:rgba(255,255,255,0.7); text-align:center; }
+
+    /* ── Mode badge ───────────────────────────────────────────────────────── */
+    #mode-badge {
+      font-size:11px; font-weight:700; padding:2px 8px; border-radius:3px;
+      background:rgba(0,0,0,0.5); color:#aaa;
+    }
+    #mode-badge.live { background:rgba(0,180,80,0.25); color:#5dde7a; }
+
+    /* ── Flying tile (deal animation) — shown face-down ─────────────────── */
+    .fly-tile {
+      position:fixed; z-index:1000; pointer-events:none;
+      border:1.5px solid #042510; border-radius:3px;
+      background:linear-gradient(135deg,#1a6b3a 0%,#0b3d1f 100%);
+    }
+    .fly-tile::after {
+      content:""; position:absolute; inset:4px;
+      border:1.5px solid #2a8b4e; border-radius:2px; pointer-events:none;
+    }
+
+    /* ── Face-down overlay for wall tiles during deal ─────────────────────── */
+    .tile.face-down {
+      background:linear-gradient(135deg,#1a6b3a 0%,#0b3d1f 100%) !important;
+      border-color:#042510 !important;
+    }
+    .tile.face-down > img { display:none !important; }
+    .tile.face-down::after {
+      content:""; position:absolute; inset:5px;
+      border:1.5px solid #2a8b4e; border-radius:3px; pointer-events:none;
+    }
+
+    /* ── Seat-label dash trays (JS-positioned, absolute in page space) ─────── */
+    .dash-tray {
+      position:absolute; z-index:900; pointer-events:none;
+      display:flex; gap:2px;
+    }
+    .dash-h { width:var(--tw); height:12px; background:#ffd34d; border-radius:3px; opacity:0.9; }
+    .dash-v { width:12px; height:var(--th); background:#ffd34d; border-radius:3px; opacity:0.9; }
+
+    /* ── Deal speed slider ────────────────────────────────────────────────── */
+    #deal-speed { width:70px; vertical-align:middle; cursor:pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <h1>Mahjong Wall</h1>
+    <button class="btn mode-btn active" id="standalone-btn" onclick="setMode('standalone')">Standalone</button>
+    <button class="btn mode-btn"        id="game-btn"       onclick="setMode('game')">Game Mode</button>
+    <span id="mode-badge">standalone</span>
+    <div class="mode-sep"></div>
+    <button class="btn" id="shuffle-btn" onclick="standaloneMode()">Shuffle</button>
+    <button class="btn" id="dice-btn" onclick="standaloneDice()" style="background:#2a8b4e;color:#fff;">Roll Dice</button>
+    <label>Dealer:
+      <select id="dealer-sel" onchange="WallRing.updateDealerLabels()">
+        <option value="0" selected>Seat 0</option>
+        <option value="1">Seat 1</option>
+        <option value="2">Seat 2</option>
+        <option value="3">Seat 3</option>
+      </select>
+    </label>
+    <button class="btn" id="deal-btn" onclick="demoDeal()" style="background:#7dffff;color:#07301a;">Deal</button>
+    <button class="btn" id="reveal-btn" onclick="toggleReveal()" style="background:#ff9800;color:#07301a;display:none;">Restore</button>
+    <label>Speed: <input type="range" id="deal-speed" min="1" max="5" value="3"></label>
+  </div>
+
+  <div id="stats"></div>
+
+  <div class="scene">
+    <div class="seat-lbl" id="s2-lbl">Seat 2</div>
+    <div class="seat-lbl" id="s3-lbl">Seat 3</div>
+    <div class="seat-lbl dealer" id="s0-lbl">Seat 0 · Dealer</div>
+    <div class="seat-lbl" id="s1-lbl">Seat 1</div>
+
+    <div id="wall-top"></div>
+    <div id="wall-lft"></div>
+    <div id="wall-center">
+      <div class="ctr-title" id="ctr-title">144 tiles</div>
+      <div class="ctr-sub" id="ctr-sub">4 walls · 18 × 2</div>
+      <div id="dice-display" style="display:none; flex-direction:column; align-items:center; gap:5px; margin-top:8px;">
+        <div class="dice-row" id="dice-faces"></div>
+        <div class="dice-sum" id="dice-sum-lbl"></div>
+        <div class="dice-result" id="dice-result-lbl"></div>
+      </div>
+    </div>
+    <div id="wall-rgt"></div>
+    <div id="wall-bot"></div>
+  </div>
+
+  <div class="footnote">Inner row on top (toward center) · Outer row below (toward player) · Corners open</div>
+
+  <div id="dash-0" class="dash-tray"></div>
+  <div id="dash-1" class="dash-tray"></div>
+  <div id="dash-2" class="dash-tray"></div>
+  <div id="dash-3" class="dash-tray"></div>
+
+  <script src="js/wall-ring.js"></script>
+  <script>
+    // ── Build full 144-tile deck (standalone mode) ────────────────────────
+    function buildDeck() {
+      const d = [];
+      for (const s of ['bamboo','circle','char'])
+        for (let n = 1; n <= 9; n++)
+          for (let c = 0; c < 4; c++) d.push({ suit:s, value:n });
+      for (const w of ['East','South','West','North'])
+        for (let c = 0; c < 4; c++) d.push({ suit:'wind', value:w });
+      for (const dr of ['red','green','white'])
+        for (let c = 0; c < 4; c++) d.push({ suit:'dragon', value:dr });
+      for (let i = 0; i < 4; i++) d.push({ suit:'flower', value:i });
+      for (let i = 0; i < 4; i++) d.push({ suit:'season', value:i });
+      return d;
+    }
+
+    function fisherYates(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // ── Mode toggle ───────────────────────────────────────────────────────
+    let _mode = 'standalone'; // 'standalone' | 'game'
+
+    function setMode(mode) {
+      _mode = mode;
+      document.getElementById('standalone-btn').classList.toggle('active', mode === 'standalone');
+      document.getElementById('game-btn').classList.toggle('active', mode === 'game');
+      if (mode === 'standalone') {
+        standaloneMode();
+      } else {
+        // Game mode: disable standalone controls, pull latest state
+        document.getElementById('shuffle-btn').disabled = true;
+        document.getElementById('dice-btn').disabled    = true;
+        WallRing.gameConnected = true;
+        const badge = document.getElementById('mode-badge');
+        badge.textContent = 'waiting for game…';
+        badge.className   = '';
+        try {
+          const saved = localStorage.getItem('mahjong-wall-state');
+          if (saved) {
+            const data = JSON.parse(saved);
+            if (data && data.wall && data.wall.length === 144) WallRing.renderFromGame(data);
+          }
+        } catch(e) {}
+      }
+    }
+
+    // ── Standalone mode ───────────────────────────────────────────────────
+    let _standaloneTiles = null;
+    let _revealed = false;
+
+    function standaloneMode() {
+      _standaloneTiles = fisherYates(buildDeck());
+      WallRing.buildWalls(_standaloneTiles);
+      clearDiceDisplay();
+      WallRing.updateDealerLabels();
+      document.getElementById('stats').innerHTML = '<span style="color:#0b3d1f;font-size:12px;font-weight:600;line-height:1.4;">Standalone — shuffle only</span>';
+      document.getElementById('ctr-title').textContent = '144 tiles';
+      document.getElementById('ctr-sub').textContent   = '4 walls · 18 × 2';
+      WallRing.headIdx      = 0;
+      WallRing.gameConnected = false;
+      document.getElementById('shuffle-btn').disabled = false;
+      document.getElementById('dice-btn').disabled    = false;
+      document.getElementById('deal-btn').disabled = false;
+      document.getElementById('reveal-btn').style.display = 'none';
+      _revealed = false;
+      clearDashes();
+      const badge = document.getElementById('mode-badge');
+      badge.textContent = 'standalone';
+      badge.className = '';
+    }
+
+    function standaloneDice() {
+      if (!_standaloneTiles) standaloneMode();
+      const d1 = Math.ceil(Math.random()*6);
+      const d2 = Math.ceil(Math.random()*6);
+      const d3 = Math.ceil(Math.random()*6);
+      const sum = d1 + d2 + d3;
+      const dealer = parseInt(document.getElementById('dealer-sel').value);
+      const breakSeat = (dealer + (sum - 1) % 4) % 4;
+      WallRing.showDice([d1,d2,d3], sum, breakSeat);
+      WallRing.placeBreakMarker(breakSeat, sum);
+      const segIdx = [0,3,2,1].indexOf(breakSeat);
+      WallRing.headIdx = (segIdx * 36 + 2 * sum) % 144;
+    }
+
+    // ── Deal animation ────────────────────────────────────────────────────
+    let _dealing = false;
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function positionDashTrays() {
+      [0,1,2,3].forEach(s => {
+        const lbl  = document.getElementById(`s${s}-lbl`);
+        const tray = document.getElementById(`dash-${s}`);
+        if (!lbl || !tray) return;
+        const r  = lbl.getBoundingClientRect();
+        const sx = window.scrollX || window.pageXOffset || 0;
+        const sy = window.scrollY || window.pageYOffset || 0;
+        const gap = 5;
+        if (s === 0) {
+          tray.style.left = (r.left + sx + r.width / 2) + 'px';
+          tray.style.top  = (r.bottom + sy + gap) + 'px';
+          tray.style.transform = 'translateX(-50%)';
+          tray.style.flexDirection = 'row'; tray.style.alignItems = 'flex-start';
+        } else if (s === 2) {
+          tray.style.left = (r.left + sx + r.width / 2) + 'px';
+          tray.style.top  = (r.top + sy - gap) + 'px';
+          tray.style.transform = 'translateX(-50%) translateY(-100%)';
+          tray.style.flexDirection = 'row'; tray.style.alignItems = 'flex-end';
+        } else if (s === 1) {
+          tray.style.left = (r.right + sx + gap) + 'px';
+          tray.style.top  = (r.top + sy + r.height / 2) + 'px';
+          tray.style.transform = 'translateY(-50%)';
+          tray.style.flexDirection = 'column'; tray.style.alignItems = 'flex-start';
+        } else {
+          tray.style.left = (r.left + sx - gap) + 'px';
+          tray.style.top  = (r.top + sy + r.height / 2) + 'px';
+          tray.style.transform = 'translateX(-100%) translateY(-50%)';
+          tray.style.flexDirection = 'column'; tray.style.alignItems = 'flex-end';
+        }
+      });
+    }
+
+    function clearDashes() {
+      [0,1,2,3].forEach(s => { document.getElementById(`dash-${s}`).innerHTML = ''; });
+    }
+
+    function addDashes(seat, count) {
+      const tray = document.getElementById(`dash-${seat}`);
+      const cls  = (seat === 0 || seat === 2) ? 'dash-h' : 'dash-v';
+      for (let i = 0; i < count; i++) {
+        const d = document.createElement('div'); d.className = cls; tray.appendChild(d);
+      }
+    }
+
+    function getDashTarget(seat) {
+      const r = document.getElementById(`s${seat}-lbl`).getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
+
+    function flyGroup(gameIndices, seat, ms) {
+      return new Promise(resolve => {
+        const tgt   = getDashTarget(seat);
+        const tiles = WallRing.tiles;
+        const hIdx  = WallRing.headIdx;
+        const entries = gameIndices.map(gi => {
+          const physIdx = (hIdx + gi) % 144;
+          const srcEl   = tiles[physIdx]?.div;
+          if (!srcEl) return null;
+          const r = srcEl.getBoundingClientRect();
+          const clone = document.createElement('div');
+          clone.className = 'fly-tile';
+          clone.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+          document.body.appendChild(clone);
+          return { clone, srcEl };
+        }).filter(Boolean);
+
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          entries.forEach(({ clone }) => {
+            const w = parseFloat(clone.style.width), h = parseFloat(clone.style.height);
+            clone.style.transition = `left ${ms}ms ease-in,top ${ms}ms ease-in,opacity ${ms*0.3}ms ${ms*0.7}ms ease-in`;
+            clone.style.left = (tgt.x - w/2) + 'px';
+            clone.style.top  = (tgt.y - h/2) + 'px';
+            clone.style.opacity = '0';
+          });
+        }));
+
+        setTimeout(() => {
+          entries.forEach(({ clone, srcEl }) => {
+            clone.remove();
+            srcEl.classList.remove('face-down');
+            srcEl.classList.add('used');
+          });
+          addDashes(seat, entries.length);
+          resolve();
+        }, ms + 60);
+      });
+    }
+
+    async function demoDeal() {
+      if (_dealing) return;
+      _dealing = true;
+      document.getElementById('deal-btn').disabled    = true;
+      document.getElementById('shuffle-btn').disabled = true;
+      document.getElementById('dice-btn').disabled    = true;
+      document.getElementById('reveal-btn').style.display = 'none';
+      clearDashes();
+
+      if (WallRing.gameConnected) {
+        for (let i = 0; i < 144; i++) {
+          const t = WallRing.tiles[i];
+          if (t) { t.div.classList.remove('used','tail-used','next-head','next-tail','revealed'); t.div.style.cssText = ''; }
+        }
+        positionDashTrays();
+        await sleep(600);
+      } else {
+        standaloneMode(); standaloneDice(); positionDashTrays(); await sleep(900);
+      }
+
+      for (let i = 0; i < 144; i++) {
+        const t = WallRing.tiles[i]; if (t) t.div.classList.add('face-down');
+      }
+
+      const dealer   = WallRing.gameConnected ? WallRing.liveDealerSeat : parseInt(document.getElementById('dealer-sel').value);
+      const ccwSeats = [dealer, (dealer+1)%4, (dealer+2)%4, (dealer+3)%4];
+      const speedVal = parseInt(document.getElementById('deal-speed').value);
+      const ms       = [1200, 700, 350, 180, 80][speedVal - 1];
+      const groupGap = ms * 0.5, roundGap = ms * 1.0;
+      let gameIdx = 0;
+
+      for (let round = 0; round < 3; round++) {
+        for (const seat of ccwSeats) {
+          await flyGroup([gameIdx, gameIdx+1, gameIdx+2, gameIdx+3], seat, ms);
+          gameIdx += 4; await sleep(groupGap);
+        }
+        await sleep(roundGap);
+      }
+      for (const seat of ccwSeats) { await flyGroup([gameIdx++], seat, ms); await sleep(groupGap); }
+      await flyGroup([gameIdx++], dealer, ms);
+
+      document.getElementById('ctr-title').textContent = `${144 - gameIdx} tiles`;
+      document.getElementById('ctr-sub').textContent   = `${gameIdx} dealt · ${144 - gameIdx} remaining`;
+      _dealing = false;
+      document.getElementById('deal-btn').disabled    = false;
+      document.getElementById('shuffle-btn').disabled = WallRing.gameConnected;
+      document.getElementById('dice-btn').disabled    = WallRing.gameConnected;
+      _revealed = false;
+      document.getElementById('reveal-btn').textContent = 'Restore';
+      document.getElementById('reveal-btn').style.display = '';
+    }
+
+    function toggleReveal() {
+      for (let i = 0; i < 144; i++) {
+        const t = WallRing.tiles[i];
+        if (t) { t.div.classList.remove('face-down','used','revealed','tail-used','next-head','next-tail'); t.div.style.cssText = ''; }
+      }
+      clearDashes();
+      document.getElementById('reveal-btn').style.display = 'none';
+      _revealed = false;
+      if (WallRing.lastLiveData) WallRing.applyGameState(WallRing.lastLiveData);
+    }
+
+    function clearDiceDisplay() {
+      document.getElementById('dice-display').style.display = 'none';
+      document.querySelectorAll('.break-marker').forEach(e => e.remove());
+    }
+
+    // ── Pre-generate next wall for the game (pure JS, no DOM) ────────────
+    function generatePending(dealerSeat) {
+      const deck = fisherYates(buildDeck());
+      const d1 = Math.ceil(Math.random()*6), d2 = Math.ceil(Math.random()*6), d3 = Math.ceil(Math.random()*6);
+      const sum = d1 + d2 + d3;
+      const ds  = (dealerSeat !== undefined) ? dealerSeat
+                  : parseInt(document.getElementById('dealer-sel').value || '0');
+      const breakSeat = (ds + (sum - 1) % 4) % 4;
+      const headIdx   = ([0,3,2,1].indexOf(breakSeat) * 36 + 2 * sum) % 144;
+      const wall = [];
+      for (let i = 0; i < 144; i++) {
+        const t = deck[(headIdx + i) % 144];
+        wall.push({ suit: t.suit, value: t.value });
+      }
+      try {
+        localStorage.setItem('mahjong-wall-pending', JSON.stringify(
+          { wall, dice: [d1,d2,d3], diceTotal: sum, breakSeat, breakCount: sum }
+        ));
+      } catch(e) {}
+    }
+
+    // ── BroadcastChannel + localStorage ──────────────────────────────────
+    const bc = new BroadcastChannel('mahjong-wall');
+    bc.onmessage = e => {
+      if (_mode === 'game') WallRing.renderFromGame(e.data);
+      generatePending(e.data.dealerSeat);  // always keep next wall ready
+    };
+
+    // Self-position next to opener window
+    (function() {
+      if (!window.opener) return;
+      try {
+        const op = window.opener;
+        const left = op.screenLeft + op.outerWidth;
+        const w = Math.max(300, op.screen.availWidth - left);
+        window.moveTo(left, op.screen.availTop || 0);
+        window.resizeTo(w, op.screen.availHeight);
+      } catch(e) {}
+    })();
+
+    WallRing.applyTileSize();
+    window.addEventListener('resize', () => {
+      WallRing.applyTileSize();
+      if (document.querySelector('#dash-0 .dash-h,#dash-0 .dash-v,#dash-1 .dash-v'))
+        positionDashTrays();
+    });
+
+    standaloneMode();
+    generatePending();   // prime localStorage for the game's first deal
+  </script>
+</body>
+</html>
