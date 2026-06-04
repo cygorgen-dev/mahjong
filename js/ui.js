@@ -1945,6 +1945,34 @@ function renderWallRing() {
   if (wi) wi.textContent = `Wall: ${_game.wallRemaining()}` + (tailDrawn > 0 ? `  +${tailDrawn} tail` : '');
 }
 
+// Show the ring as a complete shuffled wall (all slots full, face-down or
+// face-up if revealed, images assigned) without any "used" state markers.
+// Used at deal-animation step 1 so the 👁 Ring button works correctly and
+// the player sees a full wall — NOT the post-deal broken wall from wallIdx.
+function _resetRingFull() {
+  if (!_ringOuter) _buildRingTiles();
+  if (!_game) return;
+  const breakSeat  = _game.wallBreakSeat  ?? 0;
+  const breakCount = _game.wallBreakCount ?? _game.diceTotal ?? 9;
+  const headSlot   = ({ 0: 0, 3: 18, 2: 36, 1: 54 }[breakSeat] + breakCount) % 72;
+  const cls = _ringRevealed ? 'ring-tile' : 'ring-tile face-down';
+  for (let i = 0; i < 72; i++) {
+    const phys  = (headSlot + i) % 72;
+    const inner = _ringInner[phys];
+    const outer = _ringOuter[phys];
+    if (inner) {
+      inner.el.className = cls;
+      const t = _game.wall[i * 2];
+      if (t) inner.img.src = `img/tiles/${t.suit}_${t.value}.png`;
+    }
+    if (outer) {
+      outer.el.className = cls;
+      const t = _game.wall[i * 2 + 1];
+      if (t) outer.img.src = `img/tiles/${t.suit}_${t.value}.png`;
+    }
+  }
+}
+
 function _sdPlaceholder(seat) {
   const tile = document.createElement('div');
   tile.className = 'tile back';
@@ -1973,9 +2001,10 @@ async function _runSlowDeal() {
   const msgEl = document.getElementById('message');
   if (msgEl) msgEl.textContent = '';
   document.querySelectorAll('#action-bar button').forEach(b => b.disabled = true);
-  // Assign tile images to ring slots now so the 👁 Ring button works for
-  // the new hand even though renderAll() is blocked by _slowDealActive.
-  renderWallRing();
+  // Show a complete shuffled wall (all 72 slots full, face-down) so the
+  // ring looks correct before dealing starts. renderWallRing() would use
+  // the real post-deal wallIdx and show a broken wall — wrong here.
+  _resetRingFull();
   // Ghost tiles keep every seat's hand at full size so the layout (especially
   // seat 0 at the bottom) stays within the viewport before any tiles arrive.
   [0, 1, 2, 3].forEach(s => {
@@ -2239,7 +2268,7 @@ async function _runSingleStepDeal() {
   const dpEl2 = document.getElementById('discard-pile'); if (dpEl2) dpEl2.innerHTML = '';
   const msgEl2 = document.getElementById('message');     if (msgEl2) msgEl2.textContent = '';
   document.querySelectorAll('#action-bar button').forEach(b => b.disabled = true);
-  renderWallRing(); // assign face images to ring slots for 👁 Ring button
+  _resetRingFull(); // full wall, correct images, no 'used' state
   [0, 1, 2, 3].forEach(s => {
     const h = document.querySelector(`.seat[data-seat="${s}"] .hand`);
     if (!h) return;
