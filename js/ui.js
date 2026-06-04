@@ -1965,67 +1965,62 @@ async function _runSlowDeal() {
   await sdSleep(800);
   if (wi) wi.textContent = '';
 
-  // ── 3. Dice in center → animate to dealer slot, stay visible all deal ───
-  // Kept inside #wall-ring-wrap so it shares #app's transform/scale space —
-  // avoids fixed/absolute cross-origin coordinate mismatch entirely.
+  // ── 3. Dice in center → fly to dealer's hand area, stay visible all deal ─
+  // Restored to v0604-426 approach: clone in position:fixed flyOverlay using
+  // viewport coords from getBoundingClientRect — this is what worked reliably.
   const breakSeat = _game.wallBreakSeat ?? 0;
   const diceVals  = _game.dice || [];
   const wrap = document.getElementById('wall-ring-wrap');
-  let _diceEl = null;   // kept alive until end of function
+
+  // Create flyOverlay first — used for both dice clone and tile animation
+  const flyOverlay = document.createElement('div');
+  flyOverlay.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:visible;';
+  document.body.appendChild(flyOverlay);
 
   if (wrap && diceVals.length) {
-    _diceEl = document.createElement('div');
-    // start centered; transition will move left/top and scale-down to destination
-    _diceEl.style.cssText = [
-      'position:absolute;',
-      `left:${wrap.offsetWidth / 2}px;top:${wrap.offsetHeight / 2}px;`,
-      'transform:translate(-50%,-50%) scale(1);transform-origin:center;',
-      'display:flex;gap:6px;align-items:center;z-index:200;pointer-events:none;',
+    const diceEl = document.createElement('div');
+    diceEl.style.cssText = [
+      'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);',
+      'display:flex;gap:6px;align-items:center;z-index:200;',
       'background:rgba(0,0,0,0.8);padding:8px 14px;border-radius:8px;',
-      'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);',
-      'transition:left 600ms ease-in,top 600ms ease-in,transform 600ms ease-in;'
+      'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);'
     ].join('');
     const diceRow = document.createElement('div');
     diceRow.className = 'dice-display';
     diceRow.style.cssText = 'display:flex;gap:5px;align-items:center;';
     diceRow.innerHTML = diceVals.map(v => makeDieSVG(v)).join('');
-    _diceEl.appendChild(diceRow);
+    diceEl.appendChild(diceRow);
     const _dsum = document.createElement('span');
     _dsum.style.cssText = 'font-size:16px;font-weight:700;color:#ffd34d;margin-left:4px;';
     _dsum.textContent = `= ${_game.diceTotal}`;
-    _diceEl.appendChild(_dsum);
-    wrap.appendChild(_diceEl);
+    diceEl.appendChild(_dsum);
+    wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Destination in wrap-relative coordinates (same space — no cross-origin issue)
-    const wrapRect = wrap.getBoundingClientRect();
-    const _dstSlot  = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
-    const _dstClaim = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .claim-row`);
-    const _dstSlotR  = _dstSlot?.getBoundingClientRect();
-    const _dstClaimR = _dstClaim?.getBoundingClientRect();
-    const _dstR = (_dstSlotR && (_dstSlotR.width > 0 || _dstSlotR.height > 0))
-                  ? _dstSlotR : _dstClaimR;
-    // getBoundingClientRect() is in scaled viewport pixels; CSS left/top are in
-    // layout pixels (pre-scale). Divide by scale to convert correctly.
-    const _scale = wrapRect.width > 0 ? wrapRect.width / wrap.offsetWidth : 1;
-    let destX = wrap.offsetWidth  / 2;
-    let destY = wrap.offsetHeight / 2;
-    if (_dstR) {
-      destX = (_dstR.left + _dstR.width  / 2 - wrapRect.left) / _scale;
-      destY = (_dstR.top  + _dstR.height / 2 - wrapRect.top)  / _scale;
-    }
-    await sdSleep(20);
-    _diceEl.style.left      = destX + 'px';
-    _diceEl.style.top       = destY + 'px';
-    _diceEl.style.transform = 'translate(-50%,-50%) scale(0.35)';
-    await sdSleep(650);
-    // _diceEl stays in wrap — visible throughout dealing, removed at end
+    // Clone into flyOverlay (viewport coords) — stays visible through entire deal
+    const tgt = sdTarget(_game.dealerSeat);
+    const sr  = diceEl.getBoundingClientRect();
+    const diceClone = diceEl.cloneNode(true);
+    diceClone.style.cssText = [
+      `position:absolute;left:${sr.left}px;top:${sr.top}px;`,
+      `width:${sr.width}px;height:${sr.height}px;`,
+      'display:flex;gap:6px;align-items:center;pointer-events:none;',
+      'background:rgba(0,0,0,0.8);padding:8px 14px;border-radius:8px;',
+      'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);',
+      'transform-origin:center;transition:left 500ms ease-in,top 500ms ease-in,',
+      'transform 500ms ease-in;'
+    ].join('');
+    flyOverlay.appendChild(diceClone);
+    diceEl.style.opacity = '0';
+    await sdSleep(30);
+    const _dcTop = Math.min(tgt.y - sr.height / 2, window.innerHeight - sr.height * 0.5 - 8);
+    diceClone.style.left      = (tgt.x - sr.width  / 2) + 'px';
+    diceClone.style.top       = _dcTop + 'px';
+    diceClone.style.transform = 'scale(0.5)';
+    await sdSleep(560);
+    // diceClone stays in flyOverlay until flyOverlay.remove() at end
+    diceEl.remove();
   }
-
-  // flyOverlay for tile animation only
-  const flyOverlay = document.createElement('div');
-  flyOverlay.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:visible;';
-  document.body.appendChild(flyOverlay);
 
   // ── 4. Reset ring to face-down ────────────────────────────────────────
   const breakCount = _game.wallBreakCount ?? (_game.diceTotal ?? 9);
@@ -2098,7 +2093,6 @@ async function _runSlowDeal() {
   await sdFly([gi++], dealer);
 
   flyOverlay.remove();
-  if (_diceEl) _diceEl.remove();
 }
 
 function setShowSeatParens(v) { _showSeatParens = v; }
