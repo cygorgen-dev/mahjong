@@ -71,52 +71,6 @@ class Game {
   }
 
   deal() {
-    // Use externally provided wall from newwall.html if available
-    try {
-      const _ext = localStorage.getItem('mahjong-wall-pending');
-      if (_ext) {
-        const e = JSON.parse(_ext);
-        localStorage.removeItem('mahjong-wall-pending');
-        const _base = Date.now();
-
-        if (e.deck && e.deck.length === 144) {
-          // New format: physical (unrotated) deck — game rolls its own dice and breaks the wall
-          this.dice = [
-            Math.floor(Math.random()*6)+1,
-            Math.floor(Math.random()*6)+1,
-            Math.floor(Math.random()*6)+1
-          ];
-          this.diceTotal = this.dice.reduce((a,b)=>a+b,0);
-          const _breakSeat = (this.dealerSeat + (this.diceTotal - 1) % 4) % 4;
-          const _segIdx    = [0,3,2,1].indexOf(_breakSeat);
-          const _headIdx   = (_segIdx * 36 + 2 * this.diceTotal) % 144;
-          this.wallBreakSeat  = _breakSeat;
-          this.wallBreakCount = this.diceTotal;
-          this.wall = [...e.deck.slice(_headIdx), ...e.deck.slice(0, _headIdx)]
-                        .map((t, i) => ({ id: _base + i, suit: t.suit, value: t.value }));
-          this.wallIdx = 0;
-          this.addLog(`144 tiles shuffled — wall built.`);
-          this.addLog(`${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
-          this.addLog(`Wall broken at ${playerTag(this.players[_breakSeat])}'s wall, ${this.diceTotal} tiles from right end.`);
-          return this._dealTiles();
-        }
-
-        if (e.wall && e.wall.length === 144) {
-          // Legacy format: wall already rotated with dice info provided
-          this.wall           = e.wall.map((t, i) => ({ id: _base + i, suit: t.suit, value: t.value }));
-          this.dice           = e.dice;
-          this.diceTotal      = e.diceTotal;
-          this.wallBreakSeat  = e.breakSeat;
-          this.wallBreakCount = e.breakCount;
-          this.wallIdx = 0;
-          this.addLog(`144 tiles shuffled — wall built.`);
-          this.addLog(`${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
-          this.addLog(`Wall broken at ${playerTag(this.players[this.wallBreakSeat])}'s wall, ${this.diceTotal} tiles from right end.`);
-          return this._dealTiles();
-        }
-      }
-    } catch(e) {}
-
     // Roll three dice to determine wall break point
     this.dice = [
       Math.floor(Math.random()*6)+1,
