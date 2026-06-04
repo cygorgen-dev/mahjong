@@ -8,6 +8,7 @@ let _slowDealActive = false;
 let _slowDealWallId = null;
 let _ssdResolve = null;   // pending step-advance resolver
 let _ssdAborted = false;  // set true when a new deal is triggered mid-animation
+let _ringInitWallId = null; // wall id of the last hand whose ring was initialised full
 let _chowChoices = []; // tiles the player picks for chow
 let _peekWin = null;
 let _wallWin = null;
@@ -683,7 +684,17 @@ function renderAll() {
   renderActionBar();
   renderMessage();
   renderSidebar();
-  renderWallRing();
+  // First render of a new hand: show a complete shuffled wall (same as the
+  // deal animations do in step 1).  renderWallRing() would use the real
+  // wallIdx (53+) and show a broken wall — wrong for the initial display.
+  // On every subsequent render of the same hand, renderWallRing() runs
+  // normally and tracks the advancing draw/tail pointers correctly.
+  if (_sdWid !== null && _sdWid !== _ringInitWallId) {
+    _ringInitWallId = _sdWid;
+    _resetRingFull();
+  } else {
+    renderWallRing();
+  }
   populateWallPeek();
   _broadcastWallState();
   tickAutorun();
