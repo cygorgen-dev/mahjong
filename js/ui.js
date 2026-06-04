@@ -2005,11 +2005,14 @@ async function _runSlowDeal() {
     const _dstClaimR = _dstClaim?.getBoundingClientRect();
     const _dstR = (_dstSlotR && (_dstSlotR.width > 0 || _dstSlotR.height > 0))
                   ? _dstSlotR : _dstClaimR;
+    // getBoundingClientRect() is in scaled viewport pixels; CSS left/top are in
+    // layout pixels (pre-scale). Divide by scale to convert correctly.
+    const _scale = wrapRect.width > 0 ? wrapRect.width / wrap.offsetWidth : 1;
     let destX = wrap.offsetWidth  / 2;
     let destY = wrap.offsetHeight / 2;
     if (_dstR) {
-      destX = _dstR.left - wrapRect.left + _dstR.width  / 2;
-      destY = _dstR.top  - wrapRect.top  + _dstR.height / 2;
+      destX = (_dstR.left + _dstR.width  / 2 - wrapRect.left) / _scale;
+      destY = (_dstR.top  + _dstR.height / 2 - wrapRect.top)  / _scale;
     }
     await sdSleep(20);
     _diceEl.style.left      = destX + 'px';
