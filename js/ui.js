@@ -326,6 +326,20 @@ function initUI(game) {
       _wallWin.focus();
     }
   });
+  let _newWallWin = null;
+  document.getElementById('newwall-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _broadcastWallState();
+    if (!_newWallWin || _newWallWin.closed) {
+      const _pl = window.screenLeft + window.outerWidth;
+      const _pw = Math.max(300, screen.availWidth - _pl);
+      _newWallWin = window.open('newwall.html', 'mahjong-newwall',
+        `width=${_pw},height=${screen.availHeight},left=${_pl},top=${screen.availTop||0},resizable=yes,scrollbars=yes`);
+    } else {
+      _newWallWin.focus();
+    }
+  });
+
   document.getElementById('close-peek')?.addEventListener('click', (e) => {
     e.stopPropagation();
     if (_peekWin && !_peekWin.closed) _peekWin.close();
