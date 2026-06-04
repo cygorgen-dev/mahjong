@@ -480,24 +480,14 @@
       document.querySelectorAll('.break-marker').forEach(e => e.remove());
     }
 
-    // ── Pre-generate next wall for the game (pure JS, no DOM) ────────────
+    // ── Pre-generate next wall for the game (physical layout only, no dice) ──
+    // Stores an unrotated shuffled deck. The game rolls its own dice and applies
+    // the break itself, so the tile positions are determined here but the logical
+    // start index (wall[0]) is determined by the game's dice roll.
     function generatePending(dealerSeat) {
       const deck = fisherYates(buildDeck());
-      const d1 = Math.ceil(Math.random()*6), d2 = Math.ceil(Math.random()*6), d3 = Math.ceil(Math.random()*6);
-      const sum = d1 + d2 + d3;
-      const ds  = (dealerSeat !== undefined) ? dealerSeat
-                  : parseInt(document.getElementById('dealer-sel').value || '0');
-      const breakSeat = (ds + (sum - 1) % 4) % 4;
-      const headIdx   = ([0,3,2,1].indexOf(breakSeat) * 36 + 2 * sum) % 144;
-      const wall = [];
-      for (let i = 0; i < 144; i++) {
-        const t = deck[(headIdx + i) % 144];
-        wall.push({ suit: t.suit, value: t.value });
-      }
       try {
-        localStorage.setItem('mahjong-wall-pending', JSON.stringify(
-          { wall, dice: [d1,d2,d3], diceTotal: sum, breakSeat, breakCount: sum }
-        ));
+        localStorage.setItem('mahjong-wall-pending', JSON.stringify({ deck }));
       } catch(e) {}
     }
 
