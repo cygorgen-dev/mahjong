@@ -1951,70 +1951,63 @@ async function _runSlowDeal() {
 
   // ── 2. Shuffle message ───────────────────────────────────────────────
   const wi = document.getElementById('wall-info');
-  const DIE = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
   if (wi) wi.textContent = '🀄 Shuffling wall…';
   await sdSleep(800);
   if (wi) wi.textContent = '';
 
-  // ── 3. Dice display in center → fly to dealer's dice slot ────────────
-  const breakSeat  = _game.wallBreakSeat  ?? 0;
-  const diceVals   = _game.dice || [];
+  // ── 3. Dice in center (SVG format) → fly to dealer, stay visible all deal ─
+  const breakSeat = _game.wallBreakSeat ?? 0;
+  const diceVals  = _game.dice || [];
   const wrap = document.getElementById('wall-ring-wrap');
-  let diceEl = null;
+
+  // flyOverlay created early so the dice clone can live inside it
+  const flyOverlay = document.createElement('div');
+  flyOverlay.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:visible;';
+  document.body.appendChild(flyOverlay);
+
   if (wrap && diceVals.length) {
-    diceEl = document.createElement('div');
+    // Show dice bubble in center using same SVG format as in-game dice
+    const diceEl = document.createElement('div');
     diceEl.style.cssText = [
       'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);',
-      'display:flex;gap:8px;align-items:center;z-index:200;',
-      'background:rgba(0,0,0,0.75);padding:10px 16px;border-radius:8px;',
+      'display:flex;gap:6px;align-items:center;z-index:200;',
+      'background:rgba(0,0,0,0.8);padding:8px 14px;border-radius:8px;',
       'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);'
     ].join('');
-    diceVals.forEach(v => {
-      const d = document.createElement('span');
-      d.style.cssText = 'font-size:32px;line-height:1;';
-      d.textContent = DIE[v] || v;
-      diceEl.appendChild(d);
-    });
+    const diceRow = document.createElement('div');
+    diceRow.className = 'dice-display';
+    diceRow.style.cssText = 'display:flex;gap:5px;align-items:center;';
+    diceRow.innerHTML = diceVals.map(v => makeDieSVG(v)).join('');
+    diceEl.appendChild(diceRow);
     const sum = document.createElement('span');
-    sum.style.cssText = 'font-size:18px;font-weight:700;color:#ffd34d;margin-left:6px;';
+    sum.style.cssText = 'font-size:16px;font-weight:700;color:#ffd34d;margin-left:4px;';
     sum.textContent = `= ${_game.diceTotal}`;
     diceEl.appendChild(sum);
     wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Fly dice bubble to the dealer's hand area — same target tiles use, guaranteed
-    // correct direction for all four dealer seats.
+    // Fly to dealer's hand area (same target as tiles — correct for all seats)
     const tgt = sdTarget(_game.dealerSeat);
-    {
-      const sr = diceEl.getBoundingClientRect();
-      const clone = diceEl.cloneNode(true);
-      clone.style.cssText = [
-        `position:fixed;left:${sr.left}px;top:${sr.top}px;`,
-        `width:${sr.width}px;height:${sr.height}px;`,
-        'display:flex;gap:8px;align-items:center;z-index:9999;pointer-events:none;',
-        'background:rgba(0,0,0,0.75);padding:10px 16px;border-radius:8px;',
-        'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);',
-        'transform-origin:center;transition:left 500ms ease-in,top 500ms ease-in,',
-        'transform 500ms ease-in;'
-      ].join('');
-      document.body.appendChild(clone);
-      diceEl.style.opacity = '0';
-      await sdSleep(30);
-      clone.style.left      = (tgt.x - sr.width  / 2) + 'px';
-      clone.style.top       = (tgt.y - sr.height / 2) + 'px';
-      clone.style.transform = 'scale(0.45)';
-      await sdSleep(560);
-      clone.remove();
-      // Land: populate dealer's dice-slot with real SVG dice (stays until renderAll)
-      const dealerDiceSlot = document.querySelector(`.seat[data-seat="${_game.dealerSeat}"] .dice-slot`);
-      if (dealerDiceSlot) {
-        const dc = document.createElement('div');
-        dc.className = 'dice-display';
-        dc.innerHTML = diceVals.map(v => makeDieSVG(v)).join('');
-        dealerDiceSlot.innerHTML = '';
-        dealerDiceSlot.appendChild(dc);
-      }
-    }
+    const sr  = diceEl.getBoundingClientRect();
+    // Clone goes into flyOverlay so it persists through the entire tile deal
+    const diceClone = diceEl.cloneNode(true);
+    diceClone.style.cssText = [
+      `position:absolute;left:${sr.left}px;top:${sr.top}px;`,
+      `width:${sr.width}px;height:${sr.height}px;`,
+      'display:flex;gap:6px;align-items:center;pointer-events:none;',
+      'background:rgba(0,0,0,0.8);padding:8px 14px;border-radius:8px;',
+      'border:2px solid #ffd34d;box-shadow:0 0 20px rgba(255,211,77,0.4);',
+      'transform-origin:center;transition:left 500ms ease-in,top 500ms ease-in,',
+      'transform 500ms ease-in;'
+    ].join('');
+    flyOverlay.appendChild(diceClone);
+    diceEl.style.opacity = '0';
+    await sdSleep(30);
+    diceClone.style.left      = (tgt.x - sr.width  / 2) + 'px';
+    diceClone.style.top       = (tgt.y - sr.height / 2) + 'px';
+    diceClone.style.transform = 'scale(0.5)';
+    await sdSleep(560);
+    // diceClone stays in flyOverlay — visible throughout dealing, removed with overlay at end
     diceEl.remove();
   }
 
@@ -2028,12 +2021,7 @@ async function _runSlowDeal() {
     if (_ringOuter[i]) _ringOuter[i].el.className = 'ring-tile face-down';
   }
 
-  // ── 5. Fly-tile overlay ───────────────────────────────────────────────
-  // Appended to body (sibling of #app) with position:fixed so it sits above
-  // all stacking contexts inside #app and is unaffected by #app's scale transform.
-  const flyOverlay = document.createElement('div');
-  flyOverlay.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:visible;';
-  document.body.appendChild(flyOverlay);
+  // flyOverlay was created in step 3 — reused here for tile animation
 
   function sdEl(gi) {
     const phys = (headSlot + Math.floor(gi / 2)) % 72;
