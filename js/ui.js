@@ -2003,8 +2003,9 @@ async function _runSlowDeal() {
     flyOverlay.appendChild(diceClone);
     diceEl.style.opacity = '0';
     await sdSleep(30);
+    const _dcTop = Math.min(tgt.y - sr.height / 2, window.innerHeight - sr.height * 0.5 - 8);
     diceClone.style.left      = (tgt.x - sr.width  / 2) + 'px';
-    diceClone.style.top       = (tgt.y - sr.height / 2) + 'px';
+    diceClone.style.top       = _dcTop + 'px';
     diceClone.style.transform = 'scale(0.5)';
     await sdSleep(560);
     // diceClone stays in flyOverlay — visible throughout dealing, removed with overlay at end
