@@ -1997,32 +1997,66 @@ async function _runSlowDeal() {
     wrap.appendChild(diceEl);
     await sdSleep(1100);
 
-    // Inject dice fake tiles into dealer's hand exactly as renderSeats() does —
-    // no coordinates needed, correct position guaranteed by DOM structure.
+    // Inject label + wind + dice fake tiles in the exact same order/classes as
+    // renderSeats() — so the final renderAll() rebuild lands them in the same
+    // positions and no shift occurs.
     const _ds = _game.dealerSeat;
     const _dHandEl = document.querySelector(`.seat[data-seat="${_ds}"] .hand`);
     if (_dHandEl) {
-      const isSide  = (_ds === 1 || _ds === 3);
-      const fakeCls = isSide ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
+      const isSide = (_ds === 1 || _ds === 3);
       const _d = _game.dice || [1,1,1];
-      const blk1 = document.createElement('div'); blk1.className = fakeCls;
-      const _dc1 = document.createElement('div'); _dc1.className = 'dice-display';
+      const _p = _game.players[_ds];
+
+      // ── Build the 4 fake items ──────────────────────────────────────────
+      // 1. Label
+      let lblEl;
+      if (isSide) {
+        lblEl = document.createElement('div');
+        const sideDir = document.querySelector(`.seat[data-seat="${_ds}"]`)
+                          ?.classList.contains('seat-left') ? ' left' : ' right';
+        lblEl.className = `side-hand-label seat-s${_ds}${sideDir}`;
+        const lt = document.createElement('div');
+        lt.className = 'side-hand-label-text';
+        lt.textContent = _p.name;
+        lblEl.appendChild(lt);
+      } else {
+        lblEl = document.createElement('div');
+        lblEl.className = `h-hand-fake-tile h-label-tile seat-s${_ds}`;
+        lblEl.textContent = _p.name;
+      }
+
+      // 2. Wind
+      const wndEl = document.createElement('div');
+      wndEl.className = isSide ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
+      const wb = document.createElement('div');
+      wb.className = 'badge-wind dealer';
+      wb.innerHTML = `<span class="wind-inner">${_game.roundWind.charAt(0)}</span>`;
+      wndEl.appendChild(wb);
+
+      // 3+4. Dice
+      const fakeCls = isSide ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
+      const dblk1 = document.createElement('div'); dblk1.className = fakeCls;
+      const _dc1  = document.createElement('div'); _dc1.className = 'dice-display';
       _dc1.innerHTML = makeDieSVG(_d[0]) + makeDieSVG(_d[1]);
-      blk1.appendChild(_dc1);
-      const blk2 = document.createElement('div'); blk2.className = fakeCls;
-      const _dc2 = document.createElement('div'); _dc2.className = 'dice-display';
+      dblk1.appendChild(_dc1);
+      const dblk2 = document.createElement('div'); dblk2.className = fakeCls;
+      const _dc2  = document.createElement('div'); _dc2.className = 'dice-display';
       _dc2.innerHTML = makeDieSVG(_d[2]);
-      blk2.appendChild(_dc2);
-      // Remove 2 ghost tiles to make room, insert dice at start
-      for (let i = 0; i < 2; i++) {
+      dblk2.appendChild(_dc2);
+
+      // Remove 4 ghost tiles and insert all 4 items at the correct positions
+      for (let i = 0; i < 4; i++) {
         const g = _dHandEl.querySelector('.tile-ghost,.tile-ghost-rot');
         if (g) g.remove();
       }
-      _dHandEl.prepend(blk2);
-      _dHandEl.prepend(blk1);
+      _dHandEl.prepend(lblEl);                                       // pos 0
+      _dHandEl.insertBefore(wndEl,  _dHandEl.children[1] || null);  // pos 1
+      _dHandEl.insertBefore(dblk1, _dHandEl.children[2] || null);   // pos 2
+      _dHandEl.insertBefore(dblk2, _dHandEl.children[3] || null);   // pos 3
       if (isSide) _dHandEl.style.marginTop = '-138px';
-      // Fade in from nothing — no coordinates required
-      [blk1, blk2].forEach(b => b.animate(
+
+      // Animate only the dice tiles in
+      [dblk1, dblk2].forEach(b => b.animate(
         [{ opacity:0, transform:'scale(0.4)' }, { opacity:1, transform:'scale(1)' }],
         { duration:400, easing:'ease-out', fill:'forwards' }
       ));
