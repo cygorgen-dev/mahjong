@@ -538,7 +538,13 @@ function aiClaimDecisionScheme(seat, hand, melds, discard, seatDiff, ctx, scheme
       if (s.chow === 'if-tenpai' && waits.length > 0) return 'chow';
       if (s.chow === 'if-useful') {
         const handScore = evalHand(remaining, newMelds);
-        if (waits.length > 0 || melds.length >= 2 || handScore > 15) return 'chow';
+        if (waits.length > 0 || melds.length >= 2 || handScore > 15) {
+          if (s.noSameChowDiscard) {
+            const cloneInRemaining = remaining.some(t => !isBonus(t) && sameType(t, discard));
+            if (cloneInRemaining && !_cloneFormsGroup(remaining, discard)) return null;
+          }
+          return 'chow';
+        }
       }
       if (s.chow === 'if-own-flower') {
         // Condition 1: no bonus tiles at all, OR player holds their seat's own flower/season

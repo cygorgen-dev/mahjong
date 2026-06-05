@@ -421,6 +421,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (game) game.shareState();
       window.handLog?.checkStrategyChange(game);
     });
+    schemeSel.value = 'beginner-copy';
+    USER_SCHEME = SCHEMES.find(sc => sc.id === 'beginner-copy') || null;
   }
 
   // CPU scheme dropdowns — populate and wire
@@ -462,8 +464,9 @@ document.addEventListener('DOMContentLoaded', () => {
           ? (SCHEMES.find(s => s.id === sel.value)?.name ?? sel.value) : 'Level AI';
         if (game) game.addLog(`⚙ ${cpuName} scheme → ${schemeName}`);
       });
+      sel.value = 'beginner-copy';
     });
-    updateCpuSchemes(); // initialise with defaults (all null → Level AI)
+    updateCpuSchemes(); // initialise with defaults
   }
 
   // CPU skill level dropdowns

@@ -18,9 +18,11 @@
 //                      AND hand must have a discard that isn't the same tile just claimed
 //   'never'          — never claim
 //
-// claim.winMinFaan   : 0 = use game Min Faan setting; N = require at least N faan
+// claim.winMinFaan        : 0 = use game Min Faan setting; N = require at least N faan
 // claim.protectConcealed  : skip all claims (except win) if already concealed tenpai
 // claim.protectSevenPairs : skip all claims (except win/kong) if 4+ pairs, no melds
+// claim.noSameChowDiscard : skip chow if remaining hand has a clone of the claimed tile
+//                           that doesn't form its own group (would be discarded right back)
 // ============================================================
 
 const SCHEMES = [
@@ -32,7 +34,7 @@ const SCHEMES = [
     desc: 'Speed to tenpai, claim freely, no faan goal — mirrors Beginner AI',
     discard: { pursue: 'speed',  suitLock: null, honorPenalty: 1, terminalPenalty: 0.5, safetyLevel: 0.0 },
     claim:   { pung: 'if-useful', chow: 'if-useful', kong: true, winMinFaan: 0,
-               protectConcealed: false, protectSevenPairs: false }
+               protectConcealed: false, protectSevenPairs: false, noSameChowDiscard: true }
   },
 
   // ---- 2. Own-flower chow: chow only when flower conditions are met ----
