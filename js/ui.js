@@ -83,8 +83,23 @@ function seatName(seat) {
   return pname ? pname : `${wind} ${zh}`;
 }
 
+let _replayBanner = null;
+
+function _ensureReplayBanner() {
+  if (_replayBanner) return;
+  _replayBanner = document.createElement('div');
+  _replayBanner.id = 'replay-banner';
+  _replayBanner.style.cssText = 'display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);' +
+    'background:#1a1a6b;color:#ffd34d;border:2px solid #ffd34d;border-radius:0 0 8px 8px;' +
+    'padding:4px 24px;font-size:13px;font-weight:700;z-index:8500;pointer-events:none;' +
+    'white-space:nowrap;';
+  _replayBanner.textContent = '▶ REPLAY — click anywhere or Pass to step';
+  document.body.appendChild(_replayBanner);
+}
+
 function initUI(game) {
   _game = game;
+  _ensureReplayBanner();
 
   // Settings toggle
   const settingsBtn = document.getElementById('settings-toggle-btn');
@@ -383,6 +398,19 @@ function initUI(game) {
     });
     document.addEventListener('mouseup', () => { dragging = false; });
   })();
+  document.getElementById('replay-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const raw = localStorage.getItem('mahjongReplay');
+    if (!raw) { alert('No replay saved yet — play a hand first.'); return; }
+    const data = JSON.parse(raw);
+    if (!data.wall || !data.dice || !data.decisions) { alert('Replay data is incomplete.'); return; }
+    window.REPLAY_MODE = true;
+    window._replayData = data;
+    _tileElCache.clear();
+    _game.redeal();
+    renderAll();
+  });
+
   document.getElementById('scenario-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     window.open('scenario.html', 'mahjong-scenario');
@@ -492,6 +520,11 @@ function initUI(game) {
   document.getElementById('btn-win').addEventListener('click',  () => { _game.humanClaim('win',  null); renderAll(); });
   document.getElementById('btn-pass').addEventListener('click', () => {
     dismissHint();
+    // Replay mode: step through recorded decisions
+    if (window.REPLAY_MODE && _game) {
+      if (_game.phase === PHASE.END) { window.REPLAY_MODE = false; window._replayQueue = []; }
+      else { _game.replayStep(); renderAll(); return; }
+    }
     // Single-step deal: advance the waiting step
     if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); return; }
     // Slow mode: fire the next queued step
@@ -540,6 +573,7 @@ function initUI(game) {
     if (e.target.closest('#sidebar, #rules-overlay, #tiles-modal')) return;
     const interactive = e.target.closest('button, .tile, #action-bar, #discard-pile, .seat-label, .modal');
     if (interactive) return;
+    if (window.REPLAY_MODE && _game && _game.phase !== PHASE.END) { _game.replayStep(); renderAll(); return; }
     if (window.AUTO_MODE === 'slow' && _game && _game._pendingAutoStep) {
       _game.stepAuto(); return;
     }
@@ -563,6 +597,7 @@ function initUI(game) {
     if (e.target.closest('#sidebar, #rules-overlay, #tiles-modal')) return;
     const onButton = e.target.closest('button, .tile, #action-bar, .seat-label, .modal');
     if (onButton) return;
+    if (window.REPLAY_MODE && _game && _game.phase !== PHASE.END) { _game.replayStep(); renderAll(); return; }
     if (_game.phase === PHASE.CLAIM) {
       _game.humanPass();
       renderAll();
@@ -659,6 +694,7 @@ function _autorunFinish() {
 
 function renderAll() {
   if (!_game) return;
+  if (_replayBanner) _replayBanner.style.display = window.REPLAY_MODE ? 'block' : 'none';
   if (_slowDealActive) return;
   const _sdWid = _game.wall?.[0]?.id ?? null;
   const _dealAnimMode = window.SLOW_DEAL ? 'slow' : (window.SINGLE_STEP_DEAL ? 'step' : null);
@@ -992,6 +1028,7 @@ function renderSeats() {
           };
           const el2 = makeTileEl(t, opts);
           el2.onclick = (opts.clickable || _game.phase === PHASE.CLAIM) ? () => {
+            if (window.REPLAY_MODE) { _game.replayStep(); renderAll(); return; }
             if (_game.phase === PHASE.DISCARD) {
               dismissHint(); _game.humanDiscard(t.id); _selectedTileId = null; renderAll();
             } else if (_game.phase === PHASE.CLAIM) {

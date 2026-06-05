@@ -66,11 +66,36 @@ class Game {
     this.robbingKongTiles = null;   // all 4 kong tiles
     this.robbingKongPungIdx = null; // index of pung in melds being upgraded
 
+    this._captureDecisions = [];
+    this._captureWall = null;
+    this._captureDice = null;
+    this._replayExecuting = false;
+
     this._initLog('New Game');
     this.deal();
   }
 
   deal() {
+    // Replay: inject saved wall + dice instead of shuffling
+    if (window.REPLAY_MODE && window._replayData) {
+      const rd = window._replayData;
+      this.dice = [...rd.dice];
+      this.diceTotal = this.dice.reduce((a, b) => a + b, 0);
+      const breakSeat = (this.dealerSeat + (this.diceTotal - 1) % 4) % 4;
+      this.wallBreakSeat  = breakSeat;
+      this.wallBreakCount = this.diceTotal;
+      this.wall = rd.wall.map(({ suit, value }) => makeTile(suit, value));
+      this.wallIdx = 0;
+      this._captureWall = rd.wall;
+      this._captureDice = [...this.dice];
+      this._captureDecisions = [];
+      window._replayQueue = [...rd.decisions];
+      this.addLog(`Wall built and shuffled — 144 tiles.`);
+      this.addLog(`Dealer ${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
+      this.addLog(`Wall break: ${playerTag(this.players[breakSeat])}'s side, ${this.diceTotal} stacks from right — dealing starts here.`);
+      return this._dealTiles();
+    }
+
     // Roll three dice to determine wall break point
     this.dice = [
       Math.floor(Math.random()*6)+1,
@@ -132,6 +157,9 @@ class Game {
     // Rotate wall so index 0 = head (first tile drawn)
     this.wall = [...this.wall.slice(headIdx), ...this.wall.slice(0, headIdx)];
     this.wallIdx = 0;
+    this._captureDice = [...this.dice];
+    this._captureWall = this.wall.map(t => ({ suit: t.suit, value: t.value }));
+    this._captureDecisions = [];
     return this._dealTiles();
   }
 
@@ -187,6 +215,7 @@ class Game {
             this.addLog(`${playerTag(p)} bonus replacement: wall exhausted — hand ended 黃牌!`);
             this.phase = PHASE.END;
             this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+            this._saveReplay();
             this.onUpdate('draw');
             return;
           }
@@ -288,6 +317,7 @@ class Game {
             this.addLog(`${playerTag(player)} bonus replacement: wall exhausted — hand ended 黃牌!`);
             this.phase = PHASE.END;
             this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+            this._saveReplay();
             this.onUpdate('draw');
             return false;
           }
@@ -317,6 +347,7 @@ class Game {
       this.addLog('Wall exhausted — exhausted draw 黃牌!');
       this.phase = PHASE.END;
       this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+      this._saveReplay();
       this.onUpdate('draw');
       return;
     }
@@ -510,6 +541,7 @@ class Game {
   doSelfKong(seat, tiles) {
     const p = this.players[seat];
     const t = tiles[0];
+    if (seat === 0 && !this._replayExecuting) this._captureDecisions.push({ type: 'self_kong', suit: t.suit, value: t.value });
     const existingPung = p.melds.findIndex(m => m.type === 'pung' && sameType(m.tiles[0], t));
     const isUpgrade = existingPung !== -1; // pung → kong upgrade can be robbed; concealed kong cannot
 
@@ -620,6 +652,7 @@ class Game {
       this.addLog(`${playerTag(p)} kong replacement: wall exhausted — exhausted draw 黃牌!`);
       this.phase = PHASE.END;
       this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+      this._saveReplay();
       this.onUpdate('draw');
       return;
     }
@@ -833,6 +866,7 @@ class Game {
   }
 
   humanPass() {
+    if (!this._replayExecuting) this._captureDecisions.push({ type: 'pass' });
     this.claimOptions = null;
     if (this.robbingKongSeat !== null && this.robbingKongSeat !== undefined) {
       // Human passed on robbing — let AI rob or complete the kong
@@ -889,6 +923,7 @@ class Game {
       }
       return;
     }
+    if (!this._replayExecuting) this._captureDecisions.push({ type: 'claim', action, with: chowTiles ? chowTiles.map(t => ({ suit: t.suit, value: t.value })) : null });
     if (action === 'win') {
       // Check if this is a rob-the-kong win
       if (this.claimOptions.robbingKong) {
@@ -969,6 +1004,7 @@ class Game {
         this.addLog(`${playerTag(this.players[seat])} kong replacement: wall exhausted — exhausted draw 黃牌!`);
         this.phase = PHASE.END;
         this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+        this._saveReplay();
         this.onUpdate('draw');
         return;
       }
@@ -1032,6 +1068,7 @@ class Game {
       this.addLog(`💀 ${busted.name} has gone below 0 — GAME OVER!`);
     }
 
+    this._saveReplay();
     this.onUpdate('win');
   }
 
@@ -1039,6 +1076,7 @@ class Game {
     if (!this._concealedKongTiles) return;
     const p = this.players[0];
     const tiles = this._concealedKongTiles;
+    if (!this._replayExecuting) this._captureDecisions.push({ type: 'concealed_kong', suit: tiles[0].suit, value: tiles[0].value });
     const t = tiles[0];
     // Remove all 4 from hand
     p.hand = p.hand.filter(x => !sameType(x, t));
@@ -1052,6 +1090,7 @@ class Game {
       this.addLog('Wall exhausted after Concealed Kong — exhausted draw 黃牌!');
       this.phase = PHASE.END;
       this.lastResult = { winner: -1, faan: 0, label: 'Draw', selfDraw: false, base: 0 };
+      this._saveReplay();
       this.onUpdate('draw');
       return;
     }
@@ -1088,6 +1127,7 @@ class Game {
     if (this.phase !== PHASE.DISCARD || this.currentSeat !== 0) return;
     const tile = this.players[0].hand.find(t => t.id === tileId);
     if (!tile) return;
+    if (!this._replayExecuting) this._captureDecisions.push({ type: 'discard', suit: tile.suit, value: tile.value });
     this.doDiscard(0, tile);
   }
 
@@ -1143,6 +1183,52 @@ class Game {
 
   addLog(msg) {
     this.log.unshift(msg);
+  }
+
+  _saveReplay() {
+    if (window.REPLAY_MODE) return; // don't overwrite replay data during playback
+    if (!this._captureWall || !this._captureDice) return;
+    try {
+      localStorage.setItem('mahjongReplay', JSON.stringify({
+        wall:      this._captureWall,
+        dice:      this._captureDice,
+        decisions: this._captureDecisions,
+      }));
+    } catch(e) {}
+  }
+
+  replayStep() {
+    const queue = window._replayQueue;
+    if (!queue || !queue.length) { window.REPLAY_MODE = false; return; }
+    const d = queue.shift();
+    this._replayExecuting = true;
+    try {
+      if (d.type === 'pass') {
+        this.humanPass();
+      } else if (d.type === 'discard') {
+        const tile = this.players[0].hand.find(t => t.suit === d.suit && t.value === d.value);
+        if (tile) this.doDiscard(0, tile);
+      } else if (d.type === 'claim') {
+        if (d.action === 'chow' && d.with) {
+          const used = [];
+          const chowTiles = d.with.map(({ suit, value }) => {
+            const t = this.players[0].hand.find(h => h.suit === suit && h.value === value && !used.includes(h.id));
+            if (t) used.push(t.id);
+            return t;
+          }).filter(Boolean);
+          this.humanClaim('chow', chowTiles.length === 2 ? chowTiles : null);
+        } else {
+          this.humanClaim(d.action, null);
+        }
+      } else if (d.type === 'self_kong') {
+        const kongTiles = this.findSelfKong(this.players[0]);
+        if (kongTiles) this.doSelfKong(0, kongTiles);
+      } else if (d.type === 'concealed_kong') {
+        this.humanDeclareConcealedKong();
+      }
+    } finally {
+      this._replayExecuting = false;
+    }
   }
 
   // Invariant: hand.length === 13 - 3*melds (waiting) or 14 - 3*melds (after draw/claim)
