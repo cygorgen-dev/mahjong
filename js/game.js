@@ -1191,17 +1191,31 @@ class Game {
     const r = this.lastResult;
     try {
       localStorage.setItem('mahjongReplay', JSON.stringify({
-        format:    'mahjong-replay',
-        savedAt:   new Date().toISOString(),
-        winner:    r ? (r.winner >= 0 ? (this.players[r.winner]?.name ?? 'Unknown') : 'Draw') : null,
-        faan:      r?.faan ?? 0,
-        label:     r?.label ?? '',
-        selfDraw:  r?.selfDraw ?? false,
-        wall:      this._captureWall,
-        dice:      this._captureDice,
-        decisions: this._captureDecisions,
+        format:     'mahjong-replay',
+        savedAt:    new Date().toISOString(),
+        winner:     r ? (r.winner >= 0 ? (this.players[r.winner]?.name ?? 'Unknown') : 'Draw') : null,
+        faan:       r?.faan ?? 0,
+        label:      r?.label ?? '',
+        selfDraw:   r?.selfDraw ?? false,
+        dealerSeat: this.dealerSeat,
+        roundWind:  this.roundWind,
+        players:    this.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
+        wall:       this._captureWall,
+        dice:       this._captureDice,
+        decisions:  this._captureDecisions,
       }));
     } catch(e) {}
+  }
+
+  applyReplayContext(data) {
+    if (data.dealerSeat != null) this.dealerSeat = data.dealerSeat;
+    if (data.roundWind)          this.roundWind  = data.roundWind;
+    if (data.players) {
+      for (const sp of data.players) {
+        const p = this.players[sp.seat];
+        if (p) { p.name = sp.name; p.isHuman = sp.isHuman; }
+      }
+    }
   }
 
   replayStep() {

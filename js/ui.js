@@ -406,6 +406,7 @@ function initUI(game) {
     if (!data.wall || !data.dice || !data.decisions) { alert('Replay data is incomplete.'); return; }
     window.REPLAY_MODE = true;
     window._replayData = data;
+    _game.applyReplayContext(data);
     _tileElCache.clear();
     _game.redeal();
     renderAll();
@@ -443,6 +444,7 @@ function initUI(game) {
         if (!data.wall || !data.dice || !data.decisions) { alert('Not a valid replay file.'); return; }
         window.REPLAY_MODE = true;
         window._replayData = data;
+        _game.applyReplayContext(data);
         _tileElCache.clear();
         _game.redeal();
         renderAll();
