@@ -411,6 +411,47 @@ function initUI(game) {
     renderAll();
   });
 
+  document.getElementById('save-hand-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const raw = localStorage.getItem('mahjongReplay');
+    if (!raw) { alert('No hand saved yet — play a complete hand first.'); return; }
+    const data = JSON.parse(raw);
+    const date = (data.savedAt ?? new Date().toISOString()).slice(0, 10).replace(/-/g, '');
+    const winner = (data.winner ?? 'draw').replace(/[^a-zA-Z0-9]/g, '');
+    const faan   = data.faan ?? 0;
+    const lbl    = (data.label ?? '').replace(/[^a-zA-Z0-9一-鿿]/g, '-').replace(/-+/g, '-').slice(0, 24);
+    const filename = `mahjong-${date}-${winner}-${faan}faan${lbl ? '-' + lbl : ''}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('load-hand-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('load-hand-input').click();
+  });
+
+  document.getElementById('load-hand-input')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.wall || !data.dice || !data.decisions) { alert('Not a valid replay file.'); return; }
+        window.REPLAY_MODE = true;
+        window._replayData = data;
+        _tileElCache.clear();
+        _game.redeal();
+        renderAll();
+      } catch(err) { alert('Failed to load: ' + err.message); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
   document.getElementById('scenario-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     window.open('scenario.html', 'mahjong-scenario');

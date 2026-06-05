@@ -9,7 +9,7 @@
 <body>
   <div id="app" class="sidebar-open">
     <header>
-      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0605-449</span></h1>
+      <h1>Cantonese Mahjong <span class="zh">廣東麻雀</span> <span id="game-version-tag" style="font-size:11px;color:#aaa;font-weight:400;">v0605-451</span></h1>
       <div id="message"></div>
       <div id="info-bar">
         <button id="new-game-btn">New Game</button>
@@ -252,6 +252,9 @@
         </div>
         <div class="sidebar-btngroup">
           <button id="replay-btn" class="sb-btn" style="background:#1a1a6b;border:1px solid #ffd34d;color:#ffd34d;">▶ Replay Hand</button>
+          <button id="save-hand-btn" class="sb-btn" style="background:#1a3a1a;border:1px solid #7dff7d;color:#7dff7d;">💾 Save Hand</button>
+          <button id="load-hand-btn" class="sb-btn" style="background:#1a3a1a;border:1px solid #7dff7d;color:#7dff7d;">📂 Load Hand</button>
+          <input type="file" id="load-hand-input" accept=".json" style="display:none">
           <button id="capture-state-btn" class="sb-btn" style="background:#1a4a1a;border:1px solid #5dde7a;color:#5dde7a;">📸 Capture State</button>
           <button id="scenario-btn" class="sb-btn" style="background:#4a1a6a;">🧪 Scenario Tester</button>
           

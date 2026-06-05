@@ -1188,8 +1188,15 @@ class Game {
   _saveReplay() {
     if (window.REPLAY_MODE) return; // don't overwrite replay data during playback
     if (!this._captureWall || !this._captureDice) return;
+    const r = this.lastResult;
     try {
       localStorage.setItem('mahjongReplay', JSON.stringify({
+        format:    'mahjong-replay',
+        savedAt:   new Date().toISOString(),
+        winner:    r ? (r.winner >= 0 ? (this.players[r.winner]?.name ?? 'Unknown') : 'Draw') : null,
+        faan:      r?.faan ?? 0,
+        label:     r?.label ?? '',
+        selfDraw:  r?.selfDraw ?? false,
         wall:      this._captureWall,
         dice:      this._captureDice,
         decisions: this._captureDecisions,
