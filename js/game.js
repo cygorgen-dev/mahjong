@@ -823,7 +823,7 @@ class Game {
         if (window.AUTO_MODE === 'slow') { this.startTurn(next); } else { this._scheduleOrStep(() => this.startTurn(next)); }
         return;
       }
-      this.resolveWin(best.seat, fromSeat, result);
+      this.resolveWin(best.seat, fromSeat, result, tile);
     } else if (best.action === 'pung' || best.action === 'kong') {
       this.doClaim(best.seat, tile, best.action, null);
     } else if (best.action === 'chow') {
@@ -991,7 +991,7 @@ class Game {
     this._actForSeat(seat);
   }
 
-  resolveWin(winnerSeat, loserSeat, result) {
+  resolveWin(winnerSeat, loserSeat, result, winTile = null) {
     this.phase = PHASE.END;
     const p = this.players[winnerSeat];
     const selfDraw = loserSeat === null;
@@ -1022,7 +1022,7 @@ class Game {
       label: result.label,
       selfDraw,
       base,
-      winTileId: selfDraw ? (p.hand.find(t => t._justDrawn)?.id ?? null) : (this.discard?.id ?? null),
+      winTileId: selfDraw ? (p.hand.find(t => t._justDrawn)?.id ?? null) : ((winTile ?? this.discard)?.id ?? null),
     };
 
     // Check if game is over (any player below 0)
