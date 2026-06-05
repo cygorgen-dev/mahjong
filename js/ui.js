@@ -1142,10 +1142,18 @@ function renderDiscard() {
   const gridH = ROWS * TH + (ROWS - 1) * GAP;  // 468
   const ox = Math.floor((W - gridW) / 2);       // 5
   const oy = Math.floor((H - gridH) / 2);       // 20
-  // Highlight: only when there is an active discard (_game.discard !== null).
-  // Self-draw turns clear _game.discard, so a self-draw win shows no highlight.
+  // Highlight the last discard tile with the discarder's seat colour.
+  // Primary path: _game.discard is set while a discard is active (claim or discard-win state).
+  // Fallback: for a discard win in PHASE.END, use lastResult.winTileId in case _game.discard
+  // was cleared before this render (e.g. timing edge in human manual mode).
+  // Self-draw wins intentionally show no highlight (selfDraw=true skips the fallback).
   const _pile = _game.discardPile;
-  const highlightId = (_game.discard !== null && _pile.length > 0) ? _pile[_pile.length - 1].id : null;
+  let highlightId = null;
+  if (_game.discard !== null && _pile.length > 0) {
+    highlightId = _pile[_pile.length - 1].id;
+  } else if (_game.phase === PHASE.END && _game.lastResult && !_game.lastResult.selfDraw) {
+    highlightId = _game.lastResult.winTileId ?? null;
+  }
   // Overflow scan: each seat has a preferred start and direction in the 7-cell center row (gc 3-9).
   // Primary scan walks toward the far edge; fallback reverses so all 7 slots are tried before overlap.
   //   Left  (seat 3): start gc=3, scan →   Top    (seat 2): start gc=5, scan →
