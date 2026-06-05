@@ -1897,9 +1897,7 @@ function renderWallRing() {
   // Reset reveal state when a new hand is dealt
   const curId = _game.wall?.[0]?.id ?? null;
   if (curId !== _ringLastId) {
-    _ringLastId   = curId;
-    _ringRevealed = false;
-    _updateRingBtn();
+    _ringLastId = curId;
   }
 
   const total     = 72;
