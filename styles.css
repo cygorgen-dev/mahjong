@@ -435,8 +435,8 @@ main#table { position: relative; }
 .tile.small { width:var(--tw); height:var(--th); }
 .tile.win-tile {
   position:relative; z-index:20;
-  outline:3px solid #ffd34d;
-  box-shadow:0 0 18px 6px rgba(255,211,77,0.9);
+  outline:3px solid #ffd34d !important;
+  box-shadow:0 0 18px 6px rgba(255,211,77,0.9) !important;
   background:linear-gradient(180deg,#fffde7 0%,#fff176 100%) !important;
 }
 .tile.last-discard { outline:3px solid #cc44ff; box-shadow:0 0 12px 5px rgba(204,68,255,0.85); }

@@ -1140,9 +1140,10 @@ function renderDiscard() {
   const gridH = ROWS * TH + (ROWS - 1) * GAP;  // 468
   const ox = Math.floor((W - gridW) / 2);       // 5
   const oy = Math.floor((H - gridH) / 2);       // 20
-  // Highlight: the last tile pushed to the pile — turns off exactly when the next player discards
+  // Highlight: only when there is an active discard (_game.discard !== null).
+  // Self-draw turns clear _game.discard, so a self-draw win shows no highlight.
   const _pile = _game.discardPile;
-  const highlightId = _pile.length > 0 ? _pile[_pile.length - 1].id : null;
+  const highlightId = (_game.discard !== null && _pile.length > 0) ? _pile[_pile.length - 1].id : null;
   // Overflow scan: each seat has a preferred start and direction in the 7-cell center row (gc 3-9).
   // Primary scan walks toward the far edge; fallback reverses so all 7 slots are tried before overlap.
   //   Left  (seat 3): start gc=3, scan →   Top    (seat 2): start gc=5, scan →
