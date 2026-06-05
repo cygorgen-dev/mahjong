@@ -1199,6 +1199,7 @@ class Game {
         selfDraw:   r?.selfDraw ?? false,
         dealerSeat: this.dealerSeat,
         roundWind:  this.roundWind,
+        logLabel:   this._logLabel ?? 'New Hand',
         players:    this.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
         wall:       this._captureWall,
         dice:       this._captureDice,
@@ -1208,8 +1209,9 @@ class Game {
   }
 
   applyReplayContext(data) {
-    if (data.dealerSeat != null) this.dealerSeat = data.dealerSeat;
-    if (data.roundWind)          this.roundWind  = data.roundWind;
+    if (data.dealerSeat != null) this.dealerSeat   = data.dealerSeat;
+    if (data.roundWind)          this.roundWind    = data.roundWind;
+    if (data.logLabel)           this._replayLabel = data.logLabel;
     if (data.players) {
       for (const sp of data.players) {
         const p = this.players[sp.seat];
@@ -1403,11 +1405,14 @@ class Game {
     this.firstDraw = true; this.dealerFirstDiscard = false; this.handActionCount = 0; this.lastResult = null;
     this.lastCheckFaan = 0;
     this.phase = PHASE.IDLE;
-    this._initLog('New Hand');
+    const label = this._replayLabel ?? 'New Hand';
+    this._replayLabel = null;
+    this._initLog(label);
     this.deal();
   }
 
   _initLog(label) {
+    this._logLabel = label;
     const ver = (typeof document !== 'undefined' && document.getElementById('game-version-tag')?.textContent) || '?';
     this.log = [];
     this.log.push(`=== ${label}: Seat ${this.dealerSeat} dealer, ${this.roundWind} round ===`);
