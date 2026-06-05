@@ -435,10 +435,13 @@ main#table { position: relative; }
 .tile.small { width:var(--tw); height:var(--th); }
 .tile.win-tile {
   position:relative; z-index:20;
-  outline:3px solid #ffffff !important;
   box-shadow:0 0 0 2px #ffd34d, 0 0 22px 10px rgba(255,211,77,1.0) !important;
   background:linear-gradient(180deg,#fffde7 0%,#fff176 100%) !important;
 }
+.tile.win-tile-s0 { outline:3px solid #cc44ff !important; }
+.tile.win-tile-s1 { outline:3px solid #00aaff !important; }
+.tile.win-tile-s2 { outline:3px solid #ff8800 !important; }
+.tile.win-tile-s3 { outline:3px solid #44ff44 !important; }
 .tile.last-discard { outline:3px solid #cc44ff; box-shadow:0 0 12px 5px rgba(204,68,255,0.85); }
 .tile.last-discard-s0 { outline:3px solid #cc44ff; box-shadow:0 0 12px 5px rgba(204,68,255,0.85); }
 .tile.last-discard-s1 { outline:3px solid #00aaff; box-shadow:0 0 12px 5px rgba(0,170,255,0.85); }

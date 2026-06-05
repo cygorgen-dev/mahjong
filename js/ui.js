@@ -984,6 +984,7 @@ function renderSeats() {
           const opts = {
             clickable: _game.phase === PHASE.DISCARD && _game.currentSeat === 0,
             winTile: isWinner && t.id === _game.lastResult?.winTileId,
+            winTileSeat: isWinner ? seat : undefined,
             justDrawn: !!justDrawnTile && t.id === justDrawnTile.id,
             selected: t.id === _selectedTileId,
             seatRotation: 0,
@@ -1085,6 +1086,7 @@ function renderSeats() {
           small: true,
           back: !showFace && !isWinner,
           winTile: isWinner && t.id === _game.lastResult?.winTileId,
+          winTileSeat: isWinner ? seat : undefined,
           seatRotation: seat,
           openHand: showFace,
         };
@@ -1418,7 +1420,7 @@ let _tileElInUse = null;
 function _resetTileEl(el, opts = {}) {
   // el is the value stored in _tileElCache: wrapper div (rotated) or tile div (non-rotated)
   const inner = el.classList.contains('tile') ? el : (el.querySelector('.tile') || el);
-  inner.classList.remove('selected', 'clickable', 'win-tile', 'just-drawn',
+  inner.classList.remove('selected', 'clickable', 'win-tile', 'win-tile-s0', 'win-tile-s1', 'win-tile-s2', 'win-tile-s3', 'just-drawn',
     'last-discard', 'last-discard-s0', 'last-discard-s1', 'last-discard-s2', 'last-discard-s3', 'small');
   if (opts.small) inner.classList.add('small');
   // Clear inline styles from discard-pile positioning (left/top) and robbing-kong scale
@@ -1543,7 +1545,7 @@ function makeTileEl(t, opts = {}) {
       if (opts.clickable)  inner.classList.add('clickable');
       if (opts.justDrawn)  inner.classList.add('just-drawn');
       if (opts.selected)   inner.classList.add('selected');
-      if (opts.winTile)    inner.classList.add('win-tile');
+      if (opts.winTile) { inner.classList.add('win-tile'); if (opts.winTileSeat !== undefined) inner.classList.add(`win-tile-s${opts.winTileSeat}`); }
       return cached;
     }
   }
@@ -1555,7 +1557,7 @@ function makeTileEl(t, opts = {}) {
   if (opts.clickable) classes.push('clickable');
   if (opts.justDrawn) classes.push('just-drawn');
   if (opts.selected)  classes.push('selected');
-  if (opts.winTile)   classes.push('win-tile');
+  if (opts.winTile) { classes.push('win-tile'); if (opts.winTileSeat !== undefined) classes.push(`win-tile-s${opts.winTileSeat}`); }
   if (t.suit === SUIT.BAMBOO) classes.push('suit-bamboo');
   if (t.suit === SUIT.CIRCLE) classes.push('suit-circle');
   if (t.suit === SUIT.CHAR)   classes.push('suit-char');
