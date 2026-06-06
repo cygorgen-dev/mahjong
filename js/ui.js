@@ -1434,6 +1434,16 @@ function renderMessage() {
         const busted = _game.players.find(pl => pl.score < 0);
         el.innerHTML += `<br><span style="color:#ff6666;font-weight:700">GAME OVER — ${busted ? busted.name : 'A player'} went below 0! Start a New Game.</span>`;
       }
+      const exp = window._replayData?.expected;
+      if (exp != null) {
+        const actual = _game.lastResult?.winner ?? -1;
+        const pass = actual === exp.winnerSeat;
+        const badge = pass
+          ? `<span style="color:#4f4;font-weight:700">✅ PASS</span>`
+          : `<span style="color:#f44;font-weight:700">❌ FAIL — expected seat ${exp.winnerSeat} (${seatName(exp.winnerSeat)}), got seat ${actual} (${seatName(actual)})</span>`;
+        el.innerHTML += `<br>${badge}`;
+        if (exp.note) el.innerHTML += `<br><span style="font-size:11px;opacity:0.7">${exp.note}</span>`;
+      }
     } else {
       el.textContent = 'Wall exhausted — draw!';
     }
