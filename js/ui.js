@@ -451,8 +451,9 @@ function initUI(game) {
     const raw = localStorage.getItem('mahjongReplay');
     if (!raw) { alert('No hand saved yet — play a complete hand first.'); return; }
     const data = JSON.parse(raw);
-    const ts = (data.savedAt ?? new Date().toISOString()).replace(/[-:T]/g, '').slice(0, 12);
-    const filename = `mj-${ts}.json`;
+    const seq = String((parseInt(localStorage.getItem('mjSaveSeq') || '0') + 1)).padStart(4, '0');
+    localStorage.setItem('mjSaveSeq', seq);
+    const filename = `mj-${seq}.json`;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
