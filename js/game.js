@@ -1396,7 +1396,15 @@ class Game {
       if (m) { const t=parse(m[2]); if (t) moves.push({ a:'KC', s:+m[1], t }); continue; }
 
       m = line.match(/^Seat (\d) Kong 槓 (.+?)(\s+\(.*\))?$/);
-      if (m) { const t=parse(m[2].trim()); if (t) moves.push({ a:'KO', s:+m[1], t }); continue; }
+      if (m) {
+        const s = +m[1], t = parse(m[2].trim());
+        if (t) {
+          // KO = claimed from another seat's discard; KS = self-kong (pung upgrade, no robbers)
+          const isKO = lastEvt?.type === 'discard' && lastEvt.seat !== s;
+          moves.push({ a: isKO ? 'KO' : 'KS', s, t });
+        }
+        continue;
+      }
 
       m = line.match(/^🏆 Seat (\d) WINS!/);
       if (m) {
