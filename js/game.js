@@ -67,6 +67,7 @@ class Game {
     this.robbingKongPungIdx = null; // index of pung in melds being upgraded
 
     this._captureDecisions = [];
+    this._captureClaimDecisions = [];
     this._captureWall = null;
     this._captureDice = null;
     this._replayExecuting = false;
@@ -89,7 +90,9 @@ class Game {
       this._captureWall = rd.wall;
       this._captureDice = [...this.dice];
       this._captureDecisions = [];
+      this._captureClaimDecisions = [];
       window._replayQueue = [...rd.decisions];
+      window._cpuClaimsQueue = rd.cpuClaims ? [...rd.cpuClaims] : [];
       this.addLog(`Wall built and shuffled — 144 tiles.`);
       this.addLog(`Dealer ${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
       this.addLog(`Wall break: ${playerTag(this.players[breakSeat])}'s side, ${this.diceTotal} stacks from right — dealing starts here.`);
@@ -160,6 +163,8 @@ class Game {
     this._captureDice = [...this.dice];
     this._captureWall = this.wall.map(t => ({ suit: t.suit, value: t.value }));
     this._captureDecisions = [];
+    this._captureClaimDecisions = [];
+    window._cpuClaimsQueue = [];
     return this._dealTiles();
   }
 
@@ -719,20 +724,33 @@ class Game {
       }
     }
     // Collect AI claims — in auto mode, seat 0 (human) also acts as CPU
-    const claims = [];
-    for (let i = 1; i <= 3; i++) {
-      const seat = (fromSeat + i) % 4;
-      const p = this.players[seat];
-      if (p.isHuman && !window.AUTO_MODE) continue;
-      const level = (p.isHuman && window.AUTO_MODE)
-        ? (window.AUTO_USER_LEVEL ?? 1)
-        : undefined;
-      const aiCtx = this.makeCtx(seat, false);
-      if (p.isHuman && window.AUTO_MODE) {
-        if (typeof CPU_LEVELS !== 'undefined') CPU_LEVELS[0] = level;
+    let claims = [];
+    const _savedClaims = window._cpuClaimsQueue?.length > 0 &&
+      window._cpuClaimsQueue[0].fromSeat === fromSeat
+      ? window._cpuClaimsQueue.shift()
+      : null;
+    if (_savedClaims) {
+      // Replay: restore saved CPU claim decisions for deterministic playback
+      claims = (_savedClaims.claims || []).map(c => ({ seat: c.seat, action: c.action }));
+    } else {
+      for (let i = 1; i <= 3; i++) {
+        const seat = (fromSeat + i) % 4;
+        const p = this.players[seat];
+        if (p.isHuman && !window.AUTO_MODE) continue;
+        const level = (p.isHuman && window.AUTO_MODE)
+          ? (window.AUTO_USER_LEVEL ?? 1)
+          : undefined;
+        const aiCtx = this.makeCtx(seat, false);
+        if (p.isHuman && window.AUTO_MODE) {
+          if (typeof CPU_LEVELS !== 'undefined') CPU_LEVELS[0] = level;
+        }
+        const action = aiClaimDecisionByLevel(seat, p.hand, p.melds, tile, i, aiCtx, this.discardPile, this.players);
+        if (action) claims.push({ seat, action });
       }
-      const action = aiClaimDecisionByLevel(seat, p.hand, p.melds, tile, i, aiCtx, this.discardPile, this.players);
-      if (action) claims.push({ seat, action });
+      // Record CPU claims for deterministic replay (live game only, not AUTO mode)
+      if (!window.REPLAY_MODE && !window.AUTO_MODE) {
+        this._captureClaimDecisions.push({ fromSeat, claims: claims.map(c => ({ seat: c.seat, action: c.action })) });
+      }
     }
 
     // Check if human can claim
@@ -1242,6 +1260,7 @@ class Game {
         wall:       this._captureWall,
         dice:       this._captureDice,
         decisions:  this._captureDecisions,
+        cpuClaims:  this._captureClaimDecisions,
         cpuLevels:  window.CPU_LEVELS_BY_NAME ? { ...window.CPU_LEVELS_BY_NAME } : null,
         cpuSchemes: (() => {
           if (!window.CPU_SCHEMES_BY_NAME) return null;
@@ -1288,6 +1307,8 @@ class Game {
           window.CPU_SCHEMES[p.seat] = window.CPU_SCHEMES_BY_NAME[p.name];
       }
     }
+    // Restore CPU claim decisions for deterministic replay
+    window._cpuClaimsQueue = data.cpuClaims ? [...data.cpuClaims] : [];
   }
 
   replayStep() {
