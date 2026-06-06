@@ -92,15 +92,22 @@ function _stopAutoReplay() {
   if (btn) btn.textContent = '⏩ Auto Step';
 }
 
+function _exitReplayMode() {
+  window.REPLAY_MODE = false;
+  window._replayQueue = [];
+  window._cpuClaimsQueue = [];
+  _stopAutoReplay();
+}
+
 function _startAutoReplay() {
   const btn = document.getElementById('auto-replay-btn');
   if (btn) btn.textContent = '⏸ Pause';
   _autoReplayTimer = setInterval(() => {
     if (!window.REPLAY_MODE || !_game) { _stopAutoReplay(); return; }
-    if (_game.phase === PHASE.END) { _stopAutoReplay(); return; }
+    if (_game.phase === PHASE.END) { _exitReplayMode(); renderAll(); return; }
     _game.replayStep();
     renderAll();
-    if (_game.phase === PHASE.END) _stopAutoReplay();
+    if (_game.phase === PHASE.END) { _exitReplayMode(); renderAll(); }
   }, 700);
 }
 
@@ -311,6 +318,7 @@ function initUI(game) {
     const ltChk = document.getElementById('last-tile-toggle');
     if (ltChk) { ltChk.checked = false; window.LAST_TILE_WIN = false; }
     _ssdAborted = true; if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); }
+    _exitReplayMode();
     _game.reset(); renderAll();
   });
 
@@ -323,6 +331,7 @@ function initUI(game) {
     try { sessionStorage.removeItem('mahjongGameState'); } catch(e2) {}
     _ssdAborted = true; if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); }
     _tileElCache.clear();
+    _exitReplayMode();
     _game.redeal(); renderAll();
   });
 
@@ -443,11 +452,8 @@ function initUI(game) {
     const raw = localStorage.getItem('mahjongReplay');
     if (!raw) { alert('No hand saved yet — play a complete hand first.'); return; }
     const data = JSON.parse(raw);
-    const date = (data.savedAt ?? new Date().toISOString()).slice(0, 10).replace(/-/g, '');
-    const winner = (data.winner ?? 'draw').replace(/[^a-zA-Z0-9]/g, '');
-    const faan   = data.faan ?? 0;
-    const lbl    = (data.label ?? '').replace(/[^a-zA-Z0-9一-鿿]/g, '-').replace(/-+/g, '-').slice(0, 24);
-    const filename = `mahjong-${date}-${winner}-${faan}faan${lbl ? '-' + lbl : ''}.json`;
+    const ts = (data.savedAt ?? new Date().toISOString()).replace(/[-:T]/g, '').slice(0, 12);
+    const filename = `mj-${ts}.json`;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -609,7 +615,7 @@ function initUI(game) {
     dismissHint();
     // Replay mode: step through recorded decisions
     if (window.REPLAY_MODE && _game) {
-      if (_game.phase === PHASE.END) { _stopAutoReplay(); window.REPLAY_MODE = false; window._replayQueue = []; }
+      if (_game.phase === PHASE.END) { _exitReplayMode(); }
       else { _game.replayStep(); renderAll(); return; }
     }
     // Single-step deal: advance the waiting step
