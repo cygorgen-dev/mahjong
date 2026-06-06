@@ -107,7 +107,7 @@ function _startAutoReplay() {
     _game.replayStep();
     renderAll();
     if (_game.phase === PHASE.END) { _exitReplayMode(); renderAll(); }
-  }, 700);
+  }, 250);
 }
 
 function _ensureReplayBanner() {
@@ -427,10 +427,23 @@ function initUI(game) {
   })();
   document.getElementById('replay-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    const raw = localStorage.getItem('mahjongReplay');
-    if (!raw) { alert('No replay saved yet — play a hand first.'); return; }
-    const data = JSON.parse(raw);
-    if (!data.wall || !data.dice || (!data.moves?.length && !data.log?.length)) { alert('Replay data is incomplete.'); return; }
+    if (!_game?._captureWall || !_game?._captureDice) { alert('No hand to replay yet — play a hand first.'); return; }
+    const data = {
+      format:     'mahjong-replay',
+      dealerSeat: _game.dealerSeat,
+      roundWind:  _game.roundWind,
+      players:    _game.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
+      wall:       _game._captureWall,
+      dice:       _game._captureDice,
+      log:        [..._game.log].reverse(),
+      cpuLevels:  window.CPU_LEVELS_BY_NAME ? { ...window.CPU_LEVELS_BY_NAME } : null,
+      cpuSchemes: (() => {
+        if (!window.CPU_SCHEMES_BY_NAME) return null;
+        const out = {};
+        for (const [name, s] of Object.entries(window.CPU_SCHEMES_BY_NAME)) out[name] = s ? s.id : null;
+        return out;
+      })(),
+    };
     window.REPLAY_MODE = true;
     window._replayData = data;
     _game.applyReplayContext(data);
@@ -491,8 +504,10 @@ function initUI(game) {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
-        if (!data.wall || !data.dice || (!data.moves?.length && !data.log?.length)) { alert('Not a valid replay file.'); return; }
-        window.REPLAY_MODE = true;
+        if (!data.wall || !data.dice) { alert('Not a valid replay or scenario file.'); return; }
+        const isScenario = data.scenario === true;
+        if (!isScenario && !data.moves?.length && !data.log?.length) { alert('Not a valid replay file.'); return; }
+        window.REPLAY_MODE = !isScenario;
         window._replayData = data;
         _game.applyReplayContext(data);
         _tileElCache.clear();
@@ -615,7 +630,7 @@ function initUI(game) {
     dismissHint();
     // Replay mode: step through recorded decisions
     if (window.REPLAY_MODE && _game) {
-      if (_game.phase === PHASE.END) { _exitReplayMode(); }
+      if (_game.phase === PHASE.END) { _exitReplayMode(); renderAll(); return; }
       else { _game.replayStep(); renderAll(); return; }
     }
     // Single-step deal: advance the waiting step
@@ -666,7 +681,11 @@ function initUI(game) {
     if (e.target.closest('#sidebar, #rules-overlay, #tiles-modal')) return;
     const interactive = e.target.closest('button, .tile, #action-bar, #discard-pile, .seat-label, .modal');
     if (interactive) return;
-    if (window.REPLAY_MODE && _game && _game.phase !== PHASE.END) { _game.replayStep(); renderAll(); return; }
+    if (window.REPLAY_MODE && _game) {
+      if (_game.phase === PHASE.END) { _exitReplayMode(); renderAll(); }
+      else { _game.replayStep(); renderAll(); }
+      return;
+    }
     if (window.AUTO_MODE === 'slow' && _game && _game._pendingAutoStep) {
       _game.stepAuto(); return;
     }

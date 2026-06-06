@@ -76,7 +76,7 @@ class Game {
 
   deal() {
     // Replay: inject saved wall + dice instead of shuffling
-    if (window.REPLAY_MODE && window._replayData) {
+    if ((window.REPLAY_MODE || window._replayData?.scenario) && window._replayData) {
       const rd = window._replayData;
       this.dice = [...rd.dice];
       this.diceTotal = this.dice.reduce((a, b) => a + b, 0);
@@ -88,7 +88,7 @@ class Game {
       this._captureWall = rd.wall;
       this._captureDice = [...this.dice];
       this._captureMoves = [];
-      const _rdMoves = (rd.moves?.length) ? rd.moves : Game.movesFromLog(rd.log);
+      const _rdMoves = rd.log?.length ? Game.movesFromLog(rd.log) : (rd.moves?.length ? rd.moves : null);
       window._moveQueue = _rdMoves ? [..._rdMoves] : null;
       this.addLog(`Wall built and shuffled — 144 tiles.`);
       this.addLog(`Dealer ${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
@@ -1446,7 +1446,7 @@ class Game {
           window.CPU_SCHEMES[p.seat] = window.CPU_SCHEMES_BY_NAME[p.name];
       }
     }
-    const moves = (data.moves?.length) ? data.moves : Game.movesFromLog(data.log);
+    const moves = data.log?.length ? Game.movesFromLog(data.log) : (data.moves?.length ? data.moves : null);
     window._moveQueue = moves ? [...moves] : null;
   }
 
