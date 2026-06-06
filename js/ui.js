@@ -936,12 +936,16 @@ function renderSeats() {
       overflowBonus = p.bonus.slice(room);
     }
 
+    // Concealed kong stays hidden only while the player has NO other open melds.
+    // Once they claim a pung/chow/open-kong, the concealed kong is revealed.
+    const hasOpenMeld = p.melds.some(m => !(m.type === 'kong' && m.concealed));
+
     for (const meld of claimMelds) {
       const meldDiv = document.createElement('div');
       meldDiv.className = 'meld';
 
-      // Concealed Kong: render as [back][back][back][face-up]
-      if (meld.type === 'kong' && meld.concealed) {
+      // Concealed Kong: render as [back][back][back][face-up] while still hidden
+      if (meld.type === 'kong' && meld.concealed && !hasOpenMeld) {
         const opts = needsRotation ? { small: true, seatRotation: seat } : { small: true };
         for (let i = 0; i < 3; i++) {
           const backTile = Object.assign({}, meld.tiles[0], { _forceBack: true });
@@ -1142,7 +1146,7 @@ function renderSeats() {
         for (const meld of overflowMelds) {
           const meldDiv = document.createElement('div');
           meldDiv.className = 'meld';
-          if (meld.type === 'kong' && meld.concealed) {
+          if (meld.type === 'kong' && meld.concealed && !hasOpenMeld) {
             for (let i = 0; i < 3; i++) {
               const bt = Object.assign({}, meld.tiles[0], { _forceBack: true });
               meldDiv.appendChild(makeTileEl(bt, { small: true, back: true, seatRotation: 0 }));
@@ -1175,7 +1179,7 @@ function renderSeats() {
         for (const meld of overflowMelds) {
           const meldDiv = document.createElement('div');
           meldDiv.className = 'meld';
-          if (meld.type === 'kong' && meld.concealed) {
+          if (meld.type === 'kong' && meld.concealed && !hasOpenMeld) {
             for (let i = 0; i < 3; i++) {
               const bt = Object.assign({}, meld.tiles[0], { _forceBack: true });
               meldDiv.appendChild(makeTileEl(bt, { small: true, back: true, seatRotation: seat }));
