@@ -523,6 +523,7 @@ class Game {
     // Heavenly Hand needs no _justDrawn tile — all 14 were dealt. Regular
     // self-draw wins require the completing tile to have just been drawn.
     if (result.win && result.faan >= minF && (isHeavenly || p.hand.some(t => t._justDrawn))) {
+      this._logMove({ a: 'W', s: seat });
       this.resolveWin(seat, null, result);
       return;
     }
@@ -903,6 +904,7 @@ class Game {
         if (window.AUTO_MODE === 'slow') { this.startTurn(next); } else { this._scheduleOrStep(() => this.startTurn(next)); }
         return;
       }
+      this._logMove({ a: 'W', s: best.seat, t: [tile.suit, tile.value] });
       this.resolveWin(best.seat, fromSeat, result, tile);
     } else if (best.action === 'pung' || best.action === 'kong') {
       this.doClaim(best.seat, tile, best.action, null);

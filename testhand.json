@@ -1,0 +1,1263 @@
+{
+  "format": "mahjong-replay",
+  "savedAt": "2026-06-06T12:08:39.572Z",
+  "winner": "CPU1",
+  "faan": 4,
+  "label": "All Triplets (3), No Flowers (1)",
+  "selfDraw": false,
+  "dealerSeat": 0,
+  "roundWind": "East",
+  "logLabel": "New Game",
+  "players": [
+    {
+      "seat": 0,
+      "name": "You",
+      "isHuman": true
+    },
+    {
+      "seat": 1,
+      "name": "CPU1",
+      "isHuman": false
+    },
+    {
+      "seat": 2,
+      "name": "CPU2",
+      "isHuman": false
+    },
+    {
+      "seat": 3,
+      "name": "CPU3",
+      "isHuman": false
+    }
+  ],
+  "wall": [
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 1
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "season",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "bamboo",
+      "value": 1
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "flower",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "season",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "flower",
+      "value": 2
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "season",
+      "value": 2
+    },
+    {
+      "suit": "flower",
+      "value": 0
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "bamboo",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "season",
+      "value": 0
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "flower",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    }
+  ],
+  "dice": [
+    2,
+    4,
+    4
+  ],
+  "moves": [
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "char",
+        2
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "wind",
+        "East"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "wind",
+        "North"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "dragon",
+        "green"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "wind",
+        "West"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "wind",
+        "West"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "wind",
+        "South"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "wind",
+        "West"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "wind",
+        "East"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "char",
+        2
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "circle",
+        1
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "bamboo",
+        2
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "char",
+        7
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "char",
+        1
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "char",
+        3
+      ]
+    },
+    {
+      "a": "P",
+      "s": 3,
+      "t": [
+        "char",
+        3
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "char",
+        1
+      ]
+    },
+    {
+      "a": "C",
+      "s": 0,
+      "t": [
+        "char",
+        1
+      ],
+      "h": [
+        [
+          "char",
+          2
+        ],
+        [
+          "char",
+          3
+        ]
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "char",
+        6
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "circle",
+        6
+      ]
+    },
+    {
+      "a": "P",
+      "s": 3,
+      "t": [
+        "circle",
+        6
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "bamboo",
+        6
+      ]
+    },
+    {
+      "a": "C",
+      "s": 0,
+      "t": [
+        "bamboo",
+        6
+      ],
+      "h": [
+        [
+          "bamboo",
+          7
+        ],
+        [
+          "bamboo",
+          8
+        ]
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "char",
+        5
+      ]
+    },
+    {
+      "a": "P",
+      "s": 1,
+      "t": [
+        "char",
+        5
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "circle",
+        9
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "circle",
+        4
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "wind",
+        "South"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "char",
+        4
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "bamboo",
+        9
+      ]
+    },
+    {
+      "a": "P",
+      "s": 2,
+      "t": [
+        "bamboo",
+        9
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "bamboo",
+        3
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "bamboo",
+        7
+      ]
+    },
+    {
+      "a": "P",
+      "s": 1,
+      "t": [
+        "bamboo",
+        7
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "bamboo",
+        5
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "bamboo",
+        2
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "bamboo",
+        2
+      ]
+    },
+    {
+      "a": "C",
+      "s": 0,
+      "t": [
+        "bamboo",
+        2
+      ],
+      "h": [
+        [
+          "bamboo",
+          1
+        ],
+        [
+          "bamboo",
+          3
+        ]
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "char",
+        6
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "dragon",
+        "white"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "bamboo",
+        5
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "circle",
+        2
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "char",
+        1
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "bamboo",
+        8
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "dragon",
+        "red"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "bamboo",
+        3
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "circle",
+        4
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "char",
+        4
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "dragon",
+        "red"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "wind",
+        "West"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "dragon",
+        "white"
+      ]
+    },
+    {
+      "a": "D",
+      "s": 1,
+      "t": [
+        "bamboo",
+        9
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "char",
+        7
+      ]
+    },
+    {
+      "a": "C",
+      "s": 3,
+      "t": [
+        "char",
+        7
+      ],
+      "h": [
+        [
+          "char",
+          5
+        ],
+        [
+          "char",
+          6
+        ]
+      ]
+    },
+    {
+      "a": "D",
+      "s": 3,
+      "t": [
+        "char",
+        8
+      ]
+    },
+    {
+      "a": "P",
+      "s": 2,
+      "t": [
+        "char",
+        8
+      ]
+    },
+    {
+      "a": "D",
+      "s": 2,
+      "t": [
+        "bamboo",
+        4
+      ]
+    },
+    {
+      "a": "W",
+      "s": 1,
+      "t": [
+        "bamboo",
+        4
+      ]
+    }
+  ],
+  "log": [
+    "⚙ S0:You(Bgn[🟢 Beginner Copy]) · S1:CPU1(Bgn[🟢 Beginner Copy]) · S2:CPU2(Bgn[🟢 Beginner Copy]) · S3:CPU3(Bgn[🟢 Beginner Copy])",
+    "v0606-464",
+    "=== New Game: Seat 0 dealer, East round ===",
+    "Wall built and shuffled — 144 tiles.",
+    "Dealer Seat 0 rolls dice: 2+4+4 = 10.",
+    "Wall break: Seat 1's side, 10 stacks from right — dealing starts here.",
+    "Wall: [{\"suit\":\"bamboo\",\"value\":7},{\"suit\":\"char\",\"value\":4},{\"suit\":\"char\",\"value\":6},{\"suit\":\"char\",\"value\":5},{\"suit\":\"circle\",\"value\":8},{\"suit\":\"circle\",\"value\":6},{\"suit\":\"char\",\"value\":2},{\"suit\":\"circle\",\"value\":8},{\"suit\":\"bamboo\",\"value\":6},{\"suit\":\"bamboo\",\"value\":5},{\"suit\":\"bamboo\",\"value\":8},{\"suit\":\"circle\",\"value\":1},{\"suit\":\"bamboo\",\"value\":6},{\"suit\":\"char\",\"value\":3},{\"suit\":\"circle\",\"value\":7},{\"suit\":\"dragon\",\"value\":\"green\"},{\"suit\":\"char\",\"value\":2},{\"suit\":\"wind\",\"value\":\"East\"},{\"suit\":\"char\",\"value\":1},{\"suit\":\"bamboo\",\"value\":1},{\"suit\":\"wind\",\"value\":\"East\"},{\"suit\":\"char\",\"value\":5},{\"suit\":\"bamboo\",\"value\":5},{\"suit\":\"circle\",\"value\":9},{\"suit\":\"wind\",\"value\":\"North\"},{\"suit\":\"char\",\"value\":8},{\"suit\":\"season\",\"value\":1},{\"suit\":\"bamboo\",\"value\":9},{\"suit\":\"bamboo\",\"value\":7},{\"suit\":\"circle\",\"value\":6},{\"suit\":\"wind\",\"value\":\"West\"},{\"suit\":\"char\",\"value\":3},{\"suit\":\"circle\",\"value\":4},{\"suit\":\"circle\",\"value\":1},{\"suit\":\"char\",\"value\":7},{\"suit\":\"wind\",\"value\":\"West\"},{\"suit\":\"bamboo\",\"value\":4},{\"suit\":\"bamboo\",\"value\":7},{\"suit\":\"wind\",\"value\":\"West\"},{\"suit\":\"bamboo\",\"value\":1},{\"suit\":\"wind\",\"value\":\"South\"},{\"suit\":\"circle\",\"value\":4},{\"suit\":\"bamboo\",\"value\":3},{\"suit\":\"flower\",\"value\":1},{\"suit\":\"bamboo\",\"value\":2},{\"suit\":\"char\",\"value\":5},{\"suit\":\"char\",\"value\":6},{\"suit\":\"char\",\"value\":8},{\"suit\":\"bamboo\",\"value\":8},{\"suit\":\"bamboo\",\"value\":1},{\"suit\":\"char\",\"value\":8},{\"suit\":\"season\",\"value\":3},{\"suit\":\"char\",\"value\":2},{\"suit\":\"bamboo\",\"value\":9},{\"suit\":\"circle\",\"value\":5},{\"suit\":\"circle\",\"value\":6},{\"suit\":\"char\",\"value\":3},{\"suit\":\"bamboo\",\"value\":4},{\"suit\":\"char\",\"value\":3},{\"suit\":\"circle\",\"value\":5},{\"suit\":\"bamboo\",\"value\":6},{\"suit\":\"char\",\"value\":5},{\"suit\":\"bamboo\",\"value\":6},{\"suit\":\"char\",\"value\":4},{\"suit\":\"bamboo\",\"value\":3},{\"suit\":\"char\",\"value\":1},{\"suit\":\"flower\",\"value\":2},{\"suit\":\"bamboo\",\"value\":7},{\"suit\":\"season\",\"value\":2},{\"suit\":\"flower\",\"value\":0},{\"suit\":\"char\",\"value\":6},{\"suit\":\"bamboo\",\"value\":1},{\"suit\":\"bamboo\",\"value\":2},{\"suit\":\"bamboo\",\"value\":2},{\"suit\":\"circle\",\"value\":9},{\"suit\":\"dragon\",\"value\":\"white\"},{\"suit\":\"circle\",\"value\":5},{\"suit\":\"circle\",\"value\":2},{\"suit\":\"circle\",\"value\":3},{\"suit\":\"bamboo\",\"value\":8},{\"suit\":\"dragon\",\"value\":\"red\"},{\"suit\":\"bamboo\",\"value\":3},{\"suit\":\"dragon\",\"value\":\"white\"},{\"suit\":\"char\",\"value\":4},{\"suit\":\"dragon\",\"value\":\"red\"},{\"suit\":\"wind\",\"value\":\"West\"},{\"suit\":\"season\",\"value\":0},{\"suit\":\"bamboo\",\"value\":9},{\"suit\":\"bamboo\",\"value\":4},{\"suit\":\"dragon\",\"value\":\"red\"},{\"suit\":\"circle\",\"value\":3},{\"suit\":\"char\",\"value\":9},{\"suit\":\"wind\",\"value\":\"East\"},{\"suit\":\"bamboo\",\"value\":5},{\"suit\":\"char\",\"value\":1},{\"suit\":\"char\",\"value\":7},{\"suit\":\"circle\",\"value\":9},{\"suit\":\"dragon\",\"value\":\"red\"},{\"suit\":\"bamboo\",\"value\":4},{\"suit\":\"circle\",\"value\":9},{\"suit\":\"char\",\"value\":9},{\"suit\":\"circle\",\"value\":3},{\"suit\":\"circle\",\"value\":7},{\"suit\":\"dragon\",\"value\":\"green\"},{\"suit\":\"circle\",\"value\":6},{\"suit\":\"circle\",\"value\":4},{\"suit\":\"circle\",\"value\":8},{\"suit\":\"char\",\"value\":2},{\"suit\":\"circle\",\"value\":4},{\"suit\":\"wind\",\"value\":\"South\"},{\"suit\":\"char\",\"value\":9},{\"suit\":\"dragon\",\"value\":\"green\"},{\"suit\":\"dragon\",\"value\":\"white\"},{\"suit\":\"circle\",\"value\":3},{\"suit\":\"char\",\"value\":9},{\"suit\":\"char\",\"value\":8},{\"suit\":\"circle\",\"value\":5},{\"suit\":\"circle\",\"value\":2},{\"suit\":\"char\",\"value\":4},{\"suit\":\"wind\",\"value\":\"East\"},{\"suit\":\"bamboo\",\"value\":2},{\"suit\":\"circle\",\"value\":2},{\"suit\":\"wind\",\"value\":\"North\"},{\"suit\":\"dragon\",\"value\":\"white\"},{\"suit\":\"bamboo\",\"value\":5},{\"suit\":\"char\",\"value\":6},{\"suit\":\"wind\",\"value\":\"North\"},{\"suit\":\"bamboo\",\"value\":3},{\"suit\":\"circle\",\"value\":2},{\"suit\":\"char\",\"value\":7},{\"suit\":\"dragon\",\"value\":\"green\"},{\"suit\":\"circle\",\"value\":1},{\"suit\":\"circle\",\"value\":8},{\"suit\":\"bamboo\",\"value\":8},{\"suit\":\"wind\",\"value\":\"South\"},{\"suit\":\"wind\",\"value\":\"North\"},{\"suit\":\"circle\",\"value\":1},{\"suit\":\"flower\",\"value\":3},{\"suit\":\"bamboo\",\"value\":9},{\"suit\":\"wind\",\"value\":\"South\"},{\"suit\":\"char\",\"value\":1},{\"suit\":\"char\",\"value\":7},{\"suit\":\"circle\",\"value\":7},{\"suit\":\"circle\",\"value\":7}]",
+    "Seat 0 deals — distributing tiles.",
+    "Seat 0 gets 4 tiles: 七竹 四萬 六萬 五萬",
+    "Seat 1 gets 4 tiles: 八餅 六餅 二萬 八餅",
+    "Seat 2 gets 4 tiles: 六竹 五竹 八竹 一餅",
+    "Seat 3 gets 4 tiles: 六竹 三萬 七餅 發",
+    "Seat 0 gets 4 tiles: 二萬 東 一萬 一竹",
+    "Seat 1 gets 4 tiles: 東 五萬 五竹 九餅",
+    "Seat 2 gets 4 tiles: 北 八萬 夏 九竹",
+    "Seat 3 gets 4 tiles: 七竹 六餅 西 三萬",
+    "Seat 0 gets 4 tiles: 四餅 一餅 七萬 西",
+    "Seat 1 gets 4 tiles: 四竹 七竹 西 一竹",
+    "Seat 2 gets 4 tiles: 南 四餅 三竹 蘭",
+    "Seat 3 gets 4 tiles: 二竹 五萬 六萬 八萬",
+    "Seat 0 gets 1 tile: 八竹",
+    "Seat 1 gets 1 tile: 一竹",
+    "Seat 2 gets 1 tile: 八萬",
+    "Seat 3 gets 1 tile: 冬",
+    "Seat 0 gets 1 tile: 二萬",
+    "Seat 2 bonus 夏 → replacement",
+    "Seat 2 bonus replacement: 七餅",
+    "Seat 2 bonus 蘭 → replacement",
+    "Seat 2 bonus replacement: 七餅",
+    "Seat 3 bonus 冬 → replacement",
+    "Seat 3 bonus replacement: 一萬",
+    "Seat 0 discards 二萬",
+    "Seat 1 draws 九竹",
+    "Seat 1 discards 東",
+    "Seat 2 draws 五餅",
+    "Seat 2 discards 北",
+    "Seat 3 draws 六餅",
+    "Seat 3 discards 發",
+    "Seat 0 draws 三萬",
+    "Seat 0 discards 西",
+    "Seat 1 draws 四竹",
+    "Seat 1 discards 西",
+    "Seat 2 draws 三萬",
+    "Seat 2 discards 南",
+    "Seat 3 draws 五餅",
+    "Seat 3 discards 西",
+    "Seat 0 draws 六竹",
+    "Seat 0 discards 東",
+    "Seat 1 draws 五萬",
+    "Seat 1 discards 二萬",
+    "Seat 2 draws 六竹",
+    "Seat 2 discards 一餅",
+    "Seat 3 draws 四萬",
+    "Seat 3 discards 二竹",
+    "Seat 0 draws 三竹",
+    "Seat 0 discards 七萬",
+    "Seat 1 draws 一萬",
+    "Seat 1 discards 一萬",
+    "Seat 2 draws 菊",
+    "Seat 2 bonus 菊 → replacement",
+    "Seat 2 bonus replacement: 七萬",
+    "Seat 2 discards 三萬",
+    "Seat 3 Pung 碰 三萬",
+    "Seat 3 discards 一萬",
+    "Seat 0 Chow 上 一萬 [二萬 三萬]",
+    "Seat 0 discards 六萬",
+    "Seat 1 draws 七竹",
+    "Seat 1 discards 六餅",
+    "Seat 3 Pung 碰 六餅",
+    "Seat 3 discards 六竹",
+    "Seat 0 Chow 上 六竹 [七竹 八竹]",
+    "Seat 0 discards 五萬",
+    "Seat 1 Pung 碰 五萬",
+    "Seat 1 discards 九餅",
+    "Seat 2 draws 秋",
+    "Seat 2 bonus 秋 → replacement",
+    "Seat 2 bonus replacement: 九竹",
+    "Seat 2 discards 四餅",
+    "Seat 3 draws 梅",
+    "Seat 3 bonus 梅 → replacement",
+    "Seat 3 bonus replacement: 南",
+    "Seat 3 discards 南",
+    "Seat 0 draws 六萬",
+    "Seat 0 discards 四萬",
+    "Seat 1 draws 一竹",
+    "Seat 1 discards 九竹",
+    "Seat 2 Pung 碰 九竹",
+    "Seat 2 discards 三竹",
+    "Seat 3 draws 二竹",
+    "Seat 3 discards 七竹",
+    "Seat 1 Pung 碰 七竹",
+    "Seat 1 discards 五竹",
+    "Seat 2 draws 二竹",
+    "Seat 2 discards 二竹",
+    "Seat 3 draws 九餅",
+    "Seat 3 discards 二竹",
+    "Seat 0 Chow 上 二竹 [一竹 三竹]",
+    "Seat 0 discards 六萬",
+    "Seat 1 draws 白",
+    "Seat 1 discards 白",
+    "Seat 2 draws 五餅",
+    "Seat 2 discards 五竹",
+    "Seat 3 draws 二餅",
+    "Seat 3 discards 二餅",
+    "Seat 0 draws 三餅",
+    "Seat 0 discards 一萬",
+    "Seat 1 draws 八竹",
+    "Seat 1 discards 八竹",
+    "Seat 2 draws 中",
+    "Seat 2 discards 中",
+    "Seat 3 draws 三竹",
+    "Seat 3 discards 三竹",
+    "Seat 0 draws 白",
+    "Seat 0 discards 四餅",
+    "Seat 1 draws 四萬",
+    "Seat 1 discards 四萬",
+    "Seat 2 draws 中",
+    "Seat 2 discards 中",
+    "Seat 3 draws 西",
+    "Seat 3 discards 西",
+    "Seat 0 draws 春",
+    "Seat 0 bonus 春 → replacement",
+    "Seat 0 bonus replacement: 一餅",
+    "Seat 0 discards 白",
+    "Seat 1 draws 九竹",
+    "Seat 1 discards 九竹",
+    "Seat 2 draws 四竹",
+    "Seat 2 discards 七萬",
+    "Seat 3 Chow 上 七萬 [五萬 六萬]",
+    "Seat 3 discards 八萬",
+    "Seat 2 Pung 碰 八萬",
+    "Seat 2 discards 四竹",
+    "🏆 Seat 1 WINS! 4 faan — All Triplets (3), No Flowers (1)"
+  ],
+  "cpuLevels": null,
+  "cpuSchemes": {
+    "CPU1": "beginner-copy",
+    "CPU2": "beginner-copy",
+    "CPU3": "beginner-copy"
+  }
+}
