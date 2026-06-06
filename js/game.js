@@ -88,7 +88,8 @@ class Game {
       this._captureWall = rd.wall;
       this._captureDice = [...this.dice];
       this._captureMoves = [];
-      window._moveQueue = rd.moves ? [...rd.moves] : null;
+      const _rdMoves = (rd.moves?.length) ? rd.moves : Game.movesFromLog(rd.log);
+      window._moveQueue = _rdMoves ? [..._rdMoves] : null;
       this.addLog(`Wall built and shuffled — 144 tiles.`);
       this.addLog(`Dealer ${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
       this.addLog(`Wall break: ${playerTag(this.players[breakSeat])}'s side, ${this.diceTotal} stacks from right — dealing starts here.`);
@@ -814,20 +815,26 @@ class Game {
     this.claimOptions = humanOptions;
     this.pendingClaims = claims;
 
+    const replayQueued = window.REPLAY_MODE && window._moveQueue !== null;
+
     if (fromSeat !== 0) {
       // A CPU discarded — show the board state
       this.onUpdate('claim-prompt');
-      if (window.AUTO_MODE) {
-        this._scheduleOrStep(() => {
-          this.claimOptions = null;
-          this.resolveAIClaims(fromSeat, tile, claims);
-        });
+      if (window.AUTO_MODE || !replayQueued) {
+        // Auto-advance: AUTO mode, or REPLAY with no queue (old save / null queue)
+        // Manual non-replay: human must click Pass (humanPass handles it)
+        if (window.AUTO_MODE || window.REPLAY_MODE) {
+          this._scheduleOrStep(() => {
+            this.claimOptions = null;
+            this.resolveAIClaims(fromSeat, tile, claims);
+          });
+        }
       }
-      // Manual and REPLAY_MODE: wait for click; replayStep() handles REPLAY_MODE
+      // REPLAY_MODE + valid queue: wait for click; replayStep() advances
     } else {
       // Seat 0 (human or CPU-You) just discarded
       this.onUpdate('claim-prompt');
-      if (!window.REPLAY_MODE) {
+      if (!replayQueued) {
         if (claims.length === 0) {
           const next = (fromSeat + 1) % 4;
           this._scheduleOrStep(() => this.startTurn(next));
@@ -838,7 +845,7 @@ class Game {
           });
         }
       }
-      // REPLAY_MODE: wait for click; replayStep() handles advancement
+      // REPLAY_MODE + valid queue: wait for click; replayStep() handles advancement
     }
   }
 
@@ -1317,6 +1324,74 @@ class Game {
     } catch(e) {}
   }
 
+  // Derive moves[] from a chronological log[] when moves[] is absent.
+  // Covers: discards, pung, chow, kong variants, self-draw and claim wins.
+  // Wall-exhausted games need no win entry — drawFromWall() raises END itself.
+  static movesFromLog(log) {
+    if (!log?.length) return null;
+
+    const NUM_ZH    = ['','一','二','三','四','五','六','七','八','九'];
+    const SUIT_ZH   = { bamboo:'竹', circle:'餅', char:'萬' };
+    const WIND_ZH   = ['東','南','西','北'];
+    const WINDS     = ['East','South','West','North'];
+    const DRAGON_ZH = { red:'中', green:'發', white:'白' };
+    const FLOWER_ZH = ['梅','蘭','菊','竹'];
+    const SEASON_ZH = ['春','夏','秋','冬'];
+
+    const MAP = {};
+    for (const [suit, zh] of Object.entries(SUIT_ZH))
+      for (let v = 1; v <= 9; v++) MAP[NUM_ZH[v] + zh] = [suit, v];
+    WINDS.forEach((w, i) => MAP[WIND_ZH[i]] = ['wind', w]);
+    for (const [val, zh] of Object.entries(DRAGON_ZH)) MAP[zh] = ['dragon', val];
+    FLOWER_ZH.forEach((zh, i) => { if (!MAP[zh]) MAP[zh] = ['flower', i]; });
+    SEASON_ZH.forEach((zh, i) => MAP[zh] = ['season', i]);
+
+    const parse = s => MAP[s?.trim()] ?? null;
+
+    const moves = [];
+    let lastDiscardSeat = null, lastDiscardTile = null;
+
+    for (const line of log) {
+      let m;
+
+      m = line.match(/^Seat (\d) discards (.+)$/);
+      if (m) {
+        const t = parse(m[2]);
+        if (t) { moves.push({ a:'D', s:+m[1], t }); lastDiscardSeat=+m[1]; lastDiscardTile=t; }
+        continue;
+      }
+      m = line.match(/^Seat (\d) Pung 碰 (.+)$/);
+      if (m) { const t=parse(m[2]); if (t) moves.push({ a:'P', s:+m[1], t }); continue; }
+
+      m = line.match(/^Seat (\d) Chow 上 (.+?) \[(.+)\]$/);
+      if (m) {
+        const t = parse(m[2]);
+        const h = m[3].split(' ').map(parse).filter(Boolean);
+        if (t) moves.push({ a:'C', s:+m[1], t, h });
+        continue;
+      }
+      m = line.match(/^Seat (\d) declares Kong 槓 (.+?) — can be robbed!$/);
+      if (m) { const t=parse(m[2]); if (t) moves.push({ a:'KS', s:+m[1], t }); continue; }
+
+      m = line.match(/^Seat (\d) declares Concealed Kong 暗槓 (.+)$/);
+      if (m) { const t=parse(m[2]); if (t) moves.push({ a:'KC', s:+m[1], t }); continue; }
+
+      m = line.match(/^Seat (\d) Kong 槓 (.+?)(\s+\(.*\))?$/);
+      if (m) { const t=parse(m[2].trim()); if (t) moves.push({ a:'KO', s:+m[1], t }); continue; }
+
+      m = line.match(/^🏆 Seat (\d) WINS!/);
+      if (m) {
+        const s = +m[1];
+        if (lastDiscardSeat !== null && lastDiscardSeat !== s && lastDiscardTile)
+          moves.push({ a:'W', s, t: lastDiscardTile });   // claim win
+        else
+          moves.push({ a:'W', s });                        // self-draw
+        continue;
+      }
+    }
+    return moves.length ? moves : null;
+  }
+
   applyReplayContext(data) {
     if (data.dealerSeat != null) this.dealerSeat   = data.dealerSeat;
     if (data.roundWind)          this.roundWind    = data.roundWind;
@@ -1350,7 +1425,8 @@ class Game {
           window.CPU_SCHEMES[p.seat] = window.CPU_SCHEMES_BY_NAME[p.name];
       }
     }
-    window._moveQueue = data.moves ? [...data.moves] : null;
+    const moves = (data.moves?.length) ? data.moves : Game.movesFromLog(data.log);
+    window._moveQueue = moves ? [...moves] : null;
   }
 
   replayStep() {

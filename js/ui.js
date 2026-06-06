@@ -430,7 +430,7 @@ function initUI(game) {
     const raw = localStorage.getItem('mahjongReplay');
     if (!raw) { alert('No replay saved yet — play a hand first.'); return; }
     const data = JSON.parse(raw);
-    if (!data.wall || !data.dice || !data.moves) { alert('Replay data is incomplete.'); return; }
+    if (!data.wall || !data.dice || (!data.moves?.length && !data.log?.length)) { alert('Replay data is incomplete.'); return; }
     window.REPLAY_MODE = true;
     window._replayData = data;
     _game.applyReplayContext(data);
@@ -491,7 +491,7 @@ function initUI(game) {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
-        if (!data.wall || !data.dice || !data.moves) { alert('Not a valid replay file.'); return; }
+        if (!data.wall || !data.dice || (!data.moves?.length && !data.log?.length)) { alert('Not a valid replay file.'); return; }
         window.REPLAY_MODE = true;
         window._replayData = data;
         _game.applyReplayContext(data);
