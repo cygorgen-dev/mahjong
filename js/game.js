@@ -1185,6 +1185,42 @@ class Game {
     this.log.unshift(msg);
   }
 
+  dumpState() {
+    const tileDesc = t => t ? `${t.suit}/${t.value}` : null;
+    const meldDesc = m => ({
+      type: m.type,
+      tiles: m.tiles.map(tileDesc),
+      concealed: m.concealed ?? false,
+      claimed: m.claimed ?? false,
+    });
+    return {
+      format: 'mahjong-debug',
+      savedAt: new Date().toISOString(),
+      version: document.getElementById('game-version-tag')?.textContent ?? '?',
+      phase: this.phase,
+      currentSeat: this.currentSeat,
+      dealerSeat: this.dealerSeat,
+      roundWind: this.roundWind,
+      wallRemaining: this.wallRemaining(),
+      discard: tileDesc(this.discard),
+      discardSeat: this.discardSeat,
+      players: this.players.map(p => ({
+        seat: this.players.indexOf(p),
+        name: p.name,
+        isHuman: p.isHuman,
+        score: p.score,
+        handCount: p.hand.length,
+        meldCount: p.melds.length,
+        hand: p.hand.map(tileDesc),
+        melds: p.melds.map(meldDesc),
+        bonus: p.bonus.map(tileDesc),
+      })),
+      discardPile: this.discardPile.map(tileDesc),
+      lastResult: this.lastResult ?? null,
+      log: [...this.log].reverse(),
+    };
+  }
+
   _saveReplay() {
     if (window.REPLAY_MODE) return; // don't overwrite replay data during playback
     if (!this._captureWall || !this._captureDice) return;

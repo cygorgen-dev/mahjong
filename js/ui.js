@@ -455,6 +455,20 @@ function initUI(game) {
     URL.revokeObjectURL(url);
   });
 
+  document.getElementById('dump-state-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!_game) { alert('No game in progress.'); return; }
+    const data = _game.dumpState();
+    const date = new Date().toISOString().slice(0, 10);
+    const phase = data.phase ?? 'unknown';
+    const filename = `mahjong-debug-${date}-${phase}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  });
+
   document.getElementById('load-hand-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     document.getElementById('load-hand-input').click();
