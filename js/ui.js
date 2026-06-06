@@ -459,10 +459,14 @@ function initUI(game) {
     e.stopPropagation();
     if (!_game) { alert('No game in progress.'); return; }
     const data = _game.dumpState();
+    const json = JSON.stringify(data, null, 2);
+    // Save to localStorage so debug_dump.js can extract it without user action
+    try { localStorage.setItem('mahjongDebugDump', json); } catch(e2) {}
+    // Also download a file
     const date = new Date().toISOString().slice(0, 10);
     const phase = data.phase ?? 'unknown';
     const filename = `mahjong-debug-${date}-${phase}.json`;
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([json], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href = url; a.download = filename; a.click();
