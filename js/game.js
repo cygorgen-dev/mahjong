@@ -866,9 +866,9 @@ class Game {
   }
 
   humanPass() {
-    if (!this._replayExecuting) this._captureDecisions.push({ type: 'pass' });
     this.claimOptions = null;
     if (this.robbingKongSeat !== null && this.robbingKongSeat !== undefined) {
+      if (!this._replayExecuting) this._captureDecisions.push({ type: 'pass' });
       // Human passed on robbing — let AI rob or complete the kong
       const aiRobbers = this.pendingClaims.filter(c => c.action === 'win');
       const minFRob = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
@@ -894,15 +894,17 @@ class Game {
         this._completeKong(seat, tiles, idx);
       }
     } else if (this.discard === null && this.phase === PHASE.CLAIM) {
+      if (!this._replayExecuting) this._captureDecisions.push({ type: 'pass' });
       // Was a self-draw win prompt — player declined, just discard normally
       this.phase = PHASE.DISCARD;
       this.onUpdate('your-turn');
     } else if (this.discard === null) {
-      // Stale double-click: robbing-kong Pass 1 already resolved (phase is END or DISCARD) — no-op
+      // Stale double-click — no-op, don't record
     } else if (this.discardSeat === 0) {
       // Human just discarded — processClaims already auto-scheduled resolution
-      // via _scheduleOrStep. Ignore this Pass to prevent double-resolveAIClaims.
+      // via _scheduleOrStep. Phantom pass: don't record, don't double-resolve.
     } else {
+      if (!this._replayExecuting) this._captureDecisions.push({ type: 'pass' });
       // Snapshot and clear before resolving so a rapid double-Pass is a no-op
       // on the second call (discard===null, phase still CLAIM → harmless branch above).
       const fromSeat = this.discardSeat;
@@ -1240,6 +1242,15 @@ class Game {
         wall:       this._captureWall,
         dice:       this._captureDice,
         decisions:  this._captureDecisions,
+        cpuLevels:  window.CPU_LEVELS_BY_NAME ? { ...window.CPU_LEVELS_BY_NAME } : null,
+        cpuSchemes: (() => {
+          if (!window.CPU_SCHEMES_BY_NAME) return null;
+          const out = {};
+          for (const [name, s] of Object.entries(window.CPU_SCHEMES_BY_NAME)) {
+            out[name] = s ? s.id : null;
+          }
+          return out;
+        })(),
       }));
     } catch(e) {}
   }
@@ -1254,6 +1265,29 @@ class Game {
         if (p) { p.name = sp.name; p.isHuman = sp.isHuman; }
       }
     }
+    // Restore CPU levels by name so AI claim/discard decisions match original game
+    if (data.cpuLevels) {
+      window.CPU_LEVELS_BY_NAME = { ...data.cpuLevels };
+      if (typeof CPU_LEVELS !== 'undefined') {
+        for (const p of this.players) {
+          if (!p.isHuman && data.cpuLevels[p.name] != null)
+            CPU_LEVELS[p.seat] = data.cpuLevels[p.name];
+        }
+      }
+    }
+    // Restore CPU schemes by name
+    if (data.cpuSchemes && typeof SCHEMES !== 'undefined') {
+      if (!window.CPU_SCHEMES_BY_NAME) window.CPU_SCHEMES_BY_NAME = {};
+      if (!window.CPU_SCHEMES) window.CPU_SCHEMES = [null, null, null, null];
+      for (const [name, schemeId] of Object.entries(data.cpuSchemes)) {
+        const scheme = schemeId ? SCHEMES.find(s => s.id === schemeId) ?? null : null;
+        window.CPU_SCHEMES_BY_NAME[name] = scheme;
+      }
+      for (const p of this.players) {
+        if (!p.isHuman && window.CPU_SCHEMES_BY_NAME[p.name] !== undefined)
+          window.CPU_SCHEMES[p.seat] = window.CPU_SCHEMES_BY_NAME[p.name];
+      }
+    }
   }
 
   replayStep() {
@@ -1263,11 +1297,25 @@ class Game {
     this._replayExecuting = true;
     try {
       if (d.type === 'pass') {
+        // Drop phantom passes from old saves — only fire if game is actually waiting for a claim decision
+        if (this.phase !== PHASE.CLAIM || !this.claimOptions) return;
         this.humanPass();
       } else if (d.type === 'discard') {
+        // If a phantom pass consumed the slot and the game is still in CLAIM phase,
+        // auto-pass to clear it then re-queue this discard for the next step.
+        if (this.phase === PHASE.CLAIM && this.claimOptions) {
+          this._replayExecuting = false;
+          this.humanPass();
+          this._replayExecuting = true;
+          queue.unshift(d);
+          return;
+        }
+        if (this.phase !== PHASE.DISCARD || this.currentSeat !== 0) return;
         const tile = this.players[0].hand.find(t => t.suit === d.suit && t.value === d.value);
         if (tile) this.doDiscard(0, tile);
       } else if (d.type === 'claim') {
+        // Drop if game isn't waiting for a claim decision
+        if (this.phase !== PHASE.CLAIM || !this.claimOptions) return;
         if (d.action === 'chow' && d.with) {
           const used = [];
           const discard = this.discard;
