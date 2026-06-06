@@ -1392,8 +1392,8 @@ class Game {
         if (t) { moves.push({ a:'KS', s:+m[1], t }); lastEvt = { type:'kong-declare', seat:+m[1], tile:t }; }
         continue;
       }
-      m = line.match(/^Seat (\d) declares Concealed Kong 暗槓 (.+)$/);
-      if (m) { const t=parse(m[2]); if (t) moves.push({ a:'KC', s:+m[1], t }); continue; }
+      m = line.match(/^Seat (\d) Concealed Kong 暗槓 (.+)$/);
+      if (m) { const t=parse(m[2]); if (t) moves.push({ a:'KS', s:+m[1], t }); continue; }
 
       m = line.match(/^Seat (\d) Kong 槓 (.+?)(\s+\(.*\))?$/);
       if (m) {
