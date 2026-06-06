@@ -817,31 +817,28 @@ class Game {
     if (fromSeat !== 0) {
       // A CPU discarded — show the board state
       this.onUpdate('claim-prompt');
-      // In replay mode (new-style), auto-advance unless a human claim is queued next
-      const replayNeedsHuman = window.REPLAY_MODE && window._moveQueue &&
-        window._moveQueue[0] && ['P','C','KO','W'].includes(window._moveQueue[0].a) &&
-        window._moveQueue[0].s === 0;
-      if (window.AUTO_MODE || (window.REPLAY_MODE && window._moveQueue && !replayNeedsHuman)) {
-        // CPU-You's claim was already decided above (in the claims array).
-        // Just schedule resolving all claims, gated by Pass in slow mode.
+      if (window.AUTO_MODE) {
         this._scheduleOrStep(() => {
           this.claimOptions = null;
           this.resolveAIClaims(fromSeat, tile, claims);
         });
       }
-      // Manual mode (or replay with pending human claim): wait for human Pass click
+      // Manual and REPLAY_MODE: wait for click; replayStep() handles REPLAY_MODE
     } else {
       // Seat 0 (human or CPU-You) just discarded
       this.onUpdate('claim-prompt');
-      if (claims.length === 0) {
-        const next = (fromSeat + 1) % 4;
-        this._scheduleOrStep(() => this.startTurn(next));
-      } else {
-        this._scheduleOrStep(() => {
-          this.claimOptions = null;
-          this.resolveAIClaims(fromSeat, tile, claims);
-        });
+      if (!window.REPLAY_MODE) {
+        if (claims.length === 0) {
+          const next = (fromSeat + 1) % 4;
+          this._scheduleOrStep(() => this.startTurn(next));
+        } else {
+          this._scheduleOrStep(() => {
+            this.claimOptions = null;
+            this.resolveAIClaims(fromSeat, tile, claims);
+          });
+        }
       }
+      // REPLAY_MODE: wait for click; replayStep() handles advancement
     }
   }
 
@@ -1357,41 +1354,63 @@ class Game {
   }
 
   replayStep() {
-    // New-style replay: moves[] queue (saves that have a moves field)
-    if (window._moveQueue) {
-      const queue = window._moveQueue;
-      if (!queue.length) return; // queue drained; game ends naturally via AI win detection
-      const m = queue[0];
-      if (m.s !== 0) return; // CPU move — aiPlay/processClaims will consume it; do nothing here
-      if (m.a === 'D') {
-        if (this.phase !== PHASE.DISCARD || this.currentSeat !== 0) return;
-        queue.shift();
-        const tile = this.players[0].hand.find(t => t.suit === m.t[0] && t.value === m.t[1]);
-        if (tile) this.doDiscard(0, tile);
-        else console.warn(`[replay] discard tile not in hand: ${JSON.stringify(m.t)}`);
-      } else if (m.a === 'P' || m.a === 'KO' || m.a === 'W') {
-        if (this.phase !== PHASE.CLAIM || !this.claimOptions) return;
-        queue.shift();
-        const actMap = { P: 'pung', KO: 'kong', W: 'win' };
-        this.humanClaim(actMap[m.a], null);
-      } else if (m.a === 'C') {
-        if (this.phase !== PHASE.CLAIM || !this.claimOptions) return;
-        queue.shift();
-        const used = [];
-        const handTiles = (m.h || []).map(([st, v]) => {
-          const t = this.players[0].hand.find(h => h.suit === st && h.value === v && !used.includes(h.id));
-          if (t) used.push(t.id);
-          return t;
-        }).filter(Boolean);
-        this.humanClaim('chow', handTiles.length === 2 ? handTiles : null);
-      } else if (m.a === 'KS') {
-        queue.shift();
-        const kong = this.findSelfKong(this.players[0]);
-        if (kong) this.doSelfKong(0, kong);
-      } else if (m.a === 'KC') {
-        queue.shift();
-        this.humanDeclareConcealedKong();
+    const queue = window._moveQueue;
+    if (!queue) return;
+
+    // ── CLAIM phase: fire a human claim OR resolve CPU-only claims and advance ─
+    if (this.phase === PHASE.CLAIM) {
+      if (queue.length) {
+        const m = queue[0];
+        if (m.s === 0 && ['P', 'C', 'KO', 'W'].includes(m.a)) {
+          queue.shift();
+          if (m.a === 'W') {
+            this.humanClaim('win', null);
+          } else if (m.a === 'P') {
+            this.humanClaim('pung', null);
+          } else if (m.a === 'KO') {
+            this.humanClaim('kong', null);
+          } else if (m.a === 'C') {
+            const used = [];
+            const handTiles = (m.h || []).map(([st, v]) => {
+              const t = this.players[0].hand.find(h => h.suit === st && h.value === v && !used.includes(h.id));
+              if (t) used.push(t.id);
+              return t;
+            }).filter(Boolean);
+            this.humanClaim('chow', handTiles.length === 2 ? handTiles : null);
+          }
+          return;
+        }
       }
+      // No human claim queued — resolve any pending CPU claims then advance
+      const fromSeat = this.discardSeat ?? 0;
+      const tile = this.discard;
+      this.claimOptions = null;
+      if (this.pendingClaims?.length) {
+        this.resolveAIClaims(fromSeat, tile, this.pendingClaims);
+      } else {
+        this.startTurn((fromSeat + 1) % 4);
+      }
+      return;
+    }
+
+    // ── DISCARD phase (human seat) ────────────────────────────────────────────
+    if (this.phase !== PHASE.DISCARD || this.currentSeat !== 0) return;
+    if (!queue.length) return;
+    const m = queue[0];
+    if (m.s !== 0) return;
+
+    if (m.a === 'D') {
+      queue.shift();
+      const tile = this.players[0].hand.find(t => t.suit === m.t[0] && t.value === m.t[1]);
+      if (tile) this.doDiscard(0, tile);
+      else console.warn(`[replay] discard tile not in hand: ${JSON.stringify(m.t)}`);
+    } else if (m.a === 'KS') {
+      queue.shift();
+      const kong = this.findSelfKong(this.players[0]);
+      if (kong) this.doSelfKong(0, kong);
+    } else if (m.a === 'KC') {
+      queue.shift();
+      this.humanDeclareConcealedKong();
     }
   }
 
