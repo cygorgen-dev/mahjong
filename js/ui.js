@@ -10,6 +10,7 @@ let _ssdResolve = null;   // pending step-advance resolver
 let _ssdAborted = false;  // set true when a new deal is triggered mid-animation
 let _ringInitWallId = null; // wall id of the last hand whose ring was initialised full
 let _chowChoices = []; // tiles the player picks for chow
+let _autoReplayTimer = null;
 let _peekWin = null;
 let _wallWin = null;
 let _wallBC = null;
@@ -84,6 +85,24 @@ function seatName(seat) {
 }
 
 let _replayBanner = null;
+
+function _stopAutoReplay() {
+  if (_autoReplayTimer) { clearInterval(_autoReplayTimer); _autoReplayTimer = null; }
+  const btn = document.getElementById('auto-replay-btn');
+  if (btn) btn.textContent = '⏩ Auto Step';
+}
+
+function _startAutoReplay() {
+  const btn = document.getElementById('auto-replay-btn');
+  if (btn) btn.textContent = '⏸ Pause';
+  _autoReplayTimer = setInterval(() => {
+    if (!window.REPLAY_MODE || !_game) { _stopAutoReplay(); return; }
+    if (_game.phase === PHASE.END) { _stopAutoReplay(); return; }
+    _game.replayStep();
+    renderAll();
+    if (_game.phase === PHASE.END) _stopAutoReplay();
+  }, 700);
+}
 
 function _ensureReplayBanner() {
   if (_replayBanner) return;
@@ -412,6 +431,13 @@ function initUI(game) {
     renderAll();
   });
 
+  document.getElementById('auto-replay-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!window.REPLAY_MODE) return;
+    if (_autoReplayTimer) { _stopAutoReplay(); return; }
+    _startAutoReplay();
+  });
+
   document.getElementById('save-hand-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     const raw = localStorage.getItem('mahjongReplay');
@@ -565,7 +591,7 @@ function initUI(game) {
     dismissHint();
     // Replay mode: step through recorded decisions
     if (window.REPLAY_MODE && _game) {
-      if (_game.phase === PHASE.END) { window.REPLAY_MODE = false; window._replayQueue = []; }
+      if (_game.phase === PHASE.END) { _stopAutoReplay(); window.REPLAY_MODE = false; window._replayQueue = []; }
       else { _game.replayStep(); renderAll(); return; }
     }
     // Single-step deal: advance the waiting step
