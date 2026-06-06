@@ -108,9 +108,9 @@ function _ensureReplayBanner() {
   if (_replayBanner) return;
   _replayBanner = document.createElement('div');
   _replayBanner.id = 'replay-banner';
-  _replayBanner.style.cssText = 'display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);' +
-    'background:#1a1a6b;color:#ffd34d;border:2px solid #ffd34d;border-radius:0 0 8px 8px;' +
-    'padding:4px 24px;font-size:13px;font-weight:700;z-index:8500;pointer-events:none;' +
+  _replayBanner.style.cssText = 'display:none;position:fixed;top:0;left:0;' +
+    'background:#1a1a6b;color:#ffd34d;border:2px solid #ffd34d;border-radius:0 0 8px 0;' +
+    'padding:4px 16px;font-size:13px;font-weight:700;z-index:8500;pointer-events:none;' +
     'white-space:nowrap;';
   _replayBanner.textContent = '▶ REPLAY — click anywhere or Pass to step';
   document.body.appendChild(_replayBanner);
