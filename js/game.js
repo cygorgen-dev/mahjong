@@ -1349,7 +1349,11 @@ class Game {
     const parse = s => MAP[s?.trim()] ?? null;
 
     const moves = [];
-    let lastDiscardSeat = null, lastDiscardTile = null;
+    // Track the last "decisive" event to classify wins correctly:
+    //   'discard'      → someone discarded (potential claim window)
+    //   'draw'|'bonus'|'kong-replace' → someone drew (self-draw window)
+    //   'kong-declare' → someone declared a robbable kong
+    let lastEvt = null; // { type, seat, tile }
 
     for (const line of log) {
       let m;
@@ -1357,9 +1361,21 @@ class Game {
       m = line.match(/^Seat (\d) discards (.+)$/);
       if (m) {
         const t = parse(m[2]);
-        if (t) { moves.push({ a:'D', s:+m[1], t }); lastDiscardSeat=+m[1]; lastDiscardTile=t; }
+        if (t) {
+          moves.push({ a:'D', s:+m[1], t });
+          lastEvt = { type:'discard', seat:+m[1], tile:t };
+        }
         continue;
       }
+      m = line.match(/^Seat (\d) draws /);
+      if (m) { lastEvt = { type:'draw', seat:+m[1] }; continue; }
+
+      m = line.match(/^Seat (\d) bonus replacement:/);
+      if (m) { lastEvt = { type:'bonus', seat:+m[1] }; continue; }
+
+      m = line.match(/^Seat (\d) kong replacement:/);
+      if (m) { lastEvt = { type:'kong-replace', seat:+m[1] }; continue; }
+
       m = line.match(/^Seat (\d) Pung 碰 (.+)$/);
       if (m) { const t=parse(m[2]); if (t) moves.push({ a:'P', s:+m[1], t }); continue; }
 
@@ -1371,8 +1387,11 @@ class Game {
         continue;
       }
       m = line.match(/^Seat (\d) declares Kong 槓 (.+?) — can be robbed!$/);
-      if (m) { const t=parse(m[2]); if (t) moves.push({ a:'KS', s:+m[1], t }); continue; }
-
+      if (m) {
+        const t = parse(m[2]);
+        if (t) { moves.push({ a:'KS', s:+m[1], t }); lastEvt = { type:'kong-declare', seat:+m[1], tile:t }; }
+        continue;
+      }
       m = line.match(/^Seat (\d) declares Concealed Kong 暗槓 (.+)$/);
       if (m) { const t=parse(m[2]); if (t) moves.push({ a:'KC', s:+m[1], t }); continue; }
 
@@ -1382,10 +1401,12 @@ class Game {
       m = line.match(/^🏆 Seat (\d) WINS!/);
       if (m) {
         const s = +m[1];
-        if (lastDiscardSeat !== null && lastDiscardSeat !== s && lastDiscardTile)
-          moves.push({ a:'W', s, t: lastDiscardTile });   // claim win
+        if (lastEvt?.type === 'discard' && lastEvt.seat !== s)
+          moves.push({ a:'W', s, t: lastEvt.tile });       // claim win on discard
+        else if (lastEvt?.type === 'kong-declare' && lastEvt.seat !== s)
+          moves.push({ a:'W', s, t: lastEvt.tile });       // kong robbery
         else
-          moves.push({ a:'W', s });                        // self-draw
+          moves.push({ a:'W', s });                         // self-draw or heavenly hand
         continue;
       }
     }
