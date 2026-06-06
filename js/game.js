@@ -923,7 +923,7 @@ class Game {
       }
       return;
     }
-    if (!this._replayExecuting) this._captureDecisions.push({ type: 'claim', action, with: chowTiles ? chowTiles.map(t => ({ suit: t.suit, value: t.value })) : null });
+    if (!this._replayExecuting) this._captureDecisions.push({ type: 'claim', action, with: chowTiles ? chowTiles.filter(t => !this.discard || t.id !== this.discard.id).map(t => ({ suit: t.suit, value: t.value })) : null });
     if (action === 'win') {
       // Check if this is a rob-the-kong win
       if (this.claimOptions.robbingKong) {
@@ -1234,7 +1234,12 @@ class Game {
       } else if (d.type === 'claim') {
         if (d.action === 'chow' && d.with) {
           const used = [];
-          const chowTiles = d.with.map(({ suit, value }) => {
+          const discard = this.discard;
+          // Legacy saves (before fix) included the discard tile in `with`; filter it so we always find exactly 2 hand tiles
+          const handDescs = discard
+            ? d.with.filter(({ suit, value }) => !(suit === discard.suit && value === discard.value))
+            : d.with;
+          const chowTiles = handDescs.map(({ suit, value }) => {
             const t = this.players[0].hand.find(h => h.suit === suit && h.value === value && !used.includes(h.id));
             if (t) used.push(t.id);
             return t;
