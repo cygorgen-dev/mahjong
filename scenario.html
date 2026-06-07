@@ -320,6 +320,27 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
     <div id="regression-results"></div>
   </div>
 
+  <!-- EXPORT HAND JSON -->
+  <div class="rp-section">
+    <div class="rp-title">Export as Hand JSON</div>
+    <div style="font-size:10px;color:var(--dim);margin-bottom:6px;line-height:1.5;">
+      Builds a full 144-tile wall from the four hands above and downloads a
+      <code style="color:#8ad4ff;">.json</code> file compatible with Load Hand and
+      <code style="color:#8ad4ff;">scenario_run.js</code>.<br>
+      Dealer seat discards first. Set <em>Expected Pass→</em> for regression assertions.
+    </div>
+    <div class="ctx-row">
+      <span class="ctx-lbl">Dice total:</span>
+      <input type="number" id="export-dice-total" value="6" min="3" max="18"
+        style="width:40px;background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-radius:4px;padding:2px 4px;font-size:10px;">
+      <span style="font-size:9px;color:var(--dim);margin-left:4px;">(3–18, affects wall break point)</span>
+    </div>
+    <div class="btn-row" style="margin-top:6px;">
+      <button class="btn btn-gold btn-sm" id="export-hand-btn">📦 Export Hand JSON</button>
+    </div>
+    <div id="export-hand-status" style="font-size:10px;color:#8ad4ff;margin-top:4px;min-height:14px;"></div>
+  </div>
+
   <!-- STATUS -->
   <div class="rp-section">
     <div class="rp-title">Status</div>
@@ -1433,6 +1454,170 @@ function renderPresetListFull(){
 
 // Override renderPresetList
 function renderPresetList(){renderPresetListFull();}
+
+// ── EXPORT HAND JSON ──────────────────────────────────────────
+// Builds a full 144-tile wall from the current four hands, then downloads
+// a hand JSON compatible with Load Hand and scenario_run.js.
+
+function makeFullTilePool() {
+  const pool = [];
+  for (const s of ['bamboo','circle','char'])
+    for (let v = 1; v <= 9; v++)
+      for (let c = 0; c < 4; c++) pool.push({suit:s, value:v});
+  for (const w of ['East','South','West','North'])
+    for (let c = 0; c < 4; c++) pool.push({suit:'wind', value:w});
+  for (const d of ['red','green','white'])
+    for (let c = 0; c < 4; c++) pool.push({suit:'dragon', value:d});
+  for (let i = 0; i < 4; i++) pool.push({suit:'flower', value:i});
+  for (let i = 0; i < 4; i++) pool.push({suit:'season', value:i});
+  return pool; // 144 tiles
+}
+
+function computeDealPositions(dealerSeat, diceTotal) {
+  const ccwOrder = [0, 3, 2, 1];
+  const breakSeat = (dealerSeat + (diceTotal - 1) % 4) % 4;
+  const segIdx    = ccwOrder.indexOf(breakSeat);
+  const headIdx   = (segIdx * 36 + 2 * diceTotal) % 144;
+  const ccwSeats  = [0,1,2,3].map(i => (dealerSeat + i) % 4);
+  const rotPos    = {0:[],1:[],2:[],3:[]};
+  let idx = 0;
+  for (let r = 0; r < 3; r++) for (const s of ccwSeats) for (let t = 0; t < 4; t++) rotPos[s].push(idx++);
+  for (const s of ccwSeats) rotPos[s].push(idx++);
+  rotPos[dealerSeat].push(idx++); // dealer extra tile
+  const origPos = {};
+  for (const s of [0,1,2,3]) origPos[s] = rotPos[s].map(p => (p + headIdx) % 144);
+  return { headIdx, origPos };
+}
+
+function exportHandJSON() {
+  const statusEl = document.getElementById('export-hand-status');
+  function setStatus(msg, err=false) {
+    statusEl.textContent = msg;
+    statusEl.style.color = err ? '#ff6666' : '#8ad4ff';
+  }
+
+  // ── 1. Collect tiles per seat (hand + bonus; melds are warned, then ignored) ──
+  const desired = {};
+  for (let s = 0; s < 4; s++) {
+    const p = players[s];
+    if (p.melds.length > 0) log(`⚠ Seat ${s} melds are ignored — only hand+bonus tiles are placed in the wall.`, 'warn');
+    const tiles = [
+      ...p.hand.map(t => ({suit:t.suit, value:t.value})),
+      ...p.bonus.map(t => ({suit:t.suit, value:t.value})),
+    ];
+    if (tiles.length > 0) desired[s] = tiles;
+  }
+  if (Object.keys(desired).length === 0) {
+    setStatus('No tiles set — add tiles to at least one player.', true); return;
+  }
+
+  // ── 2. Context ────────────────────────────────────────────────────────────────
+  const dealerSeat = parseInt(document.getElementById('dealer-seat').value);
+  const roundWind  = document.getElementById('round-wind').value;
+  const diceTotal  = Math.max(3, Math.min(18, parseInt(document.getElementById('export-dice-total').value) || 6));
+  // Represent dice as three equal values summing to diceTotal (rounded)
+  const d1 = Math.floor(diceTotal / 3), d2 = Math.floor(diceTotal / 3), d3 = diceTotal - d1 - d2;
+  const dice = [d1, d2, d3];
+
+  // ── 3. Deal positions ─────────────────────────────────────────────────────────
+  const { headIdx, origPos } = computeDealPositions(dealerSeat, diceTotal);
+
+  // ── 4. Validate tile counts + capacity ───────────────────────────────────────
+  const maxCopies = {bamboo:4, circle:4, char:4, wind:4, dragon:4, flower:1, season:1};
+  const usedCounts = {};
+  for (const tiles of Object.values(desired)) {
+    for (const t of tiles) {
+      const key = `${t.suit}|${t.value}`;
+      usedCounts[key] = (usedCounts[key] || 0) + 1;
+      if (usedCounts[key] > maxCopies[t.suit]) {
+        setStatus(`Too many copies of ${t.suit}/${t.value} (max ${maxCopies[t.suit]})`, true);
+        log(`❌ Too many ${t.suit}/${t.value}: ${usedCounts[key]} > ${maxCopies[t.suit]}`, 'err');
+        return;
+      }
+    }
+  }
+  for (const [s, tiles] of Object.entries(desired)) {
+    const max = origPos[+s].length;
+    if (tiles.length > max) {
+      log(`⚠ Seat ${s}: ${tiles.length} tiles but only ${max} deal slots — excess truncated.`, 'warn');
+      desired[+s] = tiles.slice(0, max);
+    }
+  }
+
+  // ── 5. Build wall ─────────────────────────────────────────────────────────────
+  const wall = new Array(144).fill(null);
+  for (const [s, tiles] of Object.entries(desired)) {
+    const positions = origPos[+s];
+    for (let i = 0; i < tiles.length; i++) wall[positions[i]] = {suit:tiles[i].suit, value:tiles[i].value};
+  }
+
+  // Fill remaining slots with filler tiles from pool
+  const pool = makeFullTilePool();
+  const allUsed = Object.values(desired).flat();
+  const remaining = [...pool];
+  for (const used of allUsed) {
+    const i = remaining.findIndex(t => t.suit === used.suit && String(t.value) === String(used.value));
+    if (i >= 0) remaining.splice(i, 1);
+  }
+  let fi = 0;
+  for (let i = 0; i < 144; i++) { if (wall[i] === null) wall[i] = remaining[fi++]; }
+
+  // Rotate so index 0 = first drawn tile (matching saved game format)
+  const rotatedWall = [...wall.slice(headIdx), ...wall.slice(0, headIdx)];
+
+  // ── 6. Build moves[] ─────────────────────────────────────────────────────────
+  const expPassSeat = parseInt(document.getElementById('exp-pass-winner').value);
+  const moves = [];
+  if (discardTile) {
+    const dt = [discardTile.suit, discardTile.value];
+    moves.push({ a:'D', s:dealerSeat, t:dt });
+    if (expPassSeat >= 0) moves.push({ a:'W', s:expPassSeat, t:dt });
+  }
+
+  // ── 7. Assemble JSON ──────────────────────────────────────────────────────────
+  const scenarioName = document.getElementById('preset-name').value.trim();
+  const expected = expPassSeat >= 0
+    ? { winnerSeat: expPassSeat, note: scenarioName || '' }
+    : undefined;
+
+  const json = {
+    format:     'mahjong-replay',
+    scenario:   true,
+    savedAt:    new Date().toISOString(),
+    winner:     null,
+    faan:       0,
+    label:      scenarioName || 'Scenario Builder Export',
+    dealerSeat,
+    roundWind,
+    players: [
+      {seat:0, name:'You',  isHuman:true},
+      {seat:1, name:'CPU1', isHuman:false},
+      {seat:2, name:'CPU2', isHuman:false},
+      {seat:3, name:'CPU3', isHuman:false},
+    ],
+    wall: rotatedWall,
+    dice,
+    ...(moves.length > 0 && { moves }),
+    ...(expected         && { expected }),
+  };
+
+  // ── 8. Download ───────────────────────────────────────────────────────────────
+  const ts   = new Date().toISOString().slice(0,16).replace('T','-').replace(':','');
+  const slug = (scenarioName||'scenario').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,24).replace(/-$/,'');
+  const filename = `scenario-${slug}-${ts}.json`;
+
+  const blob = new Blob([JSON.stringify(json, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+
+  const summary = `${Object.keys(desired).length} seats · ${rotatedWall.length} wall tiles · ${moves.length} moves`;
+  setStatus(`✅ ${filename}`);
+  log(`✅ Exported ${filename} (${summary})`, 'ok');
+}
+
+document.getElementById('export-hand-btn').addEventListener('click', exportHandJSON);
 
 // ── INIT ──────────────────────────────────────────────────────
 buildPalette();
