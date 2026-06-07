@@ -1487,6 +1487,9 @@ class Game {
         }
       }
       // No human claim queued — resolve any pending CPU claims then advance
+      // Rob-kong CLAIM: discard is null so resolveAIClaims can't compute handWith.
+      // Route through humanPass() which resolves from pendingClaims directly.
+      if (this.robbingKongSeat != null) { this.humanPass(); return; }
       const fromSeat = this.discardSeat ?? 0;
       const tile = this.discard;
       this.claimOptions = null;
@@ -1500,7 +1503,9 @@ class Game {
 
     // ── DISCARD phase (human seat) ────────────────────────────────────────────
     if (this.phase !== PHASE.DISCARD || this.currentSeat !== 0) return;
-    if (!queue.length) return;
+    // No more queued moves — AI handles seat 0 for the remainder of the hand
+    // (needed for multi-step scenarios where explicit moves end mid-hand)
+    if (!queue.length) { this._scheduleOrStep(() => this.aiPlay(0)); return; }
     const m = queue[0];
     if (m.s !== 0) return;
 

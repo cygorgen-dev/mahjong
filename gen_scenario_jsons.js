@@ -49,19 +49,18 @@ function computeDealPositions(dealerSeat, diceTotal) {
   return { headIdx, origPos };
 }
 
-function buildWall(desired, dealerSeat, diceTotal) {
+function buildWall(desired, dealerSeat, diceTotal, wallSlots = {}) {
   const { headIdx, origPos } = computeDealPositions(dealerSeat, diceTotal);
   const wall = new Array(144).fill(null);
 
-  // Validate copy counts before placing
+  // Validate copy counts before placing (deal + draw-position slots)
   const MAX = { bamboo:4, circle:4, char:4, wind:4, dragon:4, flower:1, season:1 };
   const counts = {};
-  for (const tiles of Object.values(desired)) {
-    for (const t of tiles) {
-      const k = `${t.suit}|${t.value}`;
-      counts[k] = (counts[k]||0) + 1;
-      if (counts[k] > MAX[t.suit]) throw new Error(`Too many copies of ${k}: ${counts[k]}`);
-    }
+  const allDesired = [...Object.values(desired).flat(), ...Object.values(wallSlots)];
+  for (const t of allDesired) {
+    const k = `${t.suit}|${t.value}`;
+    counts[k] = (counts[k]||0) + 1;
+    if (counts[k] > MAX[t.suit]) throw new Error(`Too many copies of ${k}: ${counts[k]}`);
   }
 
   // Place desired tiles at their deal positions
@@ -71,9 +70,17 @@ function buildWall(desired, dealerSeat, diceTotal) {
       wall[pos[i]] = {suit: tiles[i].suit, value: tiles[i].value};
   }
 
+  // Place wallSlots tiles at specific rotated draw positions
+  // wallSlots keys are rotated-wall indices (0=first deal tile, 53+=draw pile).
+  for (const [rotPos, tile] of Object.entries(wallSlots)) {
+    const origIdx = (parseInt(rotPos) + headIdx) % 144;
+    if (wall[origIdx] !== null) throw new Error(`wallSlots conflict at rotated pos ${rotPos} (orig ${origIdx})`);
+    wall[origIdx] = {suit: tile.suit, value: tile.value};
+  }
+
   // Fill remaining slots from the full pool (minus already-placed tiles)
   const pool      = makeFullTilePool();
-  const allUsed   = Object.values(desired).flat();
+  const allUsed   = allDesired;
   const remaining = [...pool];
   for (const used of allUsed) {
     const i = remaining.findIndex(t => t.suit===used.suit && String(t.value)===String(used.value));
@@ -86,9 +93,9 @@ function buildWall(desired, dealerSeat, diceTotal) {
   return [...wall.slice(headIdx), ...wall.slice(0, headIdx)];
 }
 
-function writeScenario({ filename, label, dealerSeat=0, roundWind='East', diceTotal=6, desired, moves, winnerSeat }) {
+function writeScenario({ filename, label, dealerSeat=0, roundWind='East', diceTotal=6, desired, wallSlots={}, moves, winnerSeat }) {
   const d1 = Math.floor(diceTotal/3), d2 = Math.floor(diceTotal/3), d3 = diceTotal-d1-d2;
-  const wall = buildWall(desired, dealerSeat, diceTotal);
+  const wall = buildWall(desired, dealerSeat, diceTotal, wallSlots);
   const json = {
     format:   'mahjong-replay',
     scenario: true,
@@ -266,6 +273,121 @@ writeScenario({
   moves: [
     {a:'D', s:0, t:['wind','South']},
     {a:'W', s:3, t:['wind','South']},
+  ],
+});
+
+// B3 — CPU2 wins All Triplets (碰碰胡) on human's Green Dragon discard
+//       CPU1 (diff=1) cannot win on 發; CPU2 (diff=2) is tenpai; CPU3 cannot win
+writeScenario({
+  filename:   'scenario_win_cpu2_all_triplets_discard.json',
+  label:      'CPU2 wins All Triplets — human discards Green Dragon',
+  winnerSeat: 2,
+  desired: {
+    // Seat 0 (dealer, 14 tiles): three bamboo chows + K(1-3) + Green Dragon to discard
+    0: [
+      B(1),B(2),B(3),
+      B(4),B(5),B(6),
+      B(7),B(8),B(9),
+      K(1),K(2),K(3),
+      D('green'),          // 13th tile — will be discarded; 14th slot gets filler
+    ],
+    // CPU1 (13 tiles): scattered circles + chars + honours; cannot win on Green Dragon
+    1: [C(4),C(5),C(6),C(7),C(8),C(9), K(5),K(7),K(9), W('East'),W('South'),D('red'),D('white')],
+    // CPU2 (13 tiles): All-Triplets tenpai, waiting for Green Dragon pair
+    //   West Wind pung = seat wind for seat 2 → All Triplets(3f) + West(1f) = 4f
+    2: [
+      B(3),B(3),B(3),               // pung
+      C(7),C(7),C(7),               // pung
+      K(2),K(2),K(2),               // pung
+      W('West'),W('West'),W('West'), // pung — seat wind for seat 2
+      D('green'),                    // lone — needs pair (completes on discard)
+    ],
+    // CPU3 (13 tiles): scattered; cannot win on Green Dragon
+    3: [B(1),B(2), C(1),C(2),C(3), K(4),K(6),K(8), W('West'),W('East'),W('South'), D('red'),D('white')],
+  },
+  moves: [
+    {a:'D', s:0, t:['dragon','green']},
+    {a:'W', s:2, t:['dragon','green']},
+  ],
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// BATCH 3 — Rob Kong (搶槓胡)
+//
+// CPU1 claims a pung of bamboo-4 on seat-0's first discard.
+// CPU1 later draws the 4th bamboo-4 (placed at wall position 56, which is CPU1's
+// first draw after a 3-player gap: CPU2→CPU3→seat-0→CPU1).
+// CPU1 declares self-kong (pung upgrade) → CPU3 robs → wins All Triplets.
+//
+// Wall position 56 (rotated) = original position 32 for dice=6, dealer=0.
+// Deal positions use originals 120–143 and 0–28; position 32 is in draw pile. ✓
+//
+// Requires game.js fix: replayStep CLAIM phase detects robbingKongSeat and
+// routes through humanPass() rather than resolveAIClaims(…, null, …).
+// ═════════════════════════════════════════════════════════════════════════════
+
+// C1 — CPU3 robs CPU1's bamboo-3 kong → wins Mixed One Suit (搶槓胡)
+//
+// Kong tile is bamboo-3 (B3). Tile count: seat0(1) + CPU1(2) + wallSlots(1) = 4. ✓
+// CPU3 holds 0 copies of B3 and is tenpai for it via chow completion (B1,B2 → needs B3).
+// CPU1 discards Green Dragon after pung (D.green chosen so nobody can claim it).
+// W('East') stays in CPU1's hand — avoids CPU3 konging East Wind from a discard.
+writeScenario({
+  filename:   'scenario_win_cpu3_rob_kong.json',
+  label:      'CPU3 robs CPU1\'s kong — wins Mixed One Suit (搶槓胡)',
+  winnerSeat: 3,
+  desired: {
+    // Seat 0 (dealer, 14 tiles): runs + B3 as first discard
+    0: [
+      B(3),B(5),B(6),B(7),
+      C(4),C(5),C(6),
+      K(1),K(2),K(3),
+      W('South'),W('West'),D('white'),D('red'),
+    ],
+    // CPU1 (13 tiles): B3×2 for pung, D('green') to discard after pung, rest scattered
+    //   W('East') kept in hand so CPU3 cannot kong it from any discard
+    1: [
+      B(3),B(3),                                           // will form pung with seat-0's discard
+      D('green'),                                           // discarded after pung (controlled)
+      W('East'),C(1),C(3),C(9),K(4),K(6),K(8),K(9),B(8),W('South'),
+    ],
+    // CPU2 (13 tiles): scattered; cannot win on bamboo-3; no W('East') to avoid CPU3 konging it
+    2: [K(2),K(3),K(5),K(7), W('South'),W('West'),W('North'), D('white'),D('red'),D('green'),C(5),C(7),C(8)],
+    // CPU3 (13 tiles): Mixed Bamboo Suit tenpai, waiting for bamboo-3 to complete chow
+    //   B4-6 chow + B7-9 chow + W.East×3 pung (round wind 1f) + W.North pair + B1,B2 partial
+    //   Robs B3 → B1-2-3 chow + B4-6 + B7-9 + W.East pung + W.North pair
+    //   = Mixed Bamboo Suit (3f) + East round wind (1f) = 4f
+    3: [
+      B(1),B(2),                                           // partial chow, needs B3 (0 copies = safe)
+      B(4),B(5),B(6),                                      // chow
+      B(7),B(8),B(9),                                      // chow
+      W('East'),W('East'),W('East'),                        // pung — round wind
+      W('North'),W('North'),                                // pair
+    ],
+  },
+  // wallSlots:
+  //   56 = B3 (4th copy) — CPU1's draw after pung sequence
+  //   54 = D.white — CPU3's draw: an isolated tile CPU3 always discards,
+  //        preventing the AI from accidentally breaking B3 tenpai by discarding B2
+  //        after drawing a 2nd B1 (which the pool would otherwise place at pos 54)
+  //   136-143 = C2×4, K5×3, K6 — dead-wall area: prevents bonus-tile cascade
+  //        (pool fill places flower/season tiles at these positions by default;
+  //        if _completeKong ever fires before the rob, CPU1 would draw 8 bonus tiles)
+  wallSlots: {
+    56: B(3),
+    54: D('white'),
+    136: C(2), 137: C(2), 138: C(2), 139: C(2),
+    140: K(5), 141: K(5), 142: K(5), 143: K(6),
+  },
+  moves: [
+    {a:'D', s:0, t:['bamboo',3]},      // seat 0 discards bamboo-3
+    {a:'P', s:1, t:['bamboo',3]},      // CPU1 claims pung → B3×3 in meld
+    {a:'D', s:1, t:['dragon','green']}, // CPU1 discards Green Dragon (nobody can pung it)
+    // CPU2 draws pos53 → AI discards (scattered, no claim possible)
+    // CPU3 draws pos54 → AI discards drawn tile (can't win without B3, no B3 in pool)
+    // seat0 draws pos55 → AI discards honor tile (keeps B5-7, C4-6, K1-3 chows)
+    // CPU1 draws pos56 = B3 → findSelfKong detects pung-upgrade → doSelfKong(1)
+    //   → replayStep CLAIM: robbingKongSeat≠null → humanPass() → CPU3 robs → wins
   ],
 });
 

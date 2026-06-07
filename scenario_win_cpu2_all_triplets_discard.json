@@ -1,10 +1,10 @@
 {
   "format": "mahjong-replay",
   "scenario": true,
-  "savedAt": "2026-06-07T05:18:48.158Z",
+  "savedAt": "2026-06-07T05:18:48.160Z",
   "winner": null,
   "faan": 0,
-  "label": "You win — Pure Bamboo Suit dealer self-draw",
+  "label": "CPU2 wins All Triplets — human discards Green Dragon",
   "dealerSeat": 0,
   "roundWind": "East",
   "players": [
@@ -36,6 +36,210 @@
     },
     {
       "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "bamboo",
       "value": 1
     },
     {
@@ -47,8 +251,312 @@
       "value": 2
     },
     {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
       "suit": "dragon",
-      "value": "green"
+      "value": "red"
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
     },
     {
       "suit": "dragon",
@@ -57,18 +565,6 @@
     {
       "suit": "dragon",
       "value": "green"
-    },
-    {
-      "suit": "dragon",
-      "value": "green"
-    },
-    {
-      "suit": "dragon",
-      "value": "white"
-    },
-    {
-      "suit": "dragon",
-      "value": "white"
     },
     {
       "suit": "dragon",
@@ -95,22 +591,6 @@
       "value": 3
     },
     {
-      "suit": "bamboo",
-      "value": 3
-    },
-    {
-      "suit": "bamboo",
-      "value": 4
-    },
-    {
-      "suit": "bamboo",
-      "value": 5
-    },
-    {
-      "suit": "bamboo",
-      "value": 5
-    },
-    {
       "suit": "season",
       "value": 0
     },
@@ -125,486 +605,6 @@
     {
       "suit": "season",
       "value": 3
-    },
-    {
-      "suit": "bamboo",
-      "value": 1
-    },
-    {
-      "suit": "bamboo",
-      "value": 2
-    },
-    {
-      "suit": "bamboo",
-      "value": 2
-    },
-    {
-      "suit": "bamboo",
-      "value": 2
-    },
-    {
-      "suit": "bamboo",
-      "value": 3
-    },
-    {
-      "suit": "bamboo",
-      "value": 3
-    },
-    {
-      "suit": "bamboo",
-      "value": 3
-    },
-    {
-      "suit": "bamboo",
-      "value": 4
-    },
-    {
-      "suit": "bamboo",
-      "value": 5
-    },
-    {
-      "suit": "bamboo",
-      "value": 6
-    },
-    {
-      "suit": "bamboo",
-      "value": 7
-    },
-    {
-      "suit": "bamboo",
-      "value": 8
-    },
-    {
-      "suit": "bamboo",
-      "value": 4
-    },
-    {
-      "suit": "bamboo",
-      "value": 4
-    },
-    {
-      "suit": "bamboo",
-      "value": 5
-    },
-    {
-      "suit": "bamboo",
-      "value": 6
-    },
-    {
-      "suit": "bamboo",
-      "value": 6
-    },
-    {
-      "suit": "bamboo",
-      "value": 6
-    },
-    {
-      "suit": "bamboo",
-      "value": 7
-    },
-    {
-      "suit": "bamboo",
-      "value": 7
-    },
-    {
-      "suit": "bamboo",
-      "value": 7
-    },
-    {
-      "suit": "bamboo",
-      "value": 8
-    },
-    {
-      "suit": "bamboo",
-      "value": 8
-    },
-    {
-      "suit": "bamboo",
-      "value": 8
-    },
-    {
-      "suit": "bamboo",
-      "value": 9
-    },
-    {
-      "suit": "bamboo",
-      "value": 9
-    },
-    {
-      "suit": "bamboo",
-      "value": 9
-    },
-    {
-      "suit": "circle",
-      "value": 1
-    },
-    {
-      "suit": "bamboo",
-      "value": 9
-    },
-    {
-      "suit": "circle",
-      "value": 1
-    },
-    {
-      "suit": "circle",
-      "value": 1
-    },
-    {
-      "suit": "circle",
-      "value": 1
-    },
-    {
-      "suit": "circle",
-      "value": 2
-    },
-    {
-      "suit": "circle",
-      "value": 2
-    },
-    {
-      "suit": "circle",
-      "value": 2
-    },
-    {
-      "suit": "circle",
-      "value": 2
-    },
-    {
-      "suit": "circle",
-      "value": 3
-    },
-    {
-      "suit": "circle",
-      "value": 3
-    },
-    {
-      "suit": "circle",
-      "value": 3
-    },
-    {
-      "suit": "circle",
-      "value": 3
-    },
-    {
-      "suit": "circle",
-      "value": 4
-    },
-    {
-      "suit": "circle",
-      "value": 4
-    },
-    {
-      "suit": "circle",
-      "value": 4
-    },
-    {
-      "suit": "circle",
-      "value": 4
-    },
-    {
-      "suit": "circle",
-      "value": 5
-    },
-    {
-      "suit": "circle",
-      "value": 5
-    },
-    {
-      "suit": "circle",
-      "value": 5
-    },
-    {
-      "suit": "circle",
-      "value": 5
-    },
-    {
-      "suit": "circle",
-      "value": 6
-    },
-    {
-      "suit": "circle",
-      "value": 6
-    },
-    {
-      "suit": "circle",
-      "value": 6
-    },
-    {
-      "suit": "circle",
-      "value": 6
-    },
-    {
-      "suit": "circle",
-      "value": 7
-    },
-    {
-      "suit": "circle",
-      "value": 7
-    },
-    {
-      "suit": "circle",
-      "value": 7
-    },
-    {
-      "suit": "circle",
-      "value": 7
-    },
-    {
-      "suit": "circle",
-      "value": 8
-    },
-    {
-      "suit": "circle",
-      "value": 8
-    },
-    {
-      "suit": "circle",
-      "value": 8
-    },
-    {
-      "suit": "circle",
-      "value": 8
-    },
-    {
-      "suit": "circle",
-      "value": 9
-    },
-    {
-      "suit": "circle",
-      "value": 9
-    },
-    {
-      "suit": "circle",
-      "value": 9
-    },
-    {
-      "suit": "circle",
-      "value": 9
-    },
-    {
-      "suit": "char",
-      "value": 1
-    },
-    {
-      "suit": "char",
-      "value": 1
-    },
-    {
-      "suit": "char",
-      "value": 1
-    },
-    {
-      "suit": "char",
-      "value": 1
-    },
-    {
-      "suit": "char",
-      "value": 2
-    },
-    {
-      "suit": "char",
-      "value": 2
-    },
-    {
-      "suit": "char",
-      "value": 2
-    },
-    {
-      "suit": "char",
-      "value": 2
-    },
-    {
-      "suit": "char",
-      "value": 3
-    },
-    {
-      "suit": "char",
-      "value": 3
-    },
-    {
-      "suit": "char",
-      "value": 3
-    },
-    {
-      "suit": "char",
-      "value": 3
-    },
-    {
-      "suit": "char",
-      "value": 4
-    },
-    {
-      "suit": "char",
-      "value": 4
-    },
-    {
-      "suit": "char",
-      "value": 4
-    },
-    {
-      "suit": "char",
-      "value": 4
-    },
-    {
-      "suit": "char",
-      "value": 5
-    },
-    {
-      "suit": "char",
-      "value": 5
-    },
-    {
-      "suit": "char",
-      "value": 5
-    },
-    {
-      "suit": "char",
-      "value": 5
-    },
-    {
-      "suit": "char",
-      "value": 6
-    },
-    {
-      "suit": "char",
-      "value": 6
-    },
-    {
-      "suit": "char",
-      "value": 6
-    },
-    {
-      "suit": "char",
-      "value": 6
-    },
-    {
-      "suit": "char",
-      "value": 7
-    },
-    {
-      "suit": "char",
-      "value": 7
-    },
-    {
-      "suit": "char",
-      "value": 7
-    },
-    {
-      "suit": "char",
-      "value": 7
-    },
-    {
-      "suit": "char",
-      "value": 8
-    },
-    {
-      "suit": "char",
-      "value": 8
-    },
-    {
-      "suit": "char",
-      "value": 8
-    },
-    {
-      "suit": "char",
-      "value": 8
-    },
-    {
-      "suit": "char",
-      "value": 9
-    },
-    {
-      "suit": "char",
-      "value": 9
-    },
-    {
-      "suit": "char",
-      "value": 9
-    },
-    {
-      "suit": "char",
-      "value": 9
-    },
-    {
-      "suit": "wind",
-      "value": "East"
-    },
-    {
-      "suit": "wind",
-      "value": "East"
-    },
-    {
-      "suit": "wind",
-      "value": "East"
-    },
-    {
-      "suit": "wind",
-      "value": "East"
-    },
-    {
-      "suit": "wind",
-      "value": "South"
-    },
-    {
-      "suit": "wind",
-      "value": "South"
-    },
-    {
-      "suit": "wind",
-      "value": "South"
-    },
-    {
-      "suit": "wind",
-      "value": "South"
-    },
-    {
-      "suit": "wind",
-      "value": "West"
-    },
-    {
-      "suit": "wind",
-      "value": "West"
-    },
-    {
-      "suit": "wind",
-      "value": "West"
-    },
-    {
-      "suit": "wind",
-      "value": "West"
-    },
-    {
-      "suit": "wind",
-      "value": "North"
-    },
-    {
-      "suit": "wind",
-      "value": "North"
-    },
-    {
-      "suit": "wind",
-      "value": "North"
-    },
-    {
-      "suit": "wind",
-      "value": "North"
-    },
-    {
-      "suit": "dragon",
-      "value": "red"
-    },
-    {
-      "suit": "dragon",
-      "value": "red"
-    },
-    {
-      "suit": "dragon",
-      "value": "red"
-    },
-    {
-      "suit": "dragon",
-      "value": "red"
     }
   ],
   "dice": [
@@ -614,12 +614,24 @@
   ],
   "moves": [
     {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "dragon",
+        "green"
+      ]
+    },
+    {
       "a": "W",
-      "s": 0
+      "s": 2,
+      "t": [
+        "dragon",
+        "green"
+      ]
     }
   ],
   "expected": {
-    "winnerSeat": 0,
-    "note": "You win — Pure Bamboo Suit dealer self-draw"
+    "winnerSeat": 2,
+    "note": "CPU2 wins All Triplets — human discards Green Dragon"
   }
 }
