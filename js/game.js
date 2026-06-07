@@ -1509,6 +1509,9 @@ class Game {
       const tile = this.players[0].hand.find(t => t.suit === m.t[0] && t.value === m.t[1]);
       if (tile) this.doDiscard(0, tile);
       else console.warn(`[replay] discard tile not in hand: ${JSON.stringify(m.t)}`);
+    } else if (m.a === 'W') {
+      // Self-draw win (e.g. Heavenly Hand): aiPlay has ctx + heavenlyHand flag + resolveWin
+      this.aiPlay(0);
     } else if (m.a === 'KS') {
       queue.shift();
       const kong = this.findSelfKong(this.players[0]);
