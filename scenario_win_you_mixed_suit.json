@@ -1,0 +1,625 @@
+{
+  "format": "mahjong-replay",
+  "scenario": true,
+  "savedAt": "2026-06-07T03:57:19.140Z",
+  "winner": null,
+  "faan": 0,
+  "label": "You win — Mixed One Suit (char+winds) dealer self-draw",
+  "dealerSeat": 0,
+  "roundWind": "East",
+  "players": [
+    {
+      "seat": 0,
+      "name": "You",
+      "isHuman": true
+    },
+    {
+      "seat": 1,
+      "name": "CPU1",
+      "isHuman": false
+    },
+    {
+      "seat": 2,
+      "name": "CPU2",
+      "isHuman": false
+    },
+    {
+      "seat": 3,
+      "name": "CPU3",
+      "isHuman": false
+    }
+  ],
+  "wall": [
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "dragon",
+      "value": "green"
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "dragon",
+      "value": "white"
+    },
+    {
+      "suit": "flower",
+      "value": 0
+    },
+    {
+      "suit": "flower",
+      "value": 1
+    },
+    {
+      "suit": "flower",
+      "value": 2
+    },
+    {
+      "suit": "flower",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "season",
+      "value": 0
+    },
+    {
+      "suit": "season",
+      "value": 1
+    },
+    {
+      "suit": "season",
+      "value": 2
+    },
+    {
+      "suit": "season",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 1
+    },
+    {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "bamboo",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 3
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 4
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "bamboo",
+      "value": 5
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "bamboo",
+      "value": 6
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 7
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 8
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "bamboo",
+      "value": 9
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "circle",
+      "value": 1
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 2
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 3
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 4
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 5
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "circle",
+      "value": 6
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 7
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 8
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "circle",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 1
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 2
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 3
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "char",
+      "value": 4
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 5
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 6
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "char",
+      "value": 7
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "char",
+      "value": 8
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "char",
+      "value": 9
+    },
+    {
+      "suit": "wind",
+      "value": "East"
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "wind",
+      "value": "South"
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "wind",
+      "value": "West"
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "wind",
+      "value": "North"
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    },
+    {
+      "suit": "dragon",
+      "value": "red"
+    }
+  ],
+  "dice": [
+    2,
+    2,
+    2
+  ],
+  "moves": [
+    {
+      "a": "W",
+      "s": 0
+    }
+  ],
+  "expected": {
+    "winnerSeat": 0,
+    "note": "You win — Mixed One Suit (char+winds) dealer self-draw"
+  }
+}

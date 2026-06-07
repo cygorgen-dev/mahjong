@@ -1609,7 +1609,7 @@ function exportHandJSON() {
   // ── 8. Download ───────────────────────────────────────────────────────────────
   const ts   = new Date().toISOString().slice(0,16).replace('T','-').replace(':','');
   const slug = (scenarioName||'scenario').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,24).replace(/-$/,'');
-  const filename = `scenario-${slug}-${ts}.json`;
+  const filename = `${slug}-${ts}.json`;
 
   const blob = new Blob([JSON.stringify(json, null, 2)], {type:'application/json'});
   const a = document.createElement('a');

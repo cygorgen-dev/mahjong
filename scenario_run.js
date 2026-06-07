@@ -55,7 +55,8 @@ const targets = argFiles.length ? argFiles : defaultFiles();
 function expectedSeat(data) {
   if (data.expected?.winnerSeat != null) return data.expected.winnerSeat;
   if (data.winner == null) return null;          // no expectation recorded
-  if (data.winner === -1)  return -1;            // draw
+  if (data.winner === -1)  return -1;            // draw (numeric)
+  if (typeof data.winner === 'string' && data.winner.toLowerCase() === 'draw') return -1; // draw (string from handlog)
   const p = data.players?.find(p => p.name === data.winner);
   return p?.seat ?? null;
 }
