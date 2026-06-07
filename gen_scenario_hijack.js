@@ -204,6 +204,10 @@ const scenario = {
   ],
   wall: rotatedWall.map(t => ({ suit: t.suit, value: t.value })),
   dice,
+  moves: [
+    { a: 'D', s: 0, t: ['dragon', 'red'] },   // human discards 中
+    { a: 'W', s: 1, t: ['dragon', 'red'] },   // CPU1 (closest) claims win
+  ],
   expected: {
     winnerSeat: 1,
     note: 'CPU1 (seat diff=1, closest counter-clockwise) wins; CPU2 and CPU3 hijacked',

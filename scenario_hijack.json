@@ -1,7 +1,7 @@
 {
   "format": "mahjong-replay",
   "scenario": true,
-  "savedAt": "2026-06-06T23:44:39.749Z",
+  "savedAt": "2026-06-07T00:04:06.999Z",
   "winner": null,
   "faan": 0,
   "label": "Hijack scenario: all 3 CPUs want 中",
@@ -612,6 +612,24 @@
     2,
     2,
     2
+  ],
+  "moves": [
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "dragon",
+        "red"
+      ]
+    },
+    {
+      "a": "W",
+      "s": 1,
+      "t": [
+        "dragon",
+        "red"
+      ]
+    }
   ],
   "expected": {
     "winnerSeat": 1,
