@@ -1566,15 +1566,16 @@ function exportHandJSON() {
   const rotatedWall = [...wall.slice(headIdx), ...wall.slice(0, headIdx)];
 
   // ── 6. Build moves[] ─────────────────────────────────────────────────────────
-  const expPassSeat = parseInt(document.getElementById('exp-pass-winner').value);
+  const phase        = document.getElementById('inject-phase').value;
+  const expPassSeat  = parseInt(document.getElementById('exp-pass-winner').value);
   const moves = [];
-  if (discardTile) {
+  if (phase === 'self-drawn' || (!discardTile && phase !== 'claim')) {
+    // Self-draw win: phase explicitly says no discard (Heavenly Hand, Earthly Hand, mid-game self-draw)
+    if (expPassSeat >= 0) moves.push({ a:'W', s:expPassSeat });
+  } else if (discardTile) {
     const dt = [discardTile.suit, discardTile.value];
     moves.push({ a:'D', s:dealerSeat, t:dt });
     if (expPassSeat >= 0) moves.push({ a:'W', s:expPassSeat, t:dt });
-  } else if (expPassSeat >= 0) {
-    // Self-draw win — Heavenly Hand (dealer wins on 14 dealt tiles, no discard)
-    moves.push({ a:'W', s:expPassSeat });
   }
 
   // ── 7. Assemble JSON ──────────────────────────────────────────────────────────
