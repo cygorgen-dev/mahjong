@@ -221,7 +221,7 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
           <select class="ctx-sel" id="inject-phase">
             <option value="claim">CLAIM (discard on table)</option>
             <option value="discard">DISCARD (your turn)</option>
-            <option value="self-drawn">SELF-DRAWN (pung→kong upgrade)</option>
+            <option value="self-drawn">SELF-DRAWN</option>
           </select>
         </div>
         <div id="rob-kong-badge" style="display:none;margin-top:4px;padding:3px 7px;background:#4a1a00;border:1px solid #ff9800;border-radius:4px;font-size:10px;color:#ff9800;font-weight:700;align-items:center;gap:6px;">
@@ -701,8 +701,9 @@ function updateDiscardBarLabel(){
   const titleEl=document.getElementById('discard-bar-title');
   const phaseEl=document.getElementById('discard-bar-phase');
   if(titleEl){
-    titleEl.textContent=required?'🎯 Required Discard Tile':'🎯 Discard Tile (optional)';
-    titleEl.style.color=required?'#ff8888':'#aaa';
+    const selfDrawn=(phase==='self-drawn');
+    titleEl.textContent=required?'🎯 Required Discard Tile':selfDrawn?'🎯 Discard Tile (not used)':'🎯 Discard Tile (optional)';
+    titleEl.style.color=required?'#ff8888':'#555';
   }
   if(phaseEl){
     const labels={'claim':'CLAIM phase','discard':'DISCARD phase','self-drawn':'SELF-DRAWN phase'};
