@@ -52,10 +52,10 @@ async function runOne(page, data, filename) {
   const hasMoves = data.moves?.length || data.log?.length;
   if (!hasMoves) return { filename, skip: true, reason: 'no moves or log to replay' };
 
-  // Inject scenario: sprint mode so CPU actions run synchronously,
-  // REPLAY_MODE so the move queue drives every seat deterministically.
+  // Inject: REPLAY_MODE only — no AUTO_MODE so CPU actions run naturally via
+  // setTimeout(fn,0) between replayStep() calls (same as the browser's auto-replay).
   await page.evaluate((d) => {
-    window.AUTO_MODE   = 'sprint';
+    window.AUTO_MODE   = undefined;
     window.REPLAY_MODE = true;
     window._replayData = d;
     window.game.applyReplayContext(d);
@@ -63,27 +63,21 @@ async function runOne(page, data, filename) {
     renderAll();
   }, data);
 
-  // Drive to completion.
-  // With AUTO_MODE='sprint', all CPU actions run synchronously via _scheduleOrStep.
-  // The only pause points are CLAIM phases after seat-0 discards — those wait for
-  // replayStep(). We call replayStep() for every 'claim' phase and yield 1ms between
-  // iterations so pending setTimeout(fn,0) callbacks (bonus/draw steps) can fire.
+  // Call replayStep() on every tick; it returns early when the game is not paused
+  // waiting for input. Yield 5ms each tick so CPU setTimeout(fn,0) callbacks fire
+  // between calls — the same mechanism used by _startAutoReplay in the browser.
   const started = Date.now();
   let iters = 0;
   while (true) {
-    const { phase, seat } = await page.evaluate(() => ({
-      phase: window.game?.phase,
-      seat:  window.game?.currentSeat,
-    }));
+    const phase = await page.evaluate(() => {
+      if (window.game?.phase !== 'end') window.game.replayStep();
+      return window.game?.phase;
+    });
 
     if (phase === 'end') break;
     if (Date.now() - started > TIMEOUT_MS) return { filename, error: 'timeout' };
-    if (++iters > 2000) return { filename, error: 'iter limit' };
-
-    if (phase === 'claim' || (phase === 'discard' && seat === 0)) {
-      await page.evaluate(() => { window.game.replayStep(); renderAll(); });
-    }
-    await page.waitForTimeout(1);
+    if (++iters > 5000) return { filename, error: 'iter limit' };
+    await page.waitForTimeout(5);
   }
 
   const result = await page.evaluate(() => ({
