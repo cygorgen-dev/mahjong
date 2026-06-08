@@ -1503,9 +1503,8 @@ class Game {
 
     // ── DISCARD phase (human seat) ────────────────────────────────────────────
     if (this.phase !== PHASE.DISCARD || this.currentSeat !== 0) return;
-    // No more queued moves — AI handles seat 0 for the remainder of the hand
-    // (needed for multi-step scenarios where explicit moves end mid-hand)
-    if (!queue.length) { this._scheduleOrStep(() => this.aiPlay(0)); return; }
+    // Queue exhausted — UI will exit replay mode; human resumes control
+    if (!queue.length) return;
     const m = queue[0];
     if (m.s !== 0) return;
 

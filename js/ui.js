@@ -98,16 +98,24 @@ function _exitReplayMode() {
   _stopAutoReplay();
 }
 
+function _replayStepThenCheck() {
+  if (!window.REPLAY_MODE || !_game) return;
+  if (_game.phase === PHASE.END || !window._moveQueue?.length) { _exitReplayMode(); renderAll(); return; }
+  _game.replayStep();
+  renderAll();
+  if (_game.phase === PHASE.END || !window._moveQueue?.length) { _exitReplayMode(); renderAll(); }
+}
+
 function _startAutoReplay() {
   const btn = document.getElementById('auto-replay-btn');
   if (btn) btn.textContent = '⏸ Pause';
   _autoReplayTimer = setInterval(() => {
     if (!window.REPLAY_MODE || !_game) { _stopAutoReplay(); return; }
-    if (_game.phase === PHASE.END) { _exitReplayMode(); renderAll(); return; }
+    if (_game.phase === PHASE.END || !window._moveQueue?.length) { _exitReplayMode(); renderAll(); return; }
     _game.replayStep();
     renderAll();
-    if (_game.phase === PHASE.END) { _exitReplayMode(); renderAll(); }
-  }, 250);
+    if (_game.phase === PHASE.END || !window._moveQueue?.length) { _exitReplayMode(); renderAll(); }
+  }, 180);
 }
 
 function _ensureReplayBanner() {
@@ -461,9 +469,37 @@ function initUI(game) {
 
   document.getElementById('save-hand-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    const raw = localStorage.getItem('mahjongReplay');
-    if (!raw) { alert('No hand saved yet — play a complete hand first.'); return; }
-    const data = JSON.parse(raw);
+    let data;
+    if (_game?._captureWall && _game?._captureDice && !window.REPLAY_MODE) {
+      const r = _game.lastResult;
+      data = {
+        format:     'mahjong-replay',
+        savedAt:    new Date().toISOString(),
+        winner:     r ? (r.winner >= 0 ? (_game.players[r.winner]?.name ?? 'Unknown') : 'Draw') : null,
+        faan:       r?.faan ?? 0,
+        label:      r?.label ?? '',
+        selfDraw:   r?.selfDraw ?? false,
+        dealerSeat: _game.dealerSeat,
+        roundWind:  _game.roundWind,
+        logLabel:   _game._logLabel ?? 'New Hand',
+        players:    _game.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
+        wall:       _game._captureWall,
+        dice:       _game._captureDice,
+        moves:      _game._captureMoves,
+        log:        [..._game.log].reverse(),
+        cpuLevels:  window.CPU_LEVELS_BY_NAME ? { ...window.CPU_LEVELS_BY_NAME } : null,
+        cpuSchemes: (() => {
+          if (!window.CPU_SCHEMES_BY_NAME) return null;
+          const out = {};
+          for (const [name, s] of Object.entries(window.CPU_SCHEMES_BY_NAME)) out[name] = s ? s.id : null;
+          return out;
+        })(),
+      };
+    } else {
+      const raw = localStorage.getItem('mahjongReplay');
+      if (!raw) { alert('No hand in progress — deal a hand first.'); return; }
+      data = JSON.parse(raw);
+    }
     const seq = String((parseInt(localStorage.getItem('mjSaveSeq') || '0') + 1)).padStart(4, '0');
     localStorage.setItem('mjSaveSeq', seq);
     const filename = `mj-${seq}.json`;
@@ -506,7 +542,6 @@ function initUI(game) {
         const data = JSON.parse(ev.target.result);
         if (!data.wall || !data.dice) { alert('Not a valid replay or scenario file.'); return; }
         const isScenario = data.scenario === true;
-        if (!isScenario && !data.moves?.length && !data.log?.length) { alert('Not a valid replay file.'); return; }
         window.REPLAY_MODE = !isScenario;
         window._replayData = data;
         _game.applyReplayContext(data);
@@ -517,6 +552,37 @@ function initUI(game) {
     };
     reader.readAsText(file);
     e.target.value = '';
+  });
+
+  document.getElementById('undo-last-move-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!_game?._captureWall || !_game?._captureDice || window.REPLAY_MODE) return;
+    const moves = _game._captureMoves;
+    if (!moves?.length) { alert('No move to undo.'); return; }
+    const trimmed = moves.slice(0, -1);
+    const data = {
+      wall:       _game._captureWall,
+      dice:       _game._captureDice,
+      moves:      trimmed,
+      players:    _game.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
+      dealerSeat: _game.dealerSeat,
+      roundWind:  _game.roundWind,
+    };
+    window.REPLAY_MODE = true;
+    window._replayData = data;
+    _game.applyReplayContext(data);
+    _tileElCache.clear();
+    _game.redeal();
+    // Instant replay: sprint mode makes _scheduleOrStep synchronous
+    const savedAutoMode = window.AUTO_MODE;
+    window.AUTO_MODE = 'sprint';
+    let safety = 1000;
+    while (window._moveQueue?.length && _game.phase !== PHASE.END && safety-- > 0) {
+      _game.replayStep();
+    }
+    window.AUTO_MODE = savedAutoMode;
+    _exitReplayMode();
+    renderAll();
   });
 
   document.getElementById('scenario-btn')?.addEventListener('click', (e) => {
@@ -629,10 +695,7 @@ function initUI(game) {
   document.getElementById('btn-pass').addEventListener('click', () => {
     dismissHint();
     // Replay mode: step through recorded decisions
-    if (window.REPLAY_MODE && _game) {
-      if (_game.phase === PHASE.END) { _exitReplayMode(); renderAll(); return; }
-      else { _game.replayStep(); renderAll(); return; }
-    }
+    if (window.REPLAY_MODE && _game) { _replayStepThenCheck(); return; }
     // Single-step deal: advance the waiting step
     if (_ssdResolve) { const r = _ssdResolve; _ssdResolve = null; r(); return; }
     // Slow mode: fire the next queued step
@@ -681,11 +744,7 @@ function initUI(game) {
     if (e.target.closest('#sidebar, #rules-overlay, #tiles-modal')) return;
     const interactive = e.target.closest('button, .tile, #action-bar, #discard-pile, .seat-label, .modal');
     if (interactive) return;
-    if (window.REPLAY_MODE && _game) {
-      if (_game.phase === PHASE.END) { _exitReplayMode(); renderAll(); }
-      else { _game.replayStep(); renderAll(); }
-      return;
-    }
+    if (window.REPLAY_MODE && _game) { _replayStepThenCheck(); return; }
     if (window.AUTO_MODE === 'slow' && _game && _game._pendingAutoStep) {
       _game.stepAuto(); return;
     }
@@ -709,7 +768,7 @@ function initUI(game) {
     if (e.target.closest('#sidebar, #rules-overlay, #tiles-modal')) return;
     const onButton = e.target.closest('button, .tile, #action-bar, .seat-label, .modal');
     if (onButton) return;
-    if (window.REPLAY_MODE && _game && _game.phase !== PHASE.END) { _game.replayStep(); renderAll(); return; }
+    if (window.REPLAY_MODE && _game) { _replayStepThenCheck(); return; }
     if (_game.phase === PHASE.CLAIM) {
       _game.humanPass();
       renderAll();
@@ -1144,7 +1203,7 @@ function renderSeats() {
           };
           const el2 = makeTileEl(t, opts);
           el2.onclick = (opts.clickable || _game.phase === PHASE.CLAIM) ? () => {
-            if (window.REPLAY_MODE) { _game.replayStep(); renderAll(); return; }
+            if (window.REPLAY_MODE) { _replayStepThenCheck(); return; }
             if (_game.phase === PHASE.DISCARD) {
               dismissHint(); _game.humanDiscard(t.id); _selectedTileId = null; renderAll();
             } else if (_game.phase === PHASE.CLAIM) {
