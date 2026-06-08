@@ -1629,6 +1629,8 @@ function exportHandJSON() {
   const { headIdx, origPos } = computeDealPositions(dealerSeat, diceTotal);
 
   // ── 3b. Plan pung meld setup ───────────────────────────────────────────────────
+  const phase       = document.getElementById('inject-phase').value;
+
   let pungSetup = null;
   try { pungSetup = buildPungSetupMoves(players, dealerSeat); }
   catch(e) { setStatus('Pung setup error: '+e.message, true); log('❌ Pung setup: '+e.message,'err'); return; }
@@ -1804,7 +1806,6 @@ function exportHandJSON() {
   const rotatedWall = [...wall.slice(headIdx), ...wall.slice(0, headIdx)];
 
   // ── 6. Build moves[] (setup prefix + scenario moves) ─────────────────────────
-  const phase       = document.getElementById('inject-phase').value;
   const expPassSeat = parseInt(document.getElementById('exp-pass-winner').value);
   const moves = pungSetup ? [...pungSetup.setupMoves] : [];
   if (phase === 'self-drawn' || (!discardTile && phase !== 'claim')) {
