@@ -1497,66 +1497,104 @@ function exportHandJSON() {
     statusEl.style.color = err ? '#ff6666' : '#8ad4ff';
   }
 
-  // ── 1. Collect tiles per seat (hand + bonus; melds are warned, then ignored) ──
-  const desired = {};
+  // ── 1. Collect hand and bonus tiles separately per seat ───────────────────────
+  const handTiles  = {0:[],1:[],2:[],3:[]};
+  const bonusTiles = {0:[],1:[],2:[],3:[]};
   for (let s = 0; s < 4; s++) {
     const p = players[s];
     if (p.melds.length > 0) log(`⚠ Seat ${s} melds are ignored — only hand+bonus tiles are placed in the wall.`, 'warn');
-    const tiles = [
-      ...p.hand.map(t => ({suit:t.suit, value:t.value})),
-      ...p.bonus.map(t => ({suit:t.suit, value:t.value})),
-    ];
-    if (tiles.length > 0) desired[s] = tiles;
+    handTiles[s]  = p.hand.map(t => ({suit:t.suit, value:t.value}));
+    bonusTiles[s] = p.bonus.map(t => ({suit:t.suit, value:t.value}));
   }
-  if (Object.keys(desired).length === 0) {
-    setStatus('No tiles set — add tiles to at least one player.', true); return;
-  }
+  const anyTiles = [0,1,2,3].some(s => handTiles[s].length + bonusTiles[s].length > 0);
+  if (!anyTiles) { setStatus('No tiles set — add tiles to at least one player.', true); return; }
 
   // ── 2. Context ────────────────────────────────────────────────────────────────
   const dealerSeat = parseInt(document.getElementById('dealer-seat').value);
   const roundWind  = document.getElementById('round-wind').value;
   const diceTotal  = Math.max(3, Math.min(18, parseInt(document.getElementById('export-dice-total').value) || 6));
-  // Represent dice as three equal values summing to diceTotal (rounded)
   const d1 = Math.floor(diceTotal / 3), d2 = Math.floor(diceTotal / 3), d3 = diceTotal - d1 - d2;
   const dice = [d1, d2, d3];
+  const ccwSeats = [0,1,2,3].map(i => (dealerSeat + i) % 4);
+  // Dealer gets 14 deal slots; others 13
+  const dealSlots = {0:13,1:13,2:13,3:13};
+  dealSlots[dealerSeat] = 14;
 
   // ── 3. Deal positions ─────────────────────────────────────────────────────────
   const { headIdx, origPos } = computeDealPositions(dealerSeat, diceTotal);
 
-  // ── 4. Validate tile counts + capacity ───────────────────────────────────────
+  // ── 4. Validate tile counts ───────────────────────────────────────────────────
   const maxCopies = {bamboo:4, circle:4, char:4, wind:4, dragon:4, flower:1, season:1};
   const usedCounts = {};
-  for (const tiles of Object.values(desired)) {
-    for (const t of tiles) {
-      const key = `${t.suit}|${t.value}`;
-      usedCounts[key] = (usedCounts[key] || 0) + 1;
-      if (usedCounts[key] > maxCopies[t.suit]) {
-        setStatus(`Too many copies of ${t.suit}/${t.value} (max ${maxCopies[t.suit]})`, true);
-        log(`❌ Too many ${t.suit}/${t.value}: ${usedCounts[key]} > ${maxCopies[t.suit]}`, 'err');
-        return;
-      }
+  const allUserTiles = [...Object.values(handTiles).flat(), ...Object.values(bonusTiles).flat()];
+  for (const t of allUserTiles) {
+    const key = `${t.suit}|${t.value}`;
+    usedCounts[key] = (usedCounts[key] || 0) + 1;
+    if (usedCounts[key] > maxCopies[t.suit]) {
+      setStatus(`Too many copies of ${t.suit}/${t.value} (max ${maxCopies[t.suit]})`, true);
+      log(`❌ Too many ${t.suit}/${t.value}: ${usedCounts[key]} > ${maxCopies[t.suit]}`, 'err');
+      return;
     }
   }
-  for (const [s, tiles] of Object.entries(desired)) {
-    const max = origPos[+s].length;
-    if (tiles.length > max) {
-      log(`⚠ Seat ${s}: ${tiles.length} tiles but only ${max} deal slots — excess truncated.`, 'warn');
-      desired[+s] = tiles.slice(0, max);
+  for (let s = 0; s < 4; s++) {
+    const nBonus = bonusTiles[s].length;
+    if (nBonus > dealSlots[s]) {
+      setStatus(`Seat ${s}: ${nBonus} bonus tiles exceed ${dealSlots[s]} deal slots.`, true);
+      log(`❌ Seat ${s}: too many bonus tiles (${nBonus}).`, 'err'); return;
     }
   }
 
-  // ── 5. Build wall ─────────────────────────────────────────────────────────────
+  // ── 5. Assign tiles to deal positions and tail positions ──────────────────────
+  // Strategy:
+  //   Deal positions (front of wall): first (dealSlots-nBonus) hand tiles + nBonus bonus tiles
+  //     → game deals them, bonus tiles get auto-moved to p.bonus, replacements drawn from tail
+  //   Tail positions (back of wall, drawFromTail order: 142,143,140,141,…):
+  //     → replacement tiles (remaining hand tiles), assigned in ccwSeats round-robin order
+  const dealAssign = {};  // seat → tiles placed at deal positions
+  const tailQueue  = [];  // replacement tiles in order they'll be drawn from tail
+  for (const s of ccwSeats) {
+    const hand  = handTiles[s];
+    const bonus = bonusTiles[s];
+    const nBonus = bonus.length;
+    const slots  = dealSlots[s];
+    const handInDeal = hand.slice(0, slots - nBonus);
+    const handInTail = hand.slice(slots - nBonus);
+    dealAssign[s] = [...handInDeal, ...bonus];
+    tailQueue.push(...handInTail);
+    if (handInTail.length > 0)
+      log(`ℹ Seat ${s}: ${nBonus} bonus tile(s) → ${handInTail.length} hand tile(s) placed at tail for replacement.`, 'info');
+  }
+  if (tailQueue.length > 72) {
+    setStatus(`Too many replacement tiles needed (${tailQueue.length} > 72 tail slots).`, true); return;
+  }
+
+  // ── 6. Build wall ─────────────────────────────────────────────────────────────
   const wall = new Array(144).fill(null);
-  for (const [s, tiles] of Object.entries(desired)) {
+
+  // Place deal tiles (unrotated positions via origPos)
+  for (const [s, tiles] of Object.entries(dealAssign)) {
     const positions = origPos[+s];
     for (let i = 0; i < tiles.length; i++) wall[positions[i]] = {suit:tiles[i].suit, value:tiles[i].value};
   }
 
+  // Place tail replacement tiles.
+  // drawFromTail() reads: wall[142], wall[143], wall[140], wall[141], wall[138], …
+  // These are ROTATED indices; unrotated = (rotIdx + headIdx) % 144.
+  let ti = 0;
+  for (let col = 71; col >= 0 && ti < tailQueue.length; col--) {
+    for (let phase = 0; phase <= 1 && ti < tailQueue.length; phase++) {
+      const rotIdx   = col * 2 + phase;
+      const unrotIdx = (rotIdx + headIdx) % 144;
+      wall[unrotIdx] = {suit: tailQueue[ti].suit, value: tailQueue[ti].value};
+      ti++;
+    }
+  }
+
   // Fill remaining slots with filler tiles from pool
+  const allPlaced = Object.values(dealAssign).flat().concat(tailQueue);
   const pool = makeFullTilePool();
-  const allUsed = Object.values(desired).flat();
   const remaining = [...pool];
-  for (const used of allUsed) {
+  for (const used of allPlaced) {
     const i = remaining.findIndex(t => t.suit === used.suit && String(t.value) === String(used.value));
     if (i >= 0) remaining.splice(i, 1);
   }
@@ -1617,7 +1655,9 @@ function exportHandJSON() {
   a.download = filename;
   a.click();
 
-  const summary = `${Object.keys(desired).length} seats · ${rotatedWall.length} wall tiles · ${moves.length} moves`;
+  const nBonus = Object.values(bonusTiles).reduce((s,a)=>s+a.length,0);
+  const seatsUsed = [0,1,2,3].filter(s => handTiles[s].length + bonusTiles[s].length > 0);
+  const summary = `${seatsUsed.length} seats · ${nBonus} bonus tile(s) → tail · ${rotatedWall.length} wall tiles · ${moves.length} moves`;
   setStatus(`✅ ${filename}`);
   log(`✅ Exported ${filename} (${summary})`, 'ok');
 }
