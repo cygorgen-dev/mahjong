@@ -1648,7 +1648,10 @@ function exportHandJSON() {
   // Dealer seat 0: drawn tile → origPos[0][13] = rotated 52 (dealer extra deal slot).
   // Non-dealer seat 0: drawn tile → rotated 55 (first gameplay draw after 3 CPU cycles,
   //   no claims in REPLAY_MODE).
-  let forcedDrawnTile = null; // non-dealer path: placed directly in wall after deal tiles
+  // dealer drawn tile: kept separate so step 5 can guarantee it lands at dealAssign[0][13]
+  // regardless of how many pung dealAddition extras also need deal slots.
+  let dealerDrawnTile = null;
+  let forcedDrawnTile = null; // non-dealer path: placed in gameplay wall after deal
 
   if (phase === 'discard') {
     let drawnTile = null;
@@ -1663,20 +1666,19 @@ function exportHandJSON() {
     }
 
     if (drawnTile) {
-      // Remove any existing copy of the drawn tile from handTiles[0] first
+      // Remove any existing copy of the drawn tile from handTiles[0]
       const ei = handTiles[0].findIndex(t => t.suit === drawnTile.suit && String(t.value) === String(drawnTile.value));
       if (ei >= 0) handTiles[0].splice(ei, 1);
+      handTiles[0] = handTiles[0].slice(0, 13); // keep at most 13 base tiles
 
       if (dealerSeat === 0) {
-        // Dealer: push drawn tile as element [13] → goes to rotated pos 52 (dealer extra slot)
-        handTiles[0] = handTiles[0].slice(0, 13); // ensure exactly 13 base tiles before it
-        handTiles[0].push(drawnTile);
-        log(`ℹ DISCARD: drawn tile ${lbl(drawnTile)} placed at dealer extra deal slot (rotated 52).`, 'info');
+        // Stored separately so step 5 can append it as dealAssign[0][13] → rotated pos 52
+        // regardless of how many extras are also sharing dealer's 14 deal slots.
+        dealerDrawnTile = drawnTile;
+        log(`ℹ DISCARD: drawn tile ${lbl(drawnTile)} reserved for dealer deal slot 13 (rotated 52).`, 'info');
       } else {
-        // Non-dealer: keep exactly 13 tiles in the deal; drawn tile placed at rotated 55
-        handTiles[0] = handTiles[0].slice(0, 13);
         forcedDrawnTile = drawnTile;
-        log(`ℹ DISCARD: drawn tile ${lbl(drawnTile)} placed at gameplay draw position 55.`, 'info');
+        log(`ℹ DISCARD: drawn tile ${lbl(drawnTile)} will be placed at gameplay draw position.`, 'info');
       }
     }
   }
@@ -1727,13 +1729,26 @@ function exportHandJSON() {
     const extras = pungSetup ? (pungSetup.dealAdditions[s] || []) : [];
     const nBonus = bonus.length;
     const slots  = dealSlots[s];
-    const slotsForHand = Math.max(0, slots - nBonus - extras.length);
-    const handInDeal   = hand.slice(0, slotsForHand);
-    const handInTail   = hand.slice(slotsForHand);
-    dealAssign[s] = [...handInDeal, ...extras, ...bonus];
-    tailQueue.push(...handInTail);
-    if (handInTail.length > 0)
-      log(`ℹ Seat ${s}: ${nBonus} bonus + ${extras.length} pung-setup tiles → ${handInTail.length} hand tile(s) at tail.`, 'info');
+
+    // For dealer seat 0 with a drawn tile: reserve slot 13 for it so it always lands at
+    // rotated position 52, even if pung extras also occupy some of the 14 dealer slots.
+    if (s === 0 && dealerSeat === 0 && dealerDrawnTile) {
+      const slotsForBase = Math.max(0, slots - 1 - nBonus - extras.length);
+      const handInDeal   = hand.slice(0, slotsForBase);
+      const handInTail   = hand.slice(slotsForBase); // overflow base tiles → tail
+      dealAssign[s] = [...handInDeal, ...extras, ...bonus, dealerDrawnTile];
+      tailQueue.push(...handInTail);
+      if (handInTail.length > 0)
+        log(`ℹ Seat ${s}: ${nBonus} bonus + ${extras.length} pung-setup tiles + drawn tile → ${handInTail.length} base tile(s) at tail.`, 'info');
+    } else {
+      const slotsForHand = Math.max(0, slots - nBonus - extras.length);
+      const handInDeal   = hand.slice(0, slotsForHand);
+      const handInTail   = hand.slice(slotsForHand);
+      dealAssign[s] = [...handInDeal, ...extras, ...bonus];
+      tailQueue.push(...handInTail);
+      if (handInTail.length > 0)
+        log(`ℹ Seat ${s}: ${nBonus} bonus + ${extras.length} pung-setup tiles → ${handInTail.length} hand tile(s) at tail.`, 'info');
+    }
   }
   if (tailQueue.length > 72) {
     setStatus(`Too many replacement tiles needed (${tailQueue.length} > 72 tail slots).`, true); return;
@@ -1792,7 +1807,8 @@ function exportHandJSON() {
   // Fill remaining slots with filler tiles from pool
   const wallDrawValues = pungSetup ? Object.values(pungSetup.wallDraws) : [];
   const allPlaced = Object.values(dealAssign).flat().concat(tailQueue).concat(wallDrawValues);
-  if (forcedDrawnTile) allPlaced.push(forcedDrawnTile); // exclude from filler pool
+  if (forcedDrawnTile)  allPlaced.push(forcedDrawnTile);  // exclude from filler pool
+  // dealerDrawnTile is already inside dealAssign[0], so it's already counted above
   const pool = makeFullTilePool();
   const remaining = [...pool];
   for (const used of allPlaced) {

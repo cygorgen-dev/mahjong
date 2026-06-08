@@ -480,12 +480,19 @@ function initUI(game) {
     e.stopPropagation();
     if (!window.REPLAY_MODE || !_game) return;
     _stopAutoReplay();
-    let safety = 2000;
-    while (window.REPLAY_MODE && !_replayDone() && safety-- > 0) {
+    // Run at 1ms per step (not sync) so the game's setTimeout(0) claim-resolution
+    // callbacks fire between steps, same as auto-replay but without animation delay.
+    const t = setInterval(() => {
+      if (!window.REPLAY_MODE || !_game || _replayDone()) {
+        clearInterval(t);
+        if (_replayDone()) _exitReplayMode();
+        renderAll();
+        return;
+      }
       _game.replayStep();
-    }
-    if (_replayDone()) _exitReplayMode();
-    renderAll();
+      renderAll();
+      if (_replayDone()) { clearInterval(t); _exitReplayMode(); renderAll(); }
+    }, 1);
   });
 
   document.getElementById('save-hand-btn')?.addEventListener('click', (e) => {
