@@ -1456,6 +1456,107 @@ function renderPresetListFull(){
 // Override renderPresetList
 function renderPresetList(){renderPresetListFull();}
 
+// ── PUNG MELD EXPORT SETUP ────────────────────────────────────
+// Generates the moves[] prefix + extra deal/wall tiles needed to replay
+// each pung meld claim before the real scenario starts.
+// Returns { setupMoves, dealAdditions:{seat:[tiles]}, wallDraws:{rotPos:tile} }
+// or null if no pung melds exist.
+function buildPungSetupMoves(players, dealerSeat) {
+  const ccwSeats = [0,1,2,3].map(i => (dealerSeat + i) % 4);
+  const pungList = [];
+  for (const s of ccwSeats)
+    for (const m of (players[s].melds || []))
+      if (m.type === 'pung')
+        pungList.push({ seat: s, tile: { suit: m.tiles[0].suit, value: m.tiles[0].value } });
+  if (pungList.length === 0) return null;
+
+  // Count all tiles already spoken for (hand + bonus + every meld tile)
+  const usedCount = {};
+  const inc = t => { const k=`${t.suit}|${t.value}`; usedCount[k]=(usedCount[k]||0)+1; };
+  for (let s = 0; s < 4; s++) {
+    players[s].hand.forEach(inc);
+    players[s].bonus.forEach(inc);
+    players[s].melds.forEach(m => m.tiles.forEach(inc));
+  }
+  // Filler pool: unused copies of non-bonus tiles
+  const fillerPool = [];
+  for (const su of ['bamboo','circle','char'])
+    for (let v = 1; v <= 9; v++) {
+      const k=`${su}|${v}`, used=usedCount[k]||0;
+      for (let c = used; c < 4; c++) fillerPool.push({suit:su, value:v});
+    }
+  for (const w of ['East','South','West','North']) {
+    const k=`wind|${w}`, used=usedCount[k]||0;
+    for (let c = used; c < 4; c++) fillerPool.push({suit:'wind', value:w});
+  }
+  for (const d of ['red','green','white']) {
+    const k=`dragon|${d}`, used=usedCount[k]||0;
+    for (let c = used; c < 4; c++) fillerPool.push({suit:'dragon', value:d});
+  }
+  let fi = 0;
+  const pickFiller = () => {
+    if (fi >= fillerPool.length) throw new Error('No filler tiles left for pung setup');
+    const t = fillerPool[fi++]; inc(t); return {...t};
+  };
+
+  const setupMoves    = [];
+  const dealAdditions = {0:[],1:[],2:[],3:[]};
+  const wallDraws     = {};   // { rotatedPos(string): tile }
+
+  let nextDrawPos  = 53;   // first gameplay draw in rotated wall
+  let nextDrawSeat = (dealerSeat + 1) % 4;
+
+  for (let i = 0; i < pungList.length; i++) {
+    const { seat: S, tile: T } = pungList[i];
+    // Meld seat gets 2 T's in their deal (held in hand until they claim the pung)
+    dealAdditions[S].push({...T}, {...T});
+
+    if (i === 0 && S !== dealerSeat) {
+      // Common: dealer discards T (from their 14-tile deal) → S claims pung → S discards filler
+      dealAdditions[dealerSeat].push({...T});
+      setupMoves.push({ a:'D', s:dealerSeat, t:[T.suit, T.value] });
+      setupMoves.push({ a:'P', s:S,          t:[T.suit, T.value] });
+      const f = pickFiller();
+      dealAdditions[S].push(f);
+      setupMoves.push({ a:'D', s:S, t:[f.suit, f.value] });
+      nextDrawSeat = (S + 1) % 4;
+
+    } else if (i === 0 && S === dealerSeat) {
+      // Dealer's own pung: dealer discards filler first, (D+1) draws T from wall → dealer claims
+      const f1 = pickFiller();
+      dealAdditions[dealerSeat].push(f1);
+      setupMoves.push({ a:'D', s:dealerSeat, t:[f1.suit, f1.value] });
+      const feeder = (dealerSeat + 1) % 4;
+      wallDraws[nextDrawPos++] = {...T};
+      setupMoves.push({ a:'D', s:feeder,     t:[T.suit, T.value] });
+      setupMoves.push({ a:'P', s:dealerSeat, t:[T.suit, T.value] });
+      const f2 = pickFiller();
+      dealAdditions[dealerSeat].push(f2);
+      setupMoves.push({ a:'D', s:dealerSeat, t:[f2.suit, f2.value] });
+      nextDrawSeat = (dealerSeat + 1) % 4;
+
+    } else {
+      // Subsequent pungs: feeder draws T from wall
+      if (nextDrawSeat === S) {
+        // S would draw next but can't feed its own pung — insert a pass-through draw
+        const pt = pickFiller();
+        wallDraws[nextDrawPos++] = pt;
+        setupMoves.push({ a:'D', s:nextDrawSeat, t:[pt.suit, pt.value] });
+        nextDrawSeat = (nextDrawSeat + 1) % 4;
+      }
+      wallDraws[nextDrawPos++] = {...T};
+      setupMoves.push({ a:'D', s:nextDrawSeat, t:[T.suit, T.value] });
+      setupMoves.push({ a:'P', s:S,            t:[T.suit, T.value] });
+      const f = pickFiller();
+      dealAdditions[S].push(f);
+      setupMoves.push({ a:'D', s:S, t:[f.suit, f.value] });
+      nextDrawSeat = (S + 1) % 4;
+    }
+  }
+
+  return { setupMoves, dealAdditions, wallDraws };
+}
+
 // ── EXPORT HAND JSON ──────────────────────────────────────────
 // Builds a full 144-tile wall from the current four hands, then downloads
 // a hand JSON compatible with Load Hand and scenario_run.js.
@@ -1502,11 +1603,15 @@ function exportHandJSON() {
   const bonusTiles = {0:[],1:[],2:[],3:[]};
   for (let s = 0; s < 4; s++) {
     const p = players[s];
-    if (p.melds.length > 0) log(`⚠ Seat ${s} melds are ignored — only hand+bonus tiles are placed in the wall.`, 'warn');
     handTiles[s]  = p.hand.map(t => ({suit:t.suit, value:t.value}));
     bonusTiles[s] = p.bonus.map(t => ({suit:t.suit, value:t.value}));
+    for (const m of p.melds) {
+      if (m.type === 'chow') log(`⚠ Seat ${s}: chow melds not yet supported in export — use Inject for chow scenarios.`, 'warn');
+      else if (m.type === 'kong') log(`⚠ Seat ${s}: kong melds not yet supported in export — use Inject.`, 'warn');
+    }
   }
-  const anyTiles = [0,1,2,3].some(s => handTiles[s].length + bonusTiles[s].length > 0);
+  const anyTiles = [0,1,2,3].some(s =>
+    handTiles[s].length + bonusTiles[s].length > 0 || players[s].melds.some(m => m.type === 'pung'));
   if (!anyTiles) { setStatus('No tiles set — add tiles to at least one player.', true); return; }
 
   // ── 2. Context ────────────────────────────────────────────────────────────────
@@ -1523,6 +1628,57 @@ function exportHandJSON() {
   // ── 3. Deal positions ─────────────────────────────────────────────────────────
   const { headIdx, origPos } = computeDealPositions(dealerSeat, diceTotal);
 
+  // ── 3b. Plan pung meld setup ───────────────────────────────────────────────────
+  let pungSetup = null;
+  try { pungSetup = buildPungSetupMoves(players, dealerSeat); }
+  catch(e) { setStatus('Pung setup error: '+e.message, true); log('❌ Pung setup: '+e.message,'err'); return; }
+  if (pungSetup) {
+    const nP = pungSetup.setupMoves.filter(m => m.a==='P').length;
+    log(`ℹ Pung setup: ${nP} pung(s) → ${pungSetup.setupMoves.length} setup moves prepended.`, 'info');
+  }
+
+  // ── 3c. DISCARD phase: pin seat 0's drawn tile at the correct wall position ──────
+  // In DISCARD phase, seat 0 holds 14 tiles (13 base + 1 drawn tile they're about to discard).
+  // Two ways the drawn tile can be specified:
+  //   (a) "Discard Tile" selector → discardTile variable
+  //   (b) "Self Draw 🀄" button   → players[0].drawnIdx
+  // Both are placed at the wall slot seat 0 draws from — NOT as a setup-discard move.
+  // Dealer seat 0: drawn tile → origPos[0][13] = rotated 52 (dealer extra deal slot).
+  // Non-dealer seat 0: drawn tile → rotated 55 (first gameplay draw after 3 CPU cycles,
+  //   no claims in REPLAY_MODE).
+  let forcedDrawnTile = null; // non-dealer path: placed directly in wall after deal tiles
+
+  if (phase === 'discard') {
+    let drawnTile = null;
+
+    if (discardTile) {
+      // (a) Discard Tile selector: treat as the drawn tile, suppress the setup-discard move
+      drawnTile = {suit: discardTile.suit, value: discardTile.value};
+      discardTile = null;                     // prevents {a:'D'} move from being added later
+    } else if (players[0].drawnIdx !== null) {
+      // (b) Self Draw button: tile already in handTiles[0], just reorder it
+      drawnTile = {...handTiles[0][players[0].drawnIdx]};
+    }
+
+    if (drawnTile) {
+      // Remove any existing copy of the drawn tile from handTiles[0] first
+      const ei = handTiles[0].findIndex(t => t.suit === drawnTile.suit && String(t.value) === String(drawnTile.value));
+      if (ei >= 0) handTiles[0].splice(ei, 1);
+
+      if (dealerSeat === 0) {
+        // Dealer: push drawn tile as element [13] → goes to rotated pos 52 (dealer extra slot)
+        handTiles[0] = handTiles[0].slice(0, 13); // ensure exactly 13 base tiles before it
+        handTiles[0].push(drawnTile);
+        log(`ℹ DISCARD: drawn tile ${lbl(drawnTile)} placed at dealer extra deal slot (rotated 52).`, 'info');
+      } else {
+        // Non-dealer: keep exactly 13 tiles in the deal; drawn tile placed at rotated 55
+        handTiles[0] = handTiles[0].slice(0, 13);
+        forcedDrawnTile = drawnTile;
+        log(`ℹ DISCARD: drawn tile ${lbl(drawnTile)} placed at gameplay draw position 55.`, 'info');
+      }
+    }
+  }
+
   // ── 4. Validate tile counts ───────────────────────────────────────────────────
   const maxCopies = {bamboo:4, circle:4, char:4, wind:4, dragon:4, flower:1, season:1};
   const usedCounts = {};
@@ -1536,33 +1692,46 @@ function exportHandJSON() {
       return;
     }
   }
+  // Also count pung meld tiles (3 physical copies per pung placed in wall)
   for (let s = 0; s < 4; s++) {
-    const nBonus = bonusTiles[s].length;
-    if (nBonus > dealSlots[s]) {
-      setStatus(`Seat ${s}: ${nBonus} bonus tiles exceed ${dealSlots[s]} deal slots.`, true);
-      log(`❌ Seat ${s}: too many bonus tiles (${nBonus}).`, 'err'); return;
+    for (const m of players[s].melds) {
+      if (m.type !== 'pung') continue;
+      const key = `${m.tiles[0].suit}|${m.tiles[0].value}`;
+      usedCounts[key] = (usedCounts[key] || 0) + 3;
+      if (usedCounts[key] > maxCopies[m.tiles[0].suit]) {
+        setStatus(`Pung meld + hand tiles exceed max copies of ${m.tiles[0].suit}-${m.tiles[0].value}`, true);
+        log(`❌ Seat ${s} pung meld + other tiles: ${usedCounts[key]} > ${maxCopies[m.tiles[0].suit]}`, 'err');
+        return;
+      }
+    }
+  }
+  for (let s = 0; s < 4; s++) {
+    const nBonus  = bonusTiles[s].length;
+    const nExtras = pungSetup ? (pungSetup.dealAdditions[s]?.length || 0) : 0;
+    if (nBonus + nExtras > dealSlots[s]) {
+      setStatus(`Seat ${s}: pung setup + bonus tiles (${nBonus+nExtras}) exceed deal slots (${dealSlots[s]}).`, true);
+      log(`❌ Seat ${s}: too many setup tiles.`, 'err'); return;
     }
   }
 
   // ── 5. Assign tiles to deal positions and tail positions ──────────────────────
-  // Strategy:
-  //   Deal positions (front of wall): first (dealSlots-nBonus) hand tiles + nBonus bonus tiles
-  //     → game deals them, bonus tiles get auto-moved to p.bonus, replacements drawn from tail
-  //   Tail positions (back of wall, drawFromTail order: 142,143,140,141,…):
-  //     → replacement tiles (remaining hand tiles), assigned in ccwSeats round-robin order
-  const dealAssign = {};  // seat → tiles placed at deal positions
-  const tailQueue  = [];  // replacement tiles in order they'll be drawn from tail
+  // Deal positions: pung-setup extras + hand tiles (up to slots) + bonus tiles
+  // Tail positions: overflow hand tiles (drawn as bonus replacements)
+  const dealAssign = {};
+  const tailQueue  = [];
   for (const s of ccwSeats) {
-    const hand  = handTiles[s];
-    const bonus = bonusTiles[s];
+    const hand   = handTiles[s];
+    const bonus  = bonusTiles[s];
+    const extras = pungSetup ? (pungSetup.dealAdditions[s] || []) : [];
     const nBonus = bonus.length;
     const slots  = dealSlots[s];
-    const handInDeal = hand.slice(0, slots - nBonus);
-    const handInTail = hand.slice(slots - nBonus);
-    dealAssign[s] = [...handInDeal, ...bonus];
+    const slotsForHand = Math.max(0, slots - nBonus - extras.length);
+    const handInDeal   = hand.slice(0, slotsForHand);
+    const handInTail   = hand.slice(slotsForHand);
+    dealAssign[s] = [...handInDeal, ...extras, ...bonus];
     tailQueue.push(...handInTail);
     if (handInTail.length > 0)
-      log(`ℹ Seat ${s}: ${nBonus} bonus tile(s) → ${handInTail.length} hand tile(s) placed at tail for replacement.`, 'info');
+      log(`ℹ Seat ${s}: ${nBonus} bonus + ${extras.length} pung-setup tiles → ${handInTail.length} hand tile(s) at tail.`, 'info');
   }
   if (tailQueue.length > 72) {
     setStatus(`Too many replacement tiles needed (${tailQueue.length} > 72 tail slots).`, true); return;
@@ -1590,8 +1759,25 @@ function exportHandJSON() {
     }
   }
 
+  // Place pung setup feeder draw tiles at gameplay positions 53+ (rotated wall)
+  if (pungSetup) {
+    for (const [rotPos, tile] of Object.entries(pungSetup.wallDraws)) {
+      const unrotIdx = (headIdx + parseInt(rotPos)) % 144;
+      wall[unrotIdx] = {suit: tile.suit, value: tile.value};
+    }
+  }
+
+  // Place non-dealer seat 0's drawn tile at rotated position 55 (first gameplay draw
+  // after dealer + seat2 + seat3 each take one turn; no claims in REPLAY_MODE).
+  if (forcedDrawnTile) {
+    const unrotIdx = (55 + headIdx) % 144;
+    wall[unrotIdx] = {suit: forcedDrawnTile.suit, value: forcedDrawnTile.value};
+  }
+
   // Fill remaining slots with filler tiles from pool
-  const allPlaced = Object.values(dealAssign).flat().concat(tailQueue);
+  const wallDrawValues = pungSetup ? Object.values(pungSetup.wallDraws) : [];
+  const allPlaced = Object.values(dealAssign).flat().concat(tailQueue).concat(wallDrawValues);
+  if (forcedDrawnTile) allPlaced.push(forcedDrawnTile); // exclude from filler pool
   const pool = makeFullTilePool();
   const remaining = [...pool];
   for (const used of allPlaced) {
@@ -1604,12 +1790,11 @@ function exportHandJSON() {
   // Rotate so index 0 = first drawn tile (matching saved game format)
   const rotatedWall = [...wall.slice(headIdx), ...wall.slice(0, headIdx)];
 
-  // ── 6. Build moves[] ─────────────────────────────────────────────────────────
-  const phase        = document.getElementById('inject-phase').value;
-  const expPassSeat  = parseInt(document.getElementById('exp-pass-winner').value);
-  const moves = [];
+  // ── 6. Build moves[] (setup prefix + scenario moves) ─────────────────────────
+  const phase       = document.getElementById('inject-phase').value;
+  const expPassSeat = parseInt(document.getElementById('exp-pass-winner').value);
+  const moves = pungSetup ? [...pungSetup.setupMoves] : [];
   if (phase === 'self-drawn' || (!discardTile && phase !== 'claim')) {
-    // Self-draw win: phase explicitly says no discard (Heavenly Hand, Earthly Hand, mid-game self-draw)
     if (expPassSeat >= 0) moves.push({ a:'W', s:expPassSeat });
   } else if (discardTile) {
     const dt = [discardTile.suit, discardTile.value];
@@ -1623,9 +1808,13 @@ function exportHandJSON() {
     ? { winnerSeat: expPassSeat, note: scenarioName || '' }
     : undefined;
 
+  // scenario:true only for a pristine initial state (no setup moves needed).
+  // Any discard/pung setup moves mean the user must step through, so omit the flag.
+  const isScenario = moves.length === 0;
+
   const json = {
     format:     'mahjong-replay',
-    scenario:   true,
+    ...(isScenario && { scenario: true }),
     savedAt:    new Date().toISOString(),
     winner:     null,
     faan:       0,
@@ -1640,8 +1829,8 @@ function exportHandJSON() {
     ],
     wall: rotatedWall,
     dice,
-    ...(moves.length > 0 && { moves }),
-    ...(expected         && { expected }),
+    ...(moves.length > 0 && { moves, movesSource: 'moves' }),
+    ...(expected          && { expected }),
   };
 
   // ── 8. Download ───────────────────────────────────────────────────────────────
@@ -1655,9 +1844,11 @@ function exportHandJSON() {
   a.download = filename;
   a.click();
 
-  const nBonus = Object.values(bonusTiles).reduce((s,a)=>s+a.length,0);
-  const seatsUsed = [0,1,2,3].filter(s => handTiles[s].length + bonusTiles[s].length > 0);
-  const summary = `${seatsUsed.length} seats · ${nBonus} bonus tile(s) → tail · ${rotatedWall.length} wall tiles · ${moves.length} moves`;
+  const nBonus  = Object.values(bonusTiles).reduce((s,a)=>s+a.length,0);
+  const nPungs  = pungSetup ? pungSetup.setupMoves.filter(m => m.a==='P').length : 0;
+  const seatsUsed = [0,1,2,3].filter(s =>
+    handTiles[s].length + bonusTiles[s].length > 0 || players[s].melds.some(m => m.type==='pung'));
+  const summary = `${seatsUsed.length} seats · ${nPungs} pung meld(s) · ${nBonus} bonus → tail · ${moves.length} moves`;
   setStatus(`✅ ${filename}`);
   log(`✅ Exported ${filename} (${summary})`, 'ok');
 }

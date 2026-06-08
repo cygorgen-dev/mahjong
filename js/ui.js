@@ -476,6 +476,18 @@ function initUI(game) {
     _startAutoReplay();
   });
 
+  document.getElementById('step-all-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!window.REPLAY_MODE || !_game) return;
+    _stopAutoReplay();
+    let safety = 2000;
+    while (window.REPLAY_MODE && !_replayDone() && safety-- > 0) {
+      _game.replayStep();
+    }
+    if (_replayDone()) _exitReplayMode();
+    renderAll();
+  });
+
   document.getElementById('save-hand-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     let data;
