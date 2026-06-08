@@ -209,6 +209,45 @@ Set the checkboxes (Win / Pung / Kong / Chow) before saving to record what butto
 
 ---
 
+## Replay Mode vs Scenario Mode
+
+Two distinct modes govern how a saved `.json` file is loaded and played back.
+
+### Replay Mode (`REPLAY_MODE = true`)
+
+Set when a file is loaded without `"scenario": true`.
+
+- **Paced playback.** Every move requires a user action — click anywhere / Pass, or use **⏩ Auto Step** (180 ms per move).
+- **Queue-driven.** Recorded human moves are stored in `window._moveQueue`. Each `replayStep()` call pops one move and executes it. CPU players replay via their own AI from the same wall — only the human's decisions are recorded and replayed.
+- **Continues into normal play.** When the queue empties the game exits replay mode automatically and normal human + CPU play resumes from that point. There is no hard stop.
+- **Save at any time.** The **💾 Save Hand** button snapshots `_captureWall / _captureDice / _captureMoves / log` instantly — you do not need to wait for WIN or EXHAUST.
+- **Undo Last Move.** The **↩ Undo Last Move** button re-deals from the same wall and instant-replays all captured moves minus the last one, then exits replay mode so you can replay the decision.
+
+**Typical uses:** reviewing a past hand; loading a mid-game save to continue from a known position; studying a specific sequence of moves.
+
+### Scenario Mode (`REPLAY_MODE = false`, `"scenario": true`)
+
+Set when a file has `"scenario": true` in the JSON.
+
+- **Immediate normal play.** No step-by-step playback. The game re-deals from the forced wall and all four players act normally at full speed.
+- **Queue is still set** from the scenario's move list, but those moves execute as part of the normal AI / human input flow — not via `replayStep()`.
+- **No controlled stepping.** The Auto Step button is disabled; clicking Pass has normal game meaning.
+
+**Typical uses:** setting up a repeatable test state (forced wall, specific tile distributions) that the regression runner can inject and verify.
+
+### File format distinction
+
+| Field | Replay file | Scenario file |
+|---|---|---|
+| `"scenario"` | absent / `false` | `true` |
+| `"wall"` + `"dice"` | required | required |
+| `"moves"` / `"log"` | required (can be empty for a fresh re-deal) | required |
+| `"expected"` | — | optional — for regression (winnerSeat, etc.) |
+
+Any file with `wall` + `dice` can be loaded. The `moves` / `log` guard was removed in v0608-483 — a file with an empty moves array simply re-deals from the saved wall with no pre-played moves.
+
+---
+
 ## Demo Buttons
 
 Access via **More tools…** dropdown in the sidebar.
