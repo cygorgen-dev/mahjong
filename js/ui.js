@@ -98,12 +98,21 @@ function _exitReplayMode() {
   _stopAutoReplay();
 }
 
+// Safe to exit replay only at END, or when queue is empty and it's the human's discard turn.
+// Never exit mid-CLAIM — the CPU may still be resolving a win from the last discard.
+function _replayDone() {
+  if (!_game) return true;
+  if (_game.phase === PHASE.END) return true;
+  if (!window._moveQueue?.length && _game.phase === PHASE.DISCARD && _game.currentSeat === 0) return true;
+  return false;
+}
+
 function _replayStepThenCheck() {
   if (!window.REPLAY_MODE || !_game) return;
-  if (_game.phase === PHASE.END || !window._moveQueue?.length) { _exitReplayMode(); renderAll(); return; }
+  if (_replayDone()) { _exitReplayMode(); renderAll(); return; }
   _game.replayStep();
   renderAll();
-  if (_game.phase === PHASE.END || !window._moveQueue?.length) { _exitReplayMode(); renderAll(); }
+  if (_replayDone()) { _exitReplayMode(); renderAll(); }
 }
 
 function _startAutoReplay() {
@@ -111,10 +120,10 @@ function _startAutoReplay() {
   if (btn) btn.textContent = '⏸ Pause';
   _autoReplayTimer = setInterval(() => {
     if (!window.REPLAY_MODE || !_game) { _stopAutoReplay(); return; }
-    if (_game.phase === PHASE.END || !window._moveQueue?.length) { _exitReplayMode(); renderAll(); return; }
+    if (_replayDone()) { _exitReplayMode(); renderAll(); return; }
     _game.replayStep();
     renderAll();
-    if (_game.phase === PHASE.END || !window._moveQueue?.length) { _exitReplayMode(); renderAll(); }
+    if (_replayDone()) { _exitReplayMode(); renderAll(); }
   }, 180);
 }
 
@@ -483,6 +492,7 @@ function initUI(game) {
         roundWind:  _game.roundWind,
         logLabel:   _game._logLabel ?? 'New Hand',
         players:    _game.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
+        movesSource: 'moves',
         wall:       _game._captureWall,
         dice:       _game._captureDice,
         moves:      _game._captureMoves,

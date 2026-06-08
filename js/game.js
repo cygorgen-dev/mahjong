@@ -88,7 +88,7 @@ class Game {
       this._captureWall = rd.wall;
       this._captureDice = [...this.dice];
       this._captureMoves = [];
-      const _rdMoves = rd.log?.length ? Game.movesFromLog(rd.log) : (rd.moves?.length ? rd.moves : null);
+      const _rdMoves = Game.resolveMoves(rd);
       window._moveQueue = _rdMoves ? [..._rdMoves] : null;
       this.addLog(`Wall built and shuffled — 144 tiles.`);
       this.addLog(`Dealer ${playerTag(this.players[this.dealerSeat])} rolls dice: ${this.dice[0]}+${this.dice[1]}+${this.dice[2]} = ${this.diceTotal}.`);
@@ -1324,6 +1324,42 @@ class Game {
     } catch(e) {}
   }
 
+  // Resolve the move queue from a replay data object.
+  // movesSource field controls preference:
+  //   'moves' → use moves array (authoritative; warn if log-derived differs)
+  //   'log'   → always derive from log
+  //   absent  → use whichever is longer; warn if they differ
+  static resolveMoves(data) {
+    const src = data.movesSource;
+    const hasMoves = data.moves?.length;
+    const hasLog   = data.log?.length;
+
+    if (src === 'moves') {
+      if (!hasMoves) { console.warn('[replay] movesSource=moves but moves array is empty'); return null; }
+      if (hasLog) {
+        const fromLog = Game.movesFromLog(data.log);
+        if (fromLog?.length !== data.moves.length)
+          console.error(`[replay] movesFromLog mismatch: moves=${data.moves.length} log-derived=${fromLog?.length}`);
+      }
+      return data.moves;
+    }
+
+    if (src === 'log') {
+      if (!hasLog) { console.warn('[replay] movesSource=log but log array is empty'); return null; }
+      return Game.movesFromLog(data.log);
+    }
+
+    // auto: use the longer of the two; flag mismatch
+    if (hasMoves && hasLog) {
+      const fromLog = Game.movesFromLog(data.log);
+      const logLen  = fromLog?.length ?? 0;
+      if (data.moves.length !== logLen)
+        console.error(`[replay] movesFromLog mismatch: moves=${data.moves.length} log-derived=${logLen} — set movesSource to resolve`);
+      return data.moves.length >= logLen ? data.moves : fromLog;
+    }
+    return hasMoves ? data.moves : (hasLog ? Game.movesFromLog(data.log) : null);
+  }
+
   // Derive moves[] from a chronological log[] when moves[] is absent.
   // Covers: discards, pung, chow, kong variants, self-draw and claim wins.
   // Wall-exhausted games need no win entry — drawFromWall() raises END itself.
@@ -1454,7 +1490,7 @@ class Game {
           window.CPU_SCHEMES[p.seat] = window.CPU_SCHEMES_BY_NAME[p.name];
       }
     }
-    const moves = data.log?.length ? Game.movesFromLog(data.log) : (data.moves?.length ? data.moves : null);
+    const moves = Game.resolveMoves(data);
     window._moveQueue = moves ? [...moves] : null;
   }
 

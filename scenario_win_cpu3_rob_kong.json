@@ -636,6 +636,14 @@
         "dragon",
         "green"
       ]
+    },
+    {
+      "a": "D",
+      "s": 0,
+      "t": [
+        "dragon",
+        "white"
+      ]
     }
   ],
   "expected": {

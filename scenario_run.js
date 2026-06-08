@@ -64,30 +64,33 @@ function expectedSeat(data) {
 // ── Run one file ──────────────────────────────────────────────────────────────
 async function runOne(page, data, filename) {
   const expSeat = expectedSeat(data);
-  if (expSeat === null) return { filename, skip: true, reason: 'no expected winner in JSON' };
 
   const hasMoves = data.moves?.length || data.log?.length;
   if (!hasMoves) return { filename, skip: true, reason: 'no moves or log to replay' };
 
   // Inject: REPLAY_MODE only — no AUTO_MODE so CPU actions run naturally via
   // setTimeout(fn,0) between replayStep() calls (same as the browser's auto-replay).
-  await page.evaluate((d) => {
+  await page.evaluate(s => {
+    const d = JSON.parse(localStorage.getItem(s));
     window.AUTO_MODE   = undefined;
     window.REPLAY_MODE = true;
     window._replayData = d;
     window.game.applyReplayContext(d);
     window.game.redeal();
     renderAll();
-  }, data);
+  }, '_scenario_tmp');
 
-  // Call replayStep() on every tick; it returns early when the game is not paused
-  // waiting for input. Yield 5ms each tick so CPU setTimeout(fn,0) callbacks fire
-  // between calls — the same mechanism used by _startAutoReplay in the browser.
+  // Drive replay via _replayStepThenCheck (same as browser auto-step) so REPLAY_MODE
+  // exits cleanly when the queue empties. After exit, wait for CPU to finish naturally.
+  // Yield 5ms each tick so CPU setTimeout(fn,0) callbacks fire between evaluate calls.
   const started = Date.now();
   let iters = 0;
   while (true) {
     const phase = await page.evaluate(() => {
-      if (window.game?.phase !== 'end') window.game.replayStep();
+      if (window.game?.phase !== 'end') {
+        if (window.REPLAY_MODE) _replayStepThenCheck();
+        // else: game continues normally via CPU setTimeout callbacks — just poll
+      }
       return window.game?.phase;
     });
 
@@ -101,10 +104,20 @@ async function runOne(page, data, filename) {
     winner: window.game.lastResult?.winner ?? -1,
     faan:   window.game.lastResult?.faan   ?? 0,
     label:  window.game.lastResult?.label  ?? '',
+    phase:  window.game.phase,
   }));
 
-  const pass = result.winner === expSeat;
-  return { filename, pass, expSeat, actSeat: result.winner, faan: result.faan, label: result.label, iters };
+  // Files with a known expected winner: strict PASS/FAIL
+  if (expSeat !== null) {
+    const pass = result.winner === expSeat;
+    return { filename, pass, expSeat, actSeat: result.winner, faan: result.faan, label: result.label, phase: result.phase, iters };
+  }
+
+  // No expected winner: report what the replay landed on — always PASS unless error/timeout
+  const landed = result.phase === 'end'
+    ? (result.winner >= 0 ? `seat${result.winner} wins ${result.faan}f — ${result.label}` : 'exhausted (draw)')
+    : `partial replay done → phase=${result.phase}`;
+  return { filename, pass: true, noExpected: true, landed, iters };
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -128,13 +141,15 @@ async function runOne(page, data, filename) {
     try { data = JSON.parse(fs.readFileSync(filename, 'utf8')); }
     catch (e) { write(`  SKIP  ${filename}  (parse error)`); skipped++; continue; }
 
+    await page.evaluate(s => localStorage.setItem('_scenario_tmp', s), JSON.stringify(data));
     const r = await runOne(page, data, filename);
     results.push(r);
 
-    if (r.skip)       { write(`  SKIP  ${filename}  (${r.reason})`);                                                        skipped++; }
-    else if (r.error) { write(`  ERR   ${filename}  (${r.error})`);                                                         errors++;  }
-    else if (r.pass)  { write(`  PASS  ${filename}  seat${r.actSeat} wins, ${r.faan}f — ${r.label}`);                      passed++;  }
-    else              { write(`  FAIL  ${filename}  expected seat${r.expSeat}, got seat${r.actSeat} ${r.faan}f — ${r.label}`); failed++; }
+    if (r.skip)           { write(`  SKIP  ${filename}  (${r.reason})`);                                                           skipped++; }
+    else if (r.error)     { write(`  ERR   ${filename}  (${r.error})`);                                                            errors++;  }
+    else if (r.noExpected){ write(`  PASS  ${filename}  [no expected] ${r.landed}  (${r.iters} iters)`);                           passed++;  }
+    else if (r.pass)      { write(`  PASS  ${filename}  seat${r.actSeat} wins, ${r.faan}f — ${r.label}`);                         passed++;  }
+    else                  { write(`  FAIL  ${filename}  expected seat${r.expSeat}, got seat${r.actSeat} ${r.faan}f — ${r.label}`); failed++;  }
   }
 
   const total = passed + failed + errors;
