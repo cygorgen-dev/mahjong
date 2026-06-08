@@ -85,16 +85,21 @@ async function runOne(page, data, filename) {
   // Yield 5ms each tick so CPU setTimeout(fn,0) callbacks fire between evaluate calls.
   const started = Date.now();
   let iters = 0;
+  let replayEndedAt = -1; // iter where REPLAY_MODE first became false
   while (true) {
-    const phase = await page.evaluate(() => {
+    const { phase, replayOn } = await page.evaluate(() => {
       if (window.game?.phase !== 'end') {
         if (window.REPLAY_MODE) _replayStepThenCheck();
         // else: game continues normally via CPU setTimeout callbacks — just poll
       }
-      return window.game?.phase;
+      return { phase: window.game?.phase, replayOn: !!window.REPLAY_MODE };
     });
 
+    if (replayEndedAt < 0 && !replayOn) replayEndedAt = iters;
     if (phase === 'end') break;
+    // Mid-hand save: replay drained but game is stuck (e.g. human turn with no queued move).
+    // After a 20-iter grace period (≈100ms) for any CPU settle, treat as partial replay done.
+    if (expSeat === null && replayEndedAt >= 0 && iters - replayEndedAt >= 20) break;
     if (Date.now() - started > TIMEOUT_MS) return { filename, error: 'timeout' };
     if (++iters > 5000) return { filename, error: 'iter limit' };
     await page.waitForTimeout(5);
@@ -117,6 +122,36 @@ async function runOne(page, data, filename) {
   const landed = result.phase === 'end'
     ? (result.winner >= 0 ? `seat${result.winner} wins ${result.faan}f — ${result.label}` : 'exhausted (draw)')
     : `partial replay done → phase=${result.phase}`;
+
+  // If the JSON has "Seat N final hand" snapshots (added by save-hand on mid-hand saves),
+  // validate them against the current game state.  Old files without these fields skip it.
+  if (result.phase !== 'end') {
+    const liveHands = await page.evaluate(() => {
+      if (!window.game?.players) return null;
+      const tk = t => `${t.suit}:${t.value}`;
+      return window.game.players.map(p => ({
+        seat: p.seat,
+        keys: [
+          ...p.hand.map(tk),
+          ...(p.melds || []).flatMap(m => (m.tiles || []).map(tk)),
+          ...(p.bonus || []).map(tk),
+        ].sort(),
+      }));
+    });
+    if (liveHands) {
+      for (const { seat, keys: actual } of liveHands) {
+        const stored = data[`Seat ${seat} final hand`];
+        if (!stored) continue; // old file — no snapshot to compare
+        const expected = stored.map(t => `${t.suit}:${t.value}`).sort();
+        if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+          return { filename, pass: false, noExpected: true, landed,
+                   handFail: `seat${seat} mismatch: expected [${expected.join(',')}] got [${actual.join(',')}]`,
+                   iters };
+        }
+      }
+    }
+  }
+
   return { filename, pass: true, noExpected: true, landed, iters };
 }
 
@@ -145,11 +180,12 @@ async function runOne(page, data, filename) {
     const r = await runOne(page, data, filename);
     results.push(r);
 
-    if (r.skip)           { write(`  SKIP  ${filename}  (${r.reason})`);                                                           skipped++; }
-    else if (r.error)     { write(`  ERR   ${filename}  (${r.error})`);                                                            errors++;  }
-    else if (r.noExpected){ write(`  PASS  ${filename}  [no expected] ${r.landed}  (${r.iters} iters)`);                           passed++;  }
-    else if (r.pass)      { write(`  PASS  ${filename}  seat${r.actSeat} wins, ${r.faan}f — ${r.label}`);                         passed++;  }
-    else                  { write(`  FAIL  ${filename}  expected seat${r.expSeat}, got seat${r.actSeat} ${r.faan}f — ${r.label}`); failed++;  }
+    if (r.skip)                    { write(`  SKIP  ${filename}  (${r.reason})`);                                                           skipped++; }
+    else if (r.error)              { write(`  ERR   ${filename}  (${r.error})`);                                                            errors++;  }
+    else if (r.noExpected && r.pass){ write(`  PASS  ${filename}  [no expected] ${r.landed}  (${r.iters} iters)`);                          passed++;  }
+    else if (r.noExpected)         { write(`  FAIL  ${filename}  [hand mismatch] ${r.handFail}`);                                           failed++;  }
+    else if (r.pass)               { write(`  PASS  ${filename}  seat${r.actSeat} wins, ${r.faan}f — ${r.label}`);                         passed++;  }
+    else                           { write(`  FAIL  ${filename}  expected seat${r.expSeat}, got seat${r.actSeat} ${r.faan}f — ${r.label}`); failed++;  }
   }
 
   const total = passed + failed + errors;

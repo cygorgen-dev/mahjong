@@ -492,7 +492,17 @@ function initUI(game) {
         roundWind:  _game.roundWind,
         logLabel:   _game._logLabel ?? 'New Hand',
         players:    _game.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
-        movesSource: 'moves',
+        ...((() => {
+          const td = t => ({ suit: t.suit, value: t.value });
+          return Object.fromEntries(_game.players.map(p => [
+            `Seat ${p.seat} final hand`,
+            [
+              ...p.hand.map(td),
+              ...(p.melds || []).flatMap(m => (m.tiles || []).map(td)),
+              ...(p.bonus || []).map(td),
+            ],
+          ]));
+        })()),
         wall:       _game._captureWall,
         dice:       _game._captureDice,
         moves:      _game._captureMoves,
@@ -1052,6 +1062,8 @@ function renderSeats() {
         const opts = needsRotation
           ? { small: true, seatRotation: seat }
           : { small: true };
+        if (_game.lastResult?.winTileId && t.id === _game.lastResult.winTileId)
+          opts.winTile = true;
         const tEl = makeTileEl(t, opts);
         if (_game.lastClaimedTile && t.id === _game.lastClaimedTile.id) {
           const inner = tEl.querySelector('.tile') || tEl;
