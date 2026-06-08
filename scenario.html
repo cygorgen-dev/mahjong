@@ -1767,11 +1767,24 @@ function exportHandJSON() {
     }
   }
 
-  // Place non-dealer seat 0's drawn tile at rotated position 55 (first gameplay draw
-  // after dealer + seat2 + seat3 each take one turn; no claims in REPLAY_MODE).
+  // Place non-dealer seat 0's drawn tile at its exact draw position.
+  // After initial deal (53 tiles), pungSetup occupies rotated positions 53…52+N
+  // (N = wallDraws count).  Then seats cycle with no claims (REPLAY_MODE suppresses
+  // them) until seat 0 draws.  Seat 0's draw slot = 53 + N + steps-to-seat-0.
   if (forcedDrawnTile) {
-    const unrotIdx = (55 + headIdx) % 144;
-    wall[unrotIdx] = {suit: forcedDrawnTile.suit, value: forcedDrawnTile.value};
+    const numWD = pungSetup ? Object.keys(pungSetup.wallDraws).length : 0;
+    // Which seat draws first after all setup moves complete?
+    let startSeat;
+    if (pungSetup?.setupMoves.length > 0) {
+      const lastD = [...pungSetup.setupMoves].reverse().find(m => m.a === 'D');
+      startSeat = lastD ? (lastD.s + 1) % 4 : (dealerSeat + 1) % 4;
+    } else {
+      startSeat = (dealerSeat + 1) % 4; // dealer discards naturally, then this seat draws
+    }
+    const steps     = (4 - startSeat) % 4; // draws before seat 0
+    const drawRotPos = 53 + numWD + steps;
+    wall[(drawRotPos + headIdx) % 144] = {suit: forcedDrawnTile.suit, value: forcedDrawnTile.value};
+    log(`ℹ DISCARD: drawn tile ${lbl(forcedDrawnTile)} → rotated pos ${drawRotPos} (${numWD} pung draws + ${steps} CPU cycles).`, 'info');
   }
 
   // Fill remaining slots with filler tiles from pool
