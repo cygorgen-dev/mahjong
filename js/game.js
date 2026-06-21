@@ -1690,11 +1690,10 @@ class Game {
     if (this.phase === PHASE.CLAIM) {
       if (queue.length) {
         const m = queue[0];
-        // Self-draw win prompt: seat 0 has a win but the next queued action is a
-        // discard (not W) — the scenario intends seat 0 to pass and discard the tile.
+        // Self-draw / post-claim win prompt: seat 0 has a win but the next queued
+        // action is a discard — the scenario intends seat 0 to pass and discard.
         // humanPass() dismisses the prompt and restores DISCARD phase.
         if (m.s === 0 && m.a === 'D' && this.claimOptions?.win && this.discard === null) {
-          this._replayResumeNotice = true;
           this.humanPass();
           return;
         }
@@ -1725,12 +1724,17 @@ class Game {
           } // else: claimOptions.win was falsy — fall through to default handling
         }
       }
-      // Replay can also arrive at a no-discard win prompt with an empty queue
-      // (for example, the final claim in mj-deck.json). In that case Pass should
-      // dismiss the prompt and return to the current discard turn, not advance
-      // to the next draw.
+      // Queue exhausted after last move — exit replay so the UI presents claims
+      // naturally (Win button, Pass, etc.) without the replay system interfering.
+      if (!queue.length) {
+        window.REPLAY_MODE = false;
+        window._moveQueue = null;
+        return;
+      }
+      // Queue non-empty but no human action matched — a post-claim win prompt
+      // appeared while the next scripted move is not a human action (edge case).
+      // Dismiss the win and let the pending claims / next turn resolve.
       if (this.claimOptions?.win && this.discard === null && this.currentSeat === 0) {
-        this._replayResumeNotice = true;
         this.humanPass();
         return;
       }
