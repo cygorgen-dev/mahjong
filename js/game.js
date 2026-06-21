@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // game.js  — Game state and turn logic
 // ============================================================
 
@@ -19,10 +19,23 @@ function playerTag(player) {
 class Game {
   constructor(onUpdate) {
     this.onUpdate = onUpdate; // called whenever state changes
+    this._scheduledTimers = new Set();
+    this._scheduleToken = 0;
     this.reset();
   }
 
+  _cancelScheduledActions() {
+    if (this._scheduledTimers) {
+      for (const id of this._scheduledTimers) clearTimeout(id);
+      this._scheduledTimers.clear();
+    }
+    this._scheduleToken++;
+    this._autoStepQueue = [];
+    this._pendingAutoStep = null;
+  }
+
   reset() {
+    this._cancelScheduledActions();
     // Clear stale score deltas from previous game
     try { localStorage.removeItem('mahjongPrevScores'); } catch(e) {}
     this.wall = buildWall();
@@ -65,6 +78,7 @@ class Game {
     this.robbingKongTile = null;    // the tile being konged
     this.robbingKongTiles = null;   // all 4 kong tiles
     this.robbingKongPungIdx = null; // index of pung in melds being upgraded
+    this._replayResumeNotice = false;
 
     this._captureMoves = [];
     this._captureWall = null;
@@ -343,6 +357,10 @@ class Game {
   }
 
   startTurn(seat) {
+    // Any committed state transition invalidates older queued CPU actions.
+    // Without this, a stale timer can fire after the turn has advanced and
+    // make an out-of-turn draw/discard against the wrong hand.
+    this._cancelScheduledActions();
     this.currentSeat = seat;
     const p = this.players[seat];
     const drawn = this.drawFromWall();
@@ -405,6 +423,7 @@ class Game {
       }
     } else {
       this.onUpdate('cpu-drew');  // render draw state so just-drawn highlight is visible
+      if (window.REPLAY_MODE && window._replayStopAtQueueEnd && !(window._moveQueue?.length)) return;
       if (window.AUTO_MODE === 'slow') { this.aiPlay(seat); } else { this._scheduleOrStep(() => this.aiPlay(seat)); }
     }
   }
@@ -414,11 +433,23 @@ class Game {
     if (window.AUTO_MODE === 'slow') {
       this._queueAutoStep(fn);  // gate ALL players behind Pass click
     } else if (window.AUTO_MODE === 'fast') {
-      setTimeout(fn, window.AUTO_FAST_DELAY ?? 180); // fast but still visible
+      const token = this._scheduleToken;
+      const id = setTimeout(() => {
+        this._scheduledTimers.delete(id);
+        if (token !== this._scheduleToken) return;
+        fn();
+      }, window.AUTO_FAST_DELAY ?? 180); // fast but still visible
+      this._scheduledTimers.add(id);
     } else if (window.AUTO_MODE === 'sprint' || window.AUTO_MODE === 'sprint_slow') {
       fn(); // synchronous — entire hand computes in one call stack, no delay
     } else {
-      setTimeout(fn, 0);  // normal manual-mode timing
+      const token = this._scheduleToken;
+      const id = setTimeout(() => {
+        this._scheduledTimers.delete(id);
+        if (token !== this._scheduleToken) return;
+        fn();
+      }, 0);  // normal manual-mode timing
+      this._scheduledTimers.add(id);
     }
   }
 
@@ -444,6 +475,11 @@ class Game {
   // human seat in auto mode -> schedule aiPlay; human seat manual -> wait; CPU -> schedule
   _actForSeat(seat, updateEvent = 'your-turn') {
     const p = this.players[seat];
+    const freezeAtQueueEnd = window.REPLAY_MODE && window._replayStopAtQueueEnd && !(window._moveQueue?.length);
+    if (freezeAtQueueEnd) {
+      this.onUpdate(updateEvent);
+      return;
+    }
     if (p.isHuman && window.AUTO_MODE) {
       this.onUpdate(updateEvent);
       if (window.AUTO_MODE === 'slow') { this.aiPlay(seat); } else { this._scheduleOrStep(() => this.aiPlay(seat)); }
@@ -477,6 +513,10 @@ class Game {
       CPU_LEVELS[0] = window.AUTO_USER_LEVEL ?? 1;
     }
     const p = this.players[seat];
+    if (!p) return;
+    // Seat 0 may still use aiPlay() during human auto-mode claim prompts.
+    // CPU seats should ignore stale async callbacks once the turn has moved on.
+    if (!p.isHuman && (this.phase !== PHASE.DISCARD || this.currentSeat !== seat)) return;
     const ctx = this.makeCtx(seat, true);
     // Heavenly Hand: dealer's initial 14 dealt tiles form a winning hand
     const isHeavenly = (seat === this.dealerSeat && this.handActionCount === 0 && this._isFirstDealerDraw);
@@ -571,6 +611,7 @@ class Game {
   }
 
   doSelfKong(seat, tiles) {
+    this._cancelScheduledActions();
     const p = this.players[seat];
     const t = tiles[0];
     this._logMove({ a: 'KS', s: seat, t: [t.suit, t.value] });
@@ -694,19 +735,29 @@ class Game {
   }
 
   resolveRobbedKong(robberSeat, result) {
-    // Someone robbed the kong — resolve as a discard win against the kong declarer
-    // The kong is NOT completed; the kong declarer's pung stays as-is
+    // Someone robbed the kong — resolve as a discard win against the kong declarer.
+    // Promote the pung → kong in the declarer's meld so the robbed tile stays
+    // visually next to the meld in the win screen.
     const kongDeclarer = this.robbingKongSeat;
+    const winTile      = this.robbingKongTile;
+    const pungIdx      = this.robbingKongPungIdx;
+    const kongTiles    = this.robbingKongTiles;
+
+    const kp = this.players[kongDeclarer];
+    kp.hand = kp.hand.filter(t => t.id !== winTile.id);
+    if (pungIdx >= 0) kp.melds[pungIdx] = { type: 'kong', tiles: kongTiles, claimed: true };
+
     this.robbingKongSeat = null;
     this.robbingKongTile = null;
     this.robbingKongTiles = null;
     this.robbingKongPungIdx = null;
     this.claimOptions = null;
     this.pendingClaims = [];
-    this.resolveWin(robberSeat, kongDeclarer, result);
+    this.resolveWin(robberSeat, kongDeclarer, result, winTile);
   }
 
   doDiscard(seat, tile) {
+    this._cancelScheduledActions();
     const p = this.players[seat];
     const idx = p.hand.findIndex(t => t.id === tile.id);
     if (idx === -1) return;
@@ -753,8 +804,12 @@ class Game {
     }
     // Collect AI claims — in auto mode, seat 0 (human) also acts as CPU
     let claims = [];
-    if (window.REPLAY_MODE && window._moveQueue) {
-      // New-style replay: peek at the move queue for a CPU claim on this discard
+    const hasReplayQueue = window.REPLAY_MODE && Array.isArray(window._moveQueue);
+    const hasQueuedReplayMove = hasReplayQueue && window._moveQueue.length > 0;
+    if (hasQueuedReplayMove) {
+      // Replay is authoritative while scripted claim moves remain.
+      // Once the queue runs out, fall back to natural AI claim logic so the hand
+      // continues faithfully from the last scripted discard.
       const m = window._moveQueue[0];
       if (m && ['P', 'C', 'KO', 'W'].includes(m.a) && m.s !== 0) {
         window._moveQueue.shift();
@@ -815,15 +870,21 @@ class Game {
     this.claimOptions = humanOptions;
     this.pendingClaims = claims;
 
-    const replayQueued = window.REPLAY_MODE && window._moveQueue !== null;
+    const replayQueued = hasQueuedReplayMove;
+    const freezeAtQueueEnd = window.REPLAY_MODE && window._replayStopAtQueueEnd && !hasQueuedReplayMove;
+
+    // True when human has at least one actionable option (game must pause for them to choose).
+    // _hijackedBy means a closer AI winner takes the tile — human has no effective claim.
+    const humanHasClaim = !humanOptions._hijackedBy &&
+      !!(humanOptions.win || humanOptions.pung || humanOptions.kong || humanOptions.chow);
 
     if (fromSeat !== 0) {
       // A CPU discarded — show the board state
       this.onUpdate('claim-prompt');
-      if (window.AUTO_MODE || !replayQueued) {
-        // Auto-advance: AUTO mode, or REPLAY with no queue (old save / null queue)
-        // Manual non-replay: human must click Pass (humanPass handles it)
-        if (window.AUTO_MODE || window.REPLAY_MODE) {
+      if (!freezeAtQueueEnd && (window.AUTO_MODE || !replayQueued)) {
+        // Auto-advance: AUTO mode, or REPLAY with no queue, OR human has nothing to claim.
+        // When human has valid claims: wait for humanClaim / humanPass click.
+        if (window.AUTO_MODE || window.REPLAY_MODE || !humanHasClaim) {
           this._scheduleOrStep(() => {
             this.claimOptions = null;
             this.resolveAIClaims(fromSeat, tile, claims);
@@ -834,7 +895,7 @@ class Game {
     } else {
       // Seat 0 (human or CPU-You) just discarded
       this.onUpdate('claim-prompt');
-      if (!replayQueued) {
+      if (!freezeAtQueueEnd && !replayQueued) {
         if (claims.length === 0) {
           const next = (fromSeat + 1) % 4;
           this._scheduleOrStep(() => this.startTurn(next));
@@ -942,9 +1003,18 @@ class Game {
         const robber = validRobbers[0];
         this.addLog(`${playerTag(this.players[robber.seat])} robs the Kong! 搶槓胡`);
         const kongDeclarer = this.robbingKongSeat;
+        const winTile2     = this.robbingKongTile;
+        const pungIdx2     = this.robbingKongPungIdx;
+        const kongTiles2   = this.robbingKongTiles;
+        const kp2 = this.players[kongDeclarer];
+        kp2.hand = kp2.hand.filter(t => t.id !== winTile2.id);
+        if (pungIdx2 >= 0) kp2.melds[pungIdx2] = { type: 'kong', tiles: kongTiles2, claimed: true };
         this.robbingKongSeat = null;
+        this.robbingKongTile = null;
+        this.robbingKongTiles = null;
+        this.robbingKongPungIdx = null;
         this.pendingClaims = [];
-        this.resolveWin(robber.seat, kongDeclarer, robber.result);
+        this.resolveWin(robber.seat, kongDeclarer, robber.result, winTile2);
       } else {
         // Nobody robs — complete the kong
         const seat = this.robbingKongSeat;
@@ -958,9 +1028,14 @@ class Game {
         this._completeKong(seat, tiles, idx);
       }
     } else if (this.discard === null && this.phase === PHASE.CLAIM) {
-      // Was a self-draw win prompt — player declined, just discard normally
+      // Declined a win prompt on a tile already in hand:
+      // either a self-draw, or a post-claim "win now" offer after chow/pung.
+      // Resume the current discard turn without drawing a new tile.
       this.phase = PHASE.DISCARD;
-      this.onUpdate('your-turn');
+      if (this._replayResumeNotice) {
+        this.addLog('▶ Replay ended — click a tile to discard to continue the hand.');
+      }
+      this._actForSeat(this.currentSeat, 'your-turn');
     } else if (this.discard === null) {
       // Stale double-click — no-op, don't record
     } else if (this.discardSeat === 0) {
@@ -987,6 +1062,16 @@ class Game {
       }
       return;
     }
+    if (window.REPLAY_MODE && this.phase === PHASE.CLAIM) {
+      const queue = window._moveQueue;
+      const replayCode = { pung: 'P', chow: 'C', kong: 'KO', win: 'W' }[action];
+      if (queue?.length && replayCode) {
+        const next = queue[0];
+        if (next?.s === 0 && next.a === replayCode) {
+          queue.shift();
+        }
+      }
+    }
     if (action === 'win') {
       // Check if this is a rob-the-kong win
       if (this.claimOptions.robbingKong) {
@@ -998,16 +1083,28 @@ class Game {
         ctx.robbedKong = true;
         const result = canWin(handWith, hp.melds, ctx);
         this.addLog(`${playerTag(this.players[0])} robs the Kong! 搶槓胡`);
+        const kp0      = this.players[kongDeclarer];
+        const pungIdx0 = this.robbingKongPungIdx;
+        const kongTiles0 = this.robbingKongTiles;
+        kp0.hand = kp0.hand.filter(t => t.id !== tile.id);
+        if (pungIdx0 >= 0) kp0.melds[pungIdx0] = { type: 'kong', tiles: kongTiles0, claimed: true };
         this.robbingKongSeat = null;
         this.robbingKongTile = null;
         this.robbingKongTiles = null;
         this.robbingKongPungIdx = null;
         this.claimOptions = null;
         this.pendingClaims = [];
-        this.resolveWin(0, kongDeclarer, result);
+        this.resolveWin(0, kongDeclarer, result, tile);
       } else {
-        const selfDraw = this.discard === null;
-        if (selfDraw) {
+        const postClaimWin = !!this.claimOptions.postClaimWin;
+        const selfDraw = this.discard === null && !postClaimWin;
+        if (postClaimWin) {
+          const tile = this.lastClaimedTile;
+          const fromSeat = this.lastClaimedFromSeat;
+          const ctx = this.makeCtx(0, false);
+          const result = canWin(this.players[0].hand, this.players[0].melds, ctx);
+          this.resolveWin(0, fromSeat, result, tile);
+        } else if (selfDraw) {
           const ctx = this.makeCtx(0, true);
           if (this._isFirstDealerDraw && this.dealerSeat === 0 && this.handActionCount === 0) ctx.heavenlyHand = true;
           const result = canWin(this.players[0].hand, this.players[0].melds, ctx);
@@ -1028,6 +1125,7 @@ class Game {
   }
 
   doClaim(seat, tile, action, chowTiles) {
+    this._cancelScheduledActions();
     const p = this.players[seat];
     // Remove discard from discard pile
     const dIdx = this.discardPile.findIndex(t => t.id === tile.id);
@@ -1089,11 +1187,26 @@ class Game {
     this.handActionCount++;
     this._checkHandCount(seat, 14 - 3 * p.melds.length, 'after-claim');
 
-    if (p.isHuman) this._revealConcealedKongs(p);
+    if (p.isHuman) {
+      this._revealConcealedKongs(p);
+      if (action === 'pung' || action === 'chow') {
+        const ctx = this.makeCtx(0, false);
+        const result = canWin(p.hand, p.melds, ctx);
+        const minFClaim = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
+        if (result.win && result.faan >= minFClaim) {
+          this.claimOptions = { win: result, pung: false, kong: false, chow: false, postClaimWin: true };
+          this.phase = PHASE.CLAIM;
+          this.pendingClaims = [];
+          this.onUpdate('claim-prompt');
+          return;
+        }
+      }
+    }
     this._actForSeat(seat);
   }
 
   resolveWin(winnerSeat, loserSeat, result, winTile = null) {
+    this._cancelScheduledActions();
     this.phase = PHASE.END;
     const p = this.players[winnerSeat];
     const selfDraw = loserSeat === null;
@@ -1140,6 +1253,7 @@ class Game {
 
   humanDeclareConcealedKong() {
     if (!this._concealedKongTiles) return;
+    this._cancelScheduledActions();
     const p = this.players[0];
     const tiles = this._concealedKongTiles;
     const t = tiles[0];
@@ -1191,6 +1305,7 @@ class Game {
 
   humanDiscard(tileId) {
     if (this.phase !== PHASE.DISCARD || this.currentSeat !== 0) return;
+    this._replayResumeNotice = false;
     const tile = this.players[0].hand.find(t => t.id === tileId);
     if (!tile) return;
     this.doDiscard(0, tile);
@@ -1250,12 +1365,77 @@ class Game {
     this.log.unshift(msg);
   }
 
-  // Record a move for deterministic replay. Only captures during live manual play.
+  // Record a move for deterministic replay. Auto-played hands fall back to
+  // Game.movesFromLog() when a replay snapshot is built.
   _logMove(m) {
     if (!window.REPLAY_MODE && !window.AUTO_MODE) this._captureMoves.push(m);
   }
 
+  _cloneReplayMoves(moves) {
+    return (moves || []).map(m => ({
+      ...m,
+      t: Array.isArray(m.t) ? [...m.t] : m.t,
+      h: Array.isArray(m.h) ? m.h.map(pair => [...pair]) : m.h,
+    }));
+  }
+
+  getReplayMoves() {
+    if (this._captureMoves?.length) return this._cloneReplayMoves(this._captureMoves);
+    const logChrono = [...this.log].reverse();
+    const derived = Game.movesFromLog(logChrono);
+    return this._cloneReplayMoves(derived || []);
+  }
+
+  buildReplayData({ includeFinalHands = false, moves = null } = {}) {
+    const r = this.lastResult;
+    const replayMoves = Array.isArray(moves) ? this._cloneReplayMoves(moves) : this.getReplayMoves();
+    const data = {
+      format:     'mahjong-replay',
+      savedAt:    new Date().toISOString(),
+      winner:     r ? (r.winner >= 0 ? (this.players[r.winner]?.name ?? 'Unknown') : 'Draw') : null,
+      faan:       r?.faan ?? 0,
+      label:      r?.label ?? '',
+      selfDraw:   r?.selfDraw ?? false,
+      dealerSeat: this.dealerSeat,
+      roundWind:  this.roundWind,
+      logLabel:   this._logLabel ?? 'New Hand',
+      players:    this.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
+      wall:       this._captureWall,
+      dice:       this._captureDice,
+      movesSource:'moves',
+      moves:      replayMoves,
+      log:        [...this.log].reverse(),
+      cpuLevels:  window.CPU_LEVELS_BY_NAME ? { ...window.CPU_LEVELS_BY_NAME } : null,
+      cpuSchemes: (() => {
+        if (!window.CPU_SCHEMES_BY_NAME) return null;
+        const out = {};
+        for (const [name, s] of Object.entries(window.CPU_SCHEMES_BY_NAME)) {
+          out[name] = s ? s.id : null;
+        }
+        return out;
+      })(),
+    };
+
+    if (includeFinalHands) {
+      const td = t => ({ suit: t.suit, value: t.value });
+      Object.assign(data, Object.fromEntries(this.players.map(p => [
+        `Seat ${p.seat} final hand`,
+        [
+          ...p.hand.map(td),
+          ...(p.melds || []).flatMap(m => (m.tiles || []).map(td)),
+          ...(p.bonus || []).map(td),
+        ],
+      ])));
+    }
+
+    return data;
+  }
+
   dumpState() {
+    const replayable = (this._captureWall && this._captureDice)
+      ? this.buildReplayData({ includeFinalHands: true })
+      : null;
+    const tileData = t => t ? ({ suit: t.suit, value: t.value }) : null;
     const tileDesc = t => t ? `${t.suit}/${t.value}` : null;
     const meldDesc = m => ({
       type: m.type,
@@ -1263,9 +1443,7 @@ class Game {
       concealed: m.concealed ?? false,
       claimed: m.claimed ?? false,
     });
-    return {
-      format: 'mahjong-debug',
-      savedAt: new Date().toISOString(),
+    const debugSnapshot = {
       version: document.getElementById('game-version-tag')?.textContent ?? '?',
       phase: this.phase,
       currentSeat: this.currentSeat,
@@ -1288,39 +1466,46 @@ class Game {
       discardPile: this.discardPile.map(tileDesc),
       lastResult: this.lastResult ?? null,
       log: [...this.log].reverse(),
+      lastValidationError: this.lastValidationError ?? null,
+    };
+    if (!replayable) {
+      return {
+        format: 'mahjong-debug',
+        savedAt: new Date().toISOString(),
+        ...debugSnapshot,
+      };
+    }
+    return {
+      ...replayable,
+      format: 'mahjong-debug-replay',
+      version: debugSnapshot.version,
+      phase: this.phase,
+      currentSeat: this.currentSeat,
+      wallRemaining: this.wallRemaining(),
+      discard: tileData(this.discard),
+      discardSeat: this.discardSeat,
+      discardPile: this.discardPile.map(tileData),
+      livePlayers: this.players.map(p => ({
+        seat: this.players.indexOf(p),
+        name: p.name,
+        isHuman: p.isHuman,
+        score: p.score,
+        handCount: p.hand.length,
+        meldCount: p.melds.length,
+        hand: p.hand.map(tileDesc),
+        melds: p.melds.map(meldDesc),
+        bonus: p.bonus.map(tileDesc),
+      })),
+      lastValidationError: this.lastValidationError ?? null,
+      debugSnapshot,
     };
   }
 
   _saveReplay() {
     if (window.REPLAY_MODE) return; // don't overwrite replay data during playback
     if (!this._captureWall || !this._captureDice) return;
-    const r = this.lastResult;
     try {
-      localStorage.setItem('mahjongReplay', JSON.stringify({
-        format:     'mahjong-replay',
-        savedAt:    new Date().toISOString(),
-        winner:     r ? (r.winner >= 0 ? (this.players[r.winner]?.name ?? 'Unknown') : 'Draw') : null,
-        faan:       r?.faan ?? 0,
-        label:      r?.label ?? '',
-        selfDraw:   r?.selfDraw ?? false,
-        dealerSeat: this.dealerSeat,
-        roundWind:  this.roundWind,
-        logLabel:   this._logLabel ?? 'New Hand',
-        players:    this.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
-        wall:       this._captureWall,
-        dice:       this._captureDice,
-        moves:      this._captureMoves,
-        log:        [...this.log].reverse(),
-        cpuLevels:  window.CPU_LEVELS_BY_NAME ? { ...window.CPU_LEVELS_BY_NAME } : null,
-        cpuSchemes: (() => {
-          if (!window.CPU_SCHEMES_BY_NAME) return null;
-          const out = {};
-          for (const [name, s] of Object.entries(window.CPU_SCHEMES_BY_NAME)) {
-            out[name] = s ? s.id : null;
-          }
-          return out;
-        })(),
-      }));
+      localStorage.setItem('mahjongReplay', JSON.stringify(this.buildReplayData()));
     } catch(e) {}
   }
 
@@ -1502,7 +1687,21 @@ class Game {
     if (this.phase === PHASE.CLAIM) {
       if (queue.length) {
         const m = queue[0];
+        // Self-draw win prompt: seat 0 has a win but the next queued action is a
+        // discard (not W) — the scenario intends seat 0 to pass and discard the tile.
+        // humanPass() dismisses the prompt and restores DISCARD phase.
+        if (m.s === 0 && m.a === 'D' && this.claimOptions?.win && this.discard === null) {
+          this._replayResumeNotice = true;
+          this.humanPass();
+          return;
+        }
         if (m.s === 0 && ['P', 'C', 'KO', 'W'].includes(m.a)) {
+          // For 'W': only consume when seat 0 genuinely has a win option in this context.
+          // Prevents a queued rob-kong W from being eaten by an earlier no-win CLAIM phase
+          // (e.g. seat 0 discards a safe tile, nobody can claim it, but W is still queued).
+          if (m.a === 'W' && !this.claimOptions?.win) {
+            // No valid win here — skip to default handling so the game can advance.
+          } else {
           queue.shift();
           if (m.a === 'W') {
             this.humanClaim('win', null);
@@ -1520,7 +1719,17 @@ class Game {
             this.humanClaim('chow', handTiles.length === 2 ? handTiles : null);
           }
           return;
+          } // else: claimOptions.win was falsy — fall through to default handling
         }
+      }
+      // Replay can also arrive at a no-discard win prompt with an empty queue
+      // (for example, the final claim in mj-deck.json). In that case Pass should
+      // dismiss the prompt and return to the current discard turn, not advance
+      // to the next draw.
+      if (this.claimOptions?.win && this.discard === null && this.currentSeat === 0) {
+        this._replayResumeNotice = true;
+        this.humanPass();
+        return;
       }
       // No human claim queued — resolve any pending CPU claims then advance
       // Rob-kong CLAIM: discard is null so resolveAIClaims can't compute handWith.
@@ -1645,6 +1854,7 @@ class Game {
   }
 
   nextDeal() {
+    this._cancelScheduledActions();
     // Block if game over
     if (this.lastResult && this.lastResult.gameOver) return;
     // Clear prev score snapshot so score.html shows fresh deltas next hand
@@ -1693,6 +1903,7 @@ class Game {
   }
 
   redeal() {
+    this._cancelScheduledActions();
     try { localStorage.removeItem('mahjongPrevScores'); } catch(e) {}
     const savedPlayers = this.players.map(p => ({ score: p.score, name: p.name, isHuman: p.isHuman }));
     this.wall = buildWall();

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // ui.js  — DOM rendering and input handling
 // ============================================================
 
@@ -1548,6 +1548,16 @@ function renderMessage() {
       el.textContent = 'Wall exhausted — draw!';
     }
     return;
+  }
+  if (_game.phase === PHASE.CLAIM && _game.discardSeat != null && _game.discardSeat !== 0) {
+    const opts = _game.claimOptions;
+    const anyOption = opts && (opts.win || opts.pung || opts.kong || opts.chow);
+    if (anyOption) {
+      const who = _game.players[_game.discardSeat]?.name ?? `Seat ${_game.discardSeat}`;
+      const tDesc = _game.discard ? tileMain(_game.discard) : '';
+      el.textContent = `${who} discarded ${tDesc} — choose an action`;
+      return;
+    }
   }
   if (_game.phase === PHASE.DISCARD && _game.currentSeat === 0) {
     if (_alwaysHint) {
