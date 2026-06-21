@@ -870,8 +870,16 @@ class Game {
     this.claimOptions = humanOptions;
     this.pendingClaims = claims;
 
-    const replayQueued = hasQueuedReplayMove;
-    const freezeAtQueueEnd = window.REPLAY_MODE && window._replayStopAtQueueEnd && !hasQueuedReplayMove;
+    // Queue exhausted after the last scripted discard: exit replay so claims evaluate
+    // with natural AI/human logic. AI seats decide autonomously; human gets claim buttons.
+    // After all claims resolve, the next draw goes to (discardSeat+1)%4 as normal.
+    if (hasReplayQueue && !hasQueuedReplayMove) {
+      window.REPLAY_MODE = false;
+      window._moveQueue = null;
+    }
+
+    const replayQueued = window.REPLAY_MODE && Array.isArray(window._moveQueue) && window._moveQueue.length > 0;
+    const freezeAtQueueEnd = window.REPLAY_MODE && window._replayStopAtQueueEnd && !replayQueued;
 
     // True when human has at least one actionable option (game must pause for them to choose).
     // _hijackedBy means a closer AI winner takes the tile — human has no effective claim.
