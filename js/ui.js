@@ -2537,7 +2537,7 @@ async function _runSlowDeal() {
 
 // ── Single Step Deal ─────────────────────────────────────────────────────
 // Like _runSlowDeal but pauses at each phase (btn-pass = "Step ▶") and flies
-// tiles face-up, landing face-up in each seat's hand.  The game engine has
+// tiles face-down, landing face-down in each seat's hand.  The game engine has
 // already dealt everything; this is purely a visual replay.
 async function _runSingleStepDeal() {
   if (!_ringOuter) _buildRingTiles();
@@ -2726,7 +2726,7 @@ async function _runSingleStepDeal() {
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
 
-  // ── 5. Open-face fly: tiles show face while flying AND land face-up ─────
+  // ── 5. Fly tiles face-down, land face-down (same as slow deal) ──────────
   const SSD_MS = 280;
   function ssdFly(indices, seat) {
     return new Promise(resolve => {
@@ -2737,7 +2737,7 @@ async function _runSingleStepDeal() {
         const wallTile = _game.wall[gi];
         let c;
         if (wallTile) {
-          c = makeTileEl(wallTile, { skipCache: true });
+          c = makeTileEl(wallTile, { skipCache: true, back: true });
           c.style.position = 'absolute';
           c.style.left = (r.left + r.width  / 2 - 23) + 'px'; // center 46px tile over ring slot
           c.style.top  = (r.top  + r.height / 2 - 33) + 'px'; // center 66px tile over ring slot
@@ -2767,10 +2767,7 @@ async function _runSingleStepDeal() {
           entries.forEach(({ gi }) => {
             const ghost = handEl.querySelector('.tile-ghost,.tile-ghost-rot');
             if (ghost) ghost.remove();
-            const wt = _game.wall[gi];
-            handEl.appendChild(wt
-              ? makeTileEl(wt, { skipCache: true, seatRotation: seat })
-              : _sdPlaceholder(seat));
+            handEl.appendChild(_sdPlaceholder(seat));
           });
         }
         resolve();
