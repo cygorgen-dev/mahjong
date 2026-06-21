@@ -881,18 +881,13 @@ class Game {
     const replayQueued = window.REPLAY_MODE && Array.isArray(window._moveQueue) && window._moveQueue.length > 0;
     const freezeAtQueueEnd = window.REPLAY_MODE && window._replayStopAtQueueEnd && !replayQueued;
 
-    // True when human has at least one actionable option (game must pause for them to choose).
-    // _hijackedBy means a closer AI winner takes the tile — human has no effective claim.
-    const humanHasClaim = !humanOptions._hijackedBy &&
-      !!(humanOptions.win || humanOptions.pung || humanOptions.kong || humanOptions.chow);
-
     if (fromSeat !== 0) {
       // A CPU discarded — show the board state
       this.onUpdate('claim-prompt');
       if (!freezeAtQueueEnd && (window.AUTO_MODE || !replayQueued)) {
-        // Auto-advance: AUTO mode, or REPLAY with no queue, OR human has nothing to claim.
-        // When human has valid claims: wait for humanClaim / humanPass click.
-        if (window.AUTO_MODE || window.REPLAY_MODE || !humanHasClaim) {
+        // AUTO / REPLAY: advance automatically.
+        // Normal play: human always clicks Pass (even with no claim) — one click per CPU discard.
+        if (window.AUTO_MODE || window.REPLAY_MODE) {
           this._scheduleOrStep(() => {
             this.claimOptions = null;
             this.resolveAIClaims(fromSeat, tile, claims);
