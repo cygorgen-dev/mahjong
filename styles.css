@@ -1,4 +1,4 @@
-/* Cantonese Mahjong - styles */
+﻿/* Cantonese Mahjong - styles */
 * { box-sizing: border-box; }
 html { overflow: hidden; }
 body {
@@ -291,10 +291,8 @@ main#table {
 .seat-left  .hand .bonus-tiles,
 .seat-right .hand .bonus-tiles { width: 66px; }
 
-/* Overflow melds/bonus in top/bottom hand rows: remove padding and margin so tiles
-   align flush with the regular hand tiles in the same row. */
-.seat-bottom .hand .meld,
-.seat-top    .hand .meld { padding: 0; }
+/* Overflow bonus tiles in top/bottom hand rows: no margin/padding/border so they
+   sit flush with regular hand tiles. */
 .seat-bottom .hand .bonus-tiles,
 .seat-top    .hand .bonus-tiles { margin-top: 0; flex-wrap: nowrap; padding: 0; border: none; background: none; }
 
@@ -460,7 +458,7 @@ main#table { position: relative; }
 /* tile-rot-wrap for rotated CPU tiles */
 .tile-rot-wrap { display:inline-block; flex-shrink:0; }
 
-.meld { display:flex; gap:3px; padding:2px; background:rgba(0,0,0,0.2); border-radius:4px; }
+.meld { display:flex; gap:3px; }
 
 /* Invisible ghost slots — hold fixed space in CPU seat columns */
 .tile-ghost-rot { width:66px; height:46px; flex-shrink:0; visibility:hidden; }
