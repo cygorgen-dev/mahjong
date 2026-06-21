@@ -182,12 +182,13 @@ main#table {
 .seat-right .melds { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 3px; order: 1;
   align-items: flex-start; justify-content: flex-start; flex-shrink: 0; width: 70px; }
 
-/* Each meld for side players: stack tiles vertically */
+/* Each meld for side players: stack tiles vertically.
+   gap must match the parent .melds column gap (3px) so N meld tiles = N ghost-rot tiles in height. */
 .seat-left  .meld,
 .seat-right .meld {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   width: 70px;
   align-items: center;
 }
