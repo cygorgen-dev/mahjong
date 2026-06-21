@@ -2308,15 +2308,33 @@ async function _runSlowDeal() {
   // ring looks correct before dealing starts. renderWallRing() would use
   // the real post-deal wallIdx and show a broken wall — wrong here.
   _resetRingFull();
-  // Ghost tiles keep every seat's hand at full size so the layout (especially
-  // seat 0 at the bottom) stays within the viewport before any tiles arrive.
+  // Pre-establish labels + ghost tiles matching the game layout so renderAll()
+  // lands on an identical DOM structure — zero layout shift when the animation ends.
   [0, 1, 2, 3].forEach(s => {
-    const h = document.querySelector(`.seat[data-seat="${s}"] .hand`);
+    const sEl = document.querySelector(`.seat[data-seat="${s}"]`);
+    const h = sEl?.querySelector('.hand');
     if (!h) return;
-    const cls = (s === 1 || s === 3) ? 'tile-ghost-rot' : 'tile-ghost';
-    for (let i = 0; i < 14; i++) {
-      const g = document.createElement('div'); g.className = cls; h.appendChild(g);
+    const isSide = (s === 1 || s === 3);
+    const p = _game?.players[s];
+    let lbl;
+    if (isSide) {
+      lbl = document.createElement('div');
+      const dir = sEl.classList.contains('seat-left') ? ' left' : ' right';
+      lbl.className = `side-hand-label seat-s${s}${dir}`;
+      const lt = document.createElement('div'); lt.className = 'side-hand-label-text';
+      lt.textContent = p?.name ?? '';
+      lbl.appendChild(lt);
+    } else {
+      lbl = document.createElement('div');
+      lbl.className = `h-hand-fake-tile h-label-tile seat-s${s}`;
+      lbl.textContent = p?.name ?? '';
     }
+    h.appendChild(lbl);
+    const ghostCls = isSide ? 'tile-ghost-rot' : 'tile-ghost';
+    for (let i = 0; i < 14; i++) {
+      const g = document.createElement('div'); g.className = ghostCls; h.appendChild(g);
+    }
+    if (isSide) h.style.marginTop = '';   // dealer sets -147px after dice fly
   });
 
   // ── 2. Shuffle message ───────────────────────────────────────────────
@@ -2401,32 +2419,13 @@ async function _runSlowDeal() {
     });
     diceFlyEl.remove();
 
-    // Inject label + wind + dice fake tiles in the same order as renderSeats()
-    // so renderAll() rebuild lands them in the same positions without shift.
+    // Label already pre-loaded at pos 0; inject wind + dice (3 ghost slots consumed).
     const _dHandEl = document.querySelector(`.seat[data-seat="${_ds}"] .hand`);
     if (_dHandEl) {
       const isSide = (_ds === 1 || _ds === 3);
       const _d = _game.dice || [1,1,1];
-      const _p = _game.players[_ds];
 
-      // 1. Label
-      let lblEl;
-      if (isSide) {
-        lblEl = document.createElement('div');
-        const sideDir = document.querySelector(`.seat[data-seat="${_ds}"]`)
-                          ?.classList.contains('seat-left') ? ' left' : ' right';
-        lblEl.className = `side-hand-label seat-s${_ds}${sideDir}`;
-        const lt = document.createElement('div');
-        lt.className = 'side-hand-label-text';
-        lt.textContent = _p.name;
-        lblEl.appendChild(lt);
-      } else {
-        lblEl = document.createElement('div');
-        lblEl.className = `h-hand-fake-tile h-label-tile seat-s${_ds}`;
-        lblEl.textContent = _p.name;
-      }
-
-      // 2. Wind
+      // 1. Wind
       const wndEl = document.createElement('div');
       wndEl.className = isSide ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
       const _zhW = { East:'東', South:'南', West:'西', North:'北' };
@@ -2437,7 +2436,7 @@ async function _runSlowDeal() {
       wb.innerHTML = `<span class="wind-inner">${_wt}</span>`;
       wndEl.appendChild(wb);
 
-      // 3+4. Dice
+      // 2+3. Dice
       const fakeCls = isSide ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
       const dblk1 = document.createElement('div'); dblk1.className = fakeCls;
       const _dc1  = document.createElement('div'); _dc1.className = 'dice-display';
@@ -2448,15 +2447,15 @@ async function _runSlowDeal() {
       _dc2.innerHTML = makeDieSVG(_d[2]);
       dblk2.appendChild(_dc2);
 
-      for (let i = 0; i < 4; i++) {
+      // Label pre-loaded at pos 0; replace 3 ghost slots with wind + dice
+      for (let i = 0; i < 3; i++) {
         const g = _dHandEl.querySelector('.tile-ghost,.tile-ghost-rot');
         if (g) g.remove();
       }
-      _dHandEl.prepend(lblEl);                                       // pos 0
       _dHandEl.insertBefore(wndEl,  _dHandEl.children[1] || null);  // pos 1
       _dHandEl.insertBefore(dblk1, _dHandEl.children[2] || null);   // pos 2
       _dHandEl.insertBefore(dblk2, _dHandEl.children[3] || null);   // pos 3
-      if (isSide) _dHandEl.style.marginTop = '-138px';
+      if (isSide) _dHandEl.style.marginTop = '-147px';
     }
   }
 
@@ -2572,11 +2571,31 @@ async function _runSingleStepDeal() {
   const msgEl2 = document.getElementById('message');     if (msgEl2) msgEl2.textContent = '';
   document.querySelectorAll('#action-bar button').forEach(b => b.disabled = true);
   _resetRingFull(); // full wall, correct images, no 'used' state
+  // Pre-establish labels + ghost tiles matching the game layout so renderAll()
+  // lands on an identical DOM structure — zero layout shift when the animation ends.
   [0, 1, 2, 3].forEach(s => {
-    const h = document.querySelector(`.seat[data-seat="${s}"] .hand`);
+    const sEl = document.querySelector(`.seat[data-seat="${s}"]`);
+    const h = sEl?.querySelector('.hand');
     if (!h) return;
-    const cls = (s === 1 || s === 3) ? 'tile-ghost-rot' : 'tile-ghost';
-    for (let i = 0; i < 14; i++) { const g = document.createElement('div'); g.className = cls; h.appendChild(g); }
+    const isSide = (s === 1 || s === 3);
+    const p = _game?.players[s];
+    let lbl;
+    if (isSide) {
+      lbl = document.createElement('div');
+      const dir = sEl.classList.contains('seat-left') ? ' left' : ' right';
+      lbl.className = `side-hand-label seat-s${s}${dir}`;
+      const lt = document.createElement('div'); lt.className = 'side-hand-label-text';
+      lt.textContent = p?.name ?? '';
+      lbl.appendChild(lt);
+    } else {
+      lbl = document.createElement('div');
+      lbl.className = `h-hand-fake-tile h-label-tile seat-s${s}`;
+      lbl.textContent = p?.name ?? '';
+    }
+    h.appendChild(lbl);
+    const ghostCls = isSide ? 'tile-ghost-rot' : 'tile-ghost';
+    for (let i = 0; i < 14; i++) { const g = document.createElement('div'); g.className = ghostCls; h.appendChild(g); }
+    if (isSide) h.style.marginTop = '';   // dealer sets -147px after dice fly
   });
 
   // ── 2. Step: Shuffle → Roll Dice ──────────────────────────────────────
@@ -2656,23 +2675,11 @@ async function _runSingleStepDeal() {
     });
     dcFly.remove();
 
-    // Inject label+wind+dice into dealer's hand
+    // Label already pre-loaded at pos 0; inject wind + dice (3 ghost slots consumed).
     const _dHand2 = document.querySelector(`.seat[data-seat="${_ds2}"] .hand`);
     if (_dHand2) {
       const isSide2 = (_ds2 === 1 || _ds2 === 3);
-      const _d2 = _game.dice || [1,1,1]; const _p2 = _game.players[_ds2];
-      let lbl2El;
-      if (isSide2) {
-        lbl2El = document.createElement('div');
-        const sd2 = document.querySelector(`.seat[data-seat="${_ds2}"]`)?.classList.contains('seat-left') ? ' left' : ' right';
-        lbl2El.className = `side-hand-label seat-s${_ds2}${sd2}`;
-        const lt2 = document.createElement('div'); lt2.className = 'side-hand-label-text'; lt2.textContent = _p2.name;
-        lbl2El.appendChild(lt2);
-      } else {
-        lbl2El = document.createElement('div');
-        lbl2El.className = `h-hand-fake-tile h-label-tile seat-s${_ds2}`;
-        lbl2El.textContent = _p2.name;
-      }
+      const _d2 = _game.dice || [1,1,1];
       const wnd2El = document.createElement('div');
       wnd2El.className = isSide2 ? 'side-hand-fake-tile' : 'h-hand-fake-tile';
       const zhW2 = { East:'東',South:'南',West:'西',North:'北' }, enW2 = { East:'E',South:'S',West:'W',North:'N' };
@@ -2686,12 +2693,12 @@ async function _runSingleStepDeal() {
       const db2 = document.createElement('div'); db2.className = fCls2;
       const dc2b = document.createElement('div'); dc2b.className = 'dice-display';
       dc2b.innerHTML = makeDieSVG(_d2[2]); db2.appendChild(dc2b);
-      for (let i = 0; i < 4; i++) { const g = _dHand2.querySelector('.tile-ghost,.tile-ghost-rot'); if (g) g.remove(); }
-      _dHand2.prepend(lbl2El);
+      // Label pre-loaded at pos 0; replace 3 ghost slots with wind + dice
+      for (let i = 0; i < 3; i++) { const g = _dHand2.querySelector('.tile-ghost,.tile-ghost-rot'); if (g) g.remove(); }
       _dHand2.insertBefore(wnd2El, _dHand2.children[1] || null);
       _dHand2.insertBefore(db1,    _dHand2.children[2] || null);
       _dHand2.insertBefore(db2,    _dHand2.children[3] || null);
-      if (isSide2) _dHand2.style.marginTop = '-138px';
+      if (isSide2) _dHand2.style.marginTop = '-147px';
     }
   }
 
