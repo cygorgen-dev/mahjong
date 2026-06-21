@@ -87,7 +87,7 @@ main#table {
   display: flex; flex-wrap: nowrap; gap: 3px;
   justify-content: flex-start; align-items: center;
   width: 880px; min-width: 880px;
-  min-height: var(--th);
+  min-height: 75px; /* 66px tile + 3px margin-top + 4px padding + 2px border = 75px max (bonus-tiles div) */
   flex-shrink: 0;
 }
 .seat-top .claim-row { display: none !important; }
@@ -108,7 +108,7 @@ main#table {
   display: flex; flex-wrap: nowrap; gap: 3px;
   justify-content: flex-start; align-items: center;
   width: 880px; min-width: 880px;
-  min-height: var(--th);
+  min-height: 75px; /* 66px tile + 3px margin-top + 4px padding + 2px border = 75px max (bonus-tiles div) */
   flex-shrink: 0;
 }
 .seat-bottom .hand {

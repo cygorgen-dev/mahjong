@@ -1175,7 +1175,8 @@ function renderSeats() {
         dc2.innerHTML = makeDieSVG(dice[2]);
         diceBlock2.appendChild(dc2);
         handEl.insertBefore(diceBlock2, handEl.children[3] || null);
-        handEl.style.marginTop = '-138px';
+        // -(3 tiles × 46px + 3 gaps × 3px) so dealer column height matches non-dealer
+        handEl.style.marginTop = '-147px';
       } else {
         handEl.style.marginTop = '';
       }
