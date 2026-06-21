@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ui.js  — DOM rendering and input handling
 // ============================================================
 
@@ -650,7 +650,7 @@ function initUI(game) {
       ts: now,
       scenario: true,
       _presetName: (() => { const d = new Date(now); return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; })(),
-      phase: _game.phase === 'discard' ? 'discard' : 'claim',
+      phase: _game.phase !== 'claim' ? 'discard' : (_game.discard ? 'claim' : 'self-drawn'),
       dealerSeat: _game.dealerSeat,
       roundWind: _game.roundWind,
       discardFrom,
