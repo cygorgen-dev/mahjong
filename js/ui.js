@@ -1664,8 +1664,16 @@ function buildCircleSVG(n) {
 }
 
 // ---- Image support -----------------------------------------
+let _tileDir = 'img/tiles';
 function tileImagePath(t) {
-  return `img/tiles/${t.suit}_${t.value}.png`;
+  return `${_tileDir}/${t.suit}_${t.value}.png`;
+}
+function setTileDir(dir) {
+  _tileDir = dir;
+  document.querySelectorAll('.tile-img img').forEach(img => {
+    img.src = img.src.replace(/img\/tiles(-n)?\//, dir + '/');
+  });
+  _tileElCache.clear();
 }
 
 const _imgCache = window._imgCache || (window._imgCache = {});

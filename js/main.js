@@ -375,12 +375,16 @@ document.addEventListener('DOMContentLoaded', () => {
   let SHOW_LABELS = (localStorage.getItem('showLabels') ?? 'true') === 'true';
   const labelChk = document.getElementById('show-translation-toggle');
   labelChk.checked = SHOW_LABELS;
-  // Apply immediately on load
-  document.body.classList.toggle('hide-tile-labels', !SHOW_LABELS);
+  function _applyLabelMode(on) {
+    // Stamped tiles carry the number — always hide the CSS text overlay.
+    document.body.classList.add('hide-tile-labels');
+    setTileDir(on ? 'img/tiles-n' : 'img/tiles');
+  }
+  _applyLabelMode(SHOW_LABELS);
   labelChk.addEventListener('change', () => {
     SHOW_LABELS = labelChk.checked;
     localStorage.setItem('showLabels', SHOW_LABELS);
-    document.body.classList.toggle('hide-tile-labels', !SHOW_LABELS);
+    _applyLabelMode(SHOW_LABELS);
   });
 
 
