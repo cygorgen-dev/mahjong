@@ -349,6 +349,18 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
     <div id="export-hand-status" style="font-size:10px;color:#8ad4ff;margin-top:4px;min-height:14px;"></div>
   </div>
 
+  <!-- EXPORT HANDS.TXT -->
+  <div class="rp-section">
+    <div class="rp-title">Export as hands.txt</div>
+    <div style="font-size:10px;color:var(--dim);margin-bottom:6px;line-height:1.5;">
+      Downloads the four hands in compact 3-field format<br>
+      (<code style="color:#8ad4ff;">melds | hand | bonus</code>), one line per seat.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-blue btn-sm" id="export-handstxt-btn">📄 Save hands.txt</button>
+    </div>
+  </div>
+
   <!-- STATUS -->
   <div class="rp-section">
     <div class="rp-title">Status</div>
@@ -389,6 +401,15 @@ function sub(t){
   if(t.suit===SUIT.F)return'F'+(t.value+1);
   if(t.suit===SUIT.S)return'S'+(t.value+1);
   return'';
+}
+function tileCode(t){
+  if(t.suit===SUIT.F||t.suit===SUIT.S)return sub(t);
+  if(t.suit===SUIT.B)return'B'+sub(t);
+  if(t.suit===SUIT.C)return'C'+sub(t);
+  if(t.suit===SUIT.K)return'K'+sub(t);
+  if(t.suit===SUIT.W)return'W'+sub(t);
+  if(t.suit===SUIT.D)return'D'+sub(t);
+  return'?';
 }
 function cls(t){
   if(t.suit===SUIT.B)return'bamboo';
@@ -1177,6 +1198,23 @@ function pollActionLog(injectId, injectTime, timeoutMs=8000){
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── EXPORT / IMPORT ───────────────────────────────────────────
+document.getElementById('export-handstxt-btn').addEventListener('click',()=>{
+  const lines=players.map(p=>{
+    const meld=p.melds.flatMap(m=>m.tiles).map(tileCode);
+    const hand=p.hand.map(tileCode);
+    const bonus=p.bonus.map(tileCode);
+    const mStr=meld.length?' '+meld.join(' ')+' ':' ';
+    const hStr=hand.length?' '+hand.join(' ')+' ':' ';
+    const bStr=bonus.length?' '+bonus.join(' ')+' ':' ';
+    return'[ "'+mStr+'", "'+hStr+'", "'+bStr+'" ]';
+  });
+  const text=lines.join('\n')+'\n';
+  const a=document.createElement('a');
+  a.href='data:text/plain;charset=utf-8,'+encodeURIComponent(text);
+  a.download='hands.txt';
+  a.click();
+  log('Exported hands.txt (4 hands)','ok');
+});
 document.getElementById('run-regression-btn').addEventListener('click', runRegression);
 document.getElementById('export-btn').addEventListener('click',()=>{
   const list=getPresets();
