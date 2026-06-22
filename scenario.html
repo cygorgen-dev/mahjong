@@ -56,11 +56,19 @@ a.link:hover{text-decoration:underline;}
 /* Quick-mode highlight */
 .tile-btn.q-pung:hover{outline:3px solid var(--gold);}.tile-btn.q-kong:hover{outline:3px solid #ff9800;}.tile-btn.q-chow:hover{outline:3px solid #8ad4ff;}
 .tile-btn.q-draw:hover{outline:3px solid #ff9800;}
+/* Palette tile used-up state */
+.tile-btn.tb-full{opacity:.28;cursor:not-allowed;}
+.tile-btn.tb-full:hover{transform:none;outline:none !important;box-shadow:1px 1px 0 #2a1a0a;}
+/* Insert-before cursor */
+.insert-cursor{width:4px;background:var(--gold);height:var(--th);border-radius:2px;flex-shrink:0;position:relative;animation:blink-csr .65s ease-in-out infinite alternate;}
+.insert-cursor::before{content:'▶';position:absolute;top:-13px;left:-3px;font-size:8px;color:var(--gold);}
+@keyframes blink-csr{from{opacity:1;}to{opacity:.25;}}
 
 /* ── FOUR HANDS ── */
 .hands-area{flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:8px;}
-.player-card{background:rgba(0,0,0,.3);border:1px solid var(--gm);border-radius:8px;padding:8px;}
-.player-card.target{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,211,77,.2);}
+.player-card{background:rgba(0,0,0,.3);border:1px solid var(--gm);border-radius:8px;padding:8px;cursor:pointer;transition:border-color .12s;}
+.player-card:not(.target):hover{border-color:rgba(255,211,77,.45);}
+.player-card.target{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,211,77,.2);cursor:default;}
 .pc-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .pc-name{font-size:12px;font-weight:800;color:var(--gold);}
 .pc-seat{font-size:10px;color:var(--dim);}
@@ -399,6 +407,7 @@ let targetSeat=0;
 let discardTile=null;
 let quickMode=null; // null|'pung'|'kong'|'chow'|'draw'|'bonus'|'discard'
 let chowBuffer=[];
+let insertBefore=null; // {seat,idx} — next normal palette pick inserts before this index
 // Rob-kong scenario state — populated by loadPreset(), consumed by buildState()
 let _rkActive=false, _rkSeat=null, _rkTile=null, _rkTiles=null, _rkPungIdx=null;
 function clearRobKong(){ _rkActive=false;_rkSeat=null;_rkTile=null;_rkTiles=null;_rkPungIdx=null;updateRkBadge(); }
@@ -411,6 +420,48 @@ function P(s=targetSeat){return players[s];}
 function setQStatus(msg,warn=false){
   log(msg,warn?'warn':'info');
 }
+
+// ── TILE AVAILABILITY ─────────────────────────────────────────
+function maxCopiesForSuit(suit){
+  return (suit===SUIT.F||suit===SUIT.S)?1:4;
+}
+function countTileUsed(suit,value){
+  const v=String(value); let n=0;
+  for(const p of players){
+    for(const t of p.hand)  if(t.suit===suit&&String(t.value)===v)n++;
+    for(const t of p.bonus) if(t.suit===suit&&String(t.value)===v)n++;
+    for(const m of p.melds) for(const t of m.tiles) if(t.suit===suit&&String(t.value)===v)n++;
+  }
+  if(discardTile&&discardTile.suit===suit&&String(discardTile.value)===v)n++;
+  return n;
+}
+function updatePaletteAvailability(){
+  document.querySelectorAll('.tile-btn[data-suit]').forEach(b=>{
+    const used=countTileUsed(b.dataset.suit,b.dataset.value);
+    const max=maxCopiesForSuit(b.dataset.suit);
+    b.classList.toggle('tb-full',used>=max);
+    b.title=`${used}/${max} used`;
+  });
+}
+function guardAdd(suit,value,qty=1){
+  const used=countTileUsed(suit,value);
+  const max=maxCopiesForSuit(suit);
+  if(used+qty>max){
+    const name=lbl({suit,value});
+    setQStatus(`All ${max} cop${max===1?'y':'ies'} of ${name} already placed.`,true);
+    return false;
+  }
+  return true;
+}
+function setInsertBefore(seat,idx){
+  insertBefore={seat,idx};
+  if(seat!==targetSeat)setTarget(seat);
+  else renderHands();
+  setQStatus(`Insert mode — next tile goes before position ${idx+1}. Esc to cancel.`);
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&insertBefore){insertBefore=null;renderHands();setQStatus('Insert cancelled.');}
+});
 
 // ── SAVE/LOAD FEEDBACK ────────────────────────────────────────
 function setLoadSaveMsg(text, type='ok'){
@@ -456,6 +507,7 @@ function buildPalette(){
       const b=document.createElement('div');
       b.className='tile-btn '+cls(t);
       b.id=`pb-${t.suit}-${t.value}`;
+      b.dataset.suit=t.suit; b.dataset.value=t.value;
       const img=document.createElement('img');
       img.src=`img/tiles/${t.suit}_${t.value}.png`;
       img.alt='';
@@ -467,6 +519,7 @@ function buildPalette(){
     el.appendChild(row);
   }
   updatePaletteHighlight();
+  updatePaletteAvailability();
 }
 
 function updatePaletteHighlight(){
@@ -484,13 +537,15 @@ function onPalettePick(suit,value){
   const isBonusSuit=(suit===SUIT.F||suit===SUIT.S);
 
   if(quickMode==='discard'){
+    if(!guardAdd(suit,value,1))return;
     discardTile=mk(suit,value);
-    renderDiscardPreview();
+    renderDiscardPreview();updatePaletteAvailability();
     log(`Discard set: ${lbl(discardTile)}`,'ok');
     quickMode=null;updateQButtons();updatePaletteHighlight();setQStatus('Discard tile set.');
     return;
   }
   if(quickMode==='bonus'||isBonusSuit){
+    if(!guardAdd(suit,value,1))return;
     if(p.bonus.length>=8){setQStatus('Max 8 bonus tiles.',true);return;}
     p.bonus.push(mk(suit,value));
     quickMode=null;updateQButtons();updatePaletteHighlight();
@@ -498,12 +553,14 @@ function onPalettePick(suit,value){
     return;
   }
   if(quickMode==='pung'){
+    if(!guardAdd(suit,value,3))return;
     p.melds.push({type:'pung',tiles:[mk(suit,value),mk(suit,value),mk(suit,value)]});
     log(`${SEAT_NAMES[targetSeat]}: Pung of ${lbl({suit,value})} → meld`,'ok');
     quickMode=null;updateQButtons();updatePaletteHighlight();renderHands();
     setQStatus(`Pung meld added. Pick next action or tile.`);return;
   }
   if(quickMode==='kong'){
+    if(!guardAdd(suit,value,4))return;
     p.melds.push({type:'kong',tiles:[mk(suit,value),mk(suit,value),mk(suit,value),mk(suit,value)]});
     log(`${SEAT_NAMES[targetSeat]}: Kong of ${lbl({suit,value})} → meld`,'ok');
     quickMode=null;updateQButtons();updatePaletteHighlight();renderHands();
@@ -511,6 +568,7 @@ function onPalettePick(suit,value){
   }
   if(quickMode==='chow'){
     if(isBonusSuit){setQStatus('Chow needs numbered tiles.',true);return;}
+    if(!guardAdd(suit,value,1)){chowBuffer=[];return;}
     chowBuffer.push(mk(suit,value));
     setQStatus(`Chow: ${chowBuffer.map(t=>lbl(t)).join(' ')} ${chowBuffer.length<3?'— pick '+(3-chowBuffer.length)+' more':''}`);
     if(chowBuffer.length===3){
@@ -522,17 +580,26 @@ function onPalettePick(suit,value){
     return;
   }
   if(quickMode==='draw'){
+    if(!guardAdd(suit,value,1))return;
     p.hand.push(mk(suit,value));
     p.drawnIdx=p.hand.length-1;
     log(`${SEAT_NAMES[targetSeat]}: ${lbl({suit,value})} marked as self-drawn`,'ok');
     quickMode=null;updateQButtons();updatePaletteHighlight();renderHands();
     setQStatus('Self-drawn tile added (shown in orange).');return;
   }
-  // Normal add
-  p.hand.push(mk(suit,value));
+  // Normal add (or insert if insertBefore is active for this seat)
+  if(!guardAdd(suit,value,1))return;
+  if(insertBefore&&insertBefore.seat===targetSeat){
+    const idx=Math.min(insertBefore.idx,p.hand.length);
+    p.hand.splice(idx,0,mk(suit,value));
+    if(p.drawnIdx!==null&&p.drawnIdx>=idx)p.drawnIdx++;
+    insertBefore=null;
+    setQStatus(`Inserted ${lbl({suit,value})} at position ${idx+1}.`);
+  } else {
+    p.hand.push(mk(suit,value));
+    setQStatus(`${SEAT_NAMES[targetSeat]}: ${p.hand.length} tiles + ${p.melds.length} melds.`);
+  }
   renderHands();
-  // Update count hint
-  setQStatus(`${SEAT_NAMES[targetSeat]}: ${p.hand.length} tiles + ${p.melds.length} melds.`);
 }
 
 // ── RENDER FOUR HANDS ─────────────────────────────────────────
@@ -554,20 +621,15 @@ function renderHands(){
       <span class="pc-seat">seat ${seat}</span>
       <span class="pc-count" title="hand:${p.hand.length} melds:${p.melds.length} bonus:${p.bonus.length}">${p.hand.length}h+${meldTiles}m+${p.bonus.length}b = ${total}</span>`;
     const acts=document.createElement('div');acts.className='pc-actions';
-    // Switch target button
-    if(seat!==targetSeat){
-      const sw=document.createElement('button');
-      sw.className='btn btn-sm btn-green';sw.textContent='Select';
-      sw.addEventListener('click',()=>setTarget(seat));
-      acts.appendChild(sw);
-    }
     const clr=document.createElement('button');
     clr.className='btn btn-sm btn-red';clr.textContent='✕';
     clr.title='Clear this player';
-    clr.addEventListener('click',()=>{clearPlayer(seat);});
+    clr.addEventListener('click',(e)=>{e.stopPropagation();clearPlayer(seat);});
     acts.appendChild(clr);
     hdr.appendChild(acts);
     card.appendChild(hdr);
+    // Click anywhere on card to activate it
+    card.addEventListener('click',()=>{ if(seat!==targetSeat)setTarget(seat); });
 
     // Hand display
     const handDiv=document.createElement('div');handDiv.className='pc-hand';
@@ -597,14 +659,33 @@ function renderHands(){
 
       // Hand tiles
       p.hand.forEach((t,i)=>{
-        const extra='ht'+(i===p.drawnIdx?' drawn':'');
-        const d=makeTileDiv(t,extra,()=>{
-          if(p.drawnIdx===i)p.drawnIdx=null;
-          else if(p.drawnIdx!==null&&p.drawnIdx>i)p.drawnIdx--;
-          p.hand.splice(i,1);renderHands();
+        // Insert cursor before this tile
+        if(insertBefore&&insertBefore.seat===seat&&insertBefore.idx===i){
+          const cur=document.createElement('div');cur.className='insert-cursor';handDiv.appendChild(cur);
+        }
+        const extra='ht'+(i===p.drawnIdx?' drawn':'')+(insertBefore&&insertBefore.seat===seat&&insertBefore.idx===i?' ib-next':'');
+        const d=makeTileDiv(t,extra,null);
+        d.addEventListener('click',(e)=>{
+          if(e.ctrlKey||e.metaKey){
+            e.stopPropagation();
+            setInsertBefore(seat,i);
+          } else {
+            if(p.drawnIdx===i)p.drawnIdx=null;
+            else if(p.drawnIdx!==null&&p.drawnIdx>i)p.drawnIdx--;
+            p.hand.splice(i,1);
+            if(insertBefore&&insertBefore.seat===seat){
+              if(insertBefore.idx===i)insertBefore=null;
+              else if(insertBefore.idx>i)insertBefore.idx--;
+            }
+            renderHands();
+          }
         });
         handDiv.appendChild(d);
       });
+      // Insert cursor at end of hand
+      if(insertBefore&&insertBefore.seat===seat&&insertBefore.idx>=p.hand.length){
+        const cur=document.createElement('div');cur.className='insert-cursor';handDiv.appendChild(cur);
+      }
 
       // Bonus
       if(p.bonus.length>0){
@@ -622,6 +703,7 @@ function renderHands(){
     card.appendChild(handDiv);
     area.appendChild(card);
   }
+  updatePaletteAvailability();
 }
 
 function makeTileDiv(t,extraClass,onClick){
@@ -644,6 +726,7 @@ function makeTileDiv(t,extraClass,onClick){
 
 // ── TARGET ────────────────────────────────────────────────────
 function setTarget(seat){
+  if(insertBefore&&insertBefore.seat!==seat)insertBefore=null;
   targetSeat=seat;
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.seat)===seat));
   renderHands();
@@ -685,11 +768,12 @@ document.getElementById('q-set-discard').addEventListener('click',()=>toggleMode
 document.getElementById('q-clear-player').addEventListener('click',()=>clearPlayer(targetSeat));
 
 function clearPlayer(seat){
-  // Mutate in-place so all references remain valid
   players[seat].hand=[];
   players[seat].melds=[];
   players[seat].bonus=[];
   players[seat].drawnIdx=null;
+  if(insertBefore&&insertBefore.seat===seat)insertBefore=null;
+  setTarget(seat);
   renderHands();
   setQStatus(`Cleared ${SEAT_NAMES[seat]}.`);
 }
@@ -717,16 +801,20 @@ function renderDiscardPreview(){
   const el=document.getElementById('discard-preview');
   el.innerHTML='';
   if(!discardTile){
-    el.innerHTML='<span style="color:#444;font-size:10px;align-self:center;">None set</span>';return;
+    el.innerHTML='<span style="color:#444;font-size:10px;align-self:center;">None set</span>';
+  } else {
+    const d=makeTileDiv(discardTile,'ht discard-t');
+    d.title='Click to clear discard tile';
+    d.addEventListener('click',()=>{discardTile=null;renderDiscardPreview();updatePaletteAvailability();});
+    el.appendChild(d);
   }
-  el.appendChild(makeTileDiv(discardTile,'ht discard-t'));
 }
 
 // ── CLEAR ALL ─────────────────────────────────────────────────
 document.getElementById('clear-all-btn').addEventListener('click',()=>{
   players.forEach(p=>{p.hand=[];p.melds=[];p.bonus=[];p.drawnIdx=null;});
   discardTile=null;quickMode=null;chowBuffer=[];
-  renderHands();renderDiscardPreview();updateQButtons();updatePaletteHighlight();
+  renderHands();renderDiscardPreview();updateQButtons();updatePaletteHighlight();updatePaletteAvailability();
   document.getElementById('result-row').style.display='none';
   document.getElementById('pass-detail').style.display='none';
   setQStatus('Cleared everything.');log('Cleared.','info');
@@ -986,7 +1074,7 @@ function loadPreset(preset){
     clearRobKong();
   }
   updateRkBadge();
-  renderHands();renderDiscardPreview();
+  renderHands();renderDiscardPreview();updatePaletteAvailability();
   const loadMsg=`Loaded "${preset._presetName}".`;
   setLoadSaveMsg(loadMsg);
   log(loadMsg,'ok');
