@@ -661,6 +661,9 @@ function initUI(game) {
     btn.style.background = '#0e4d28';
     setTimeout(() => { btn.textContent = orig; btn.style.background = '#1a4a1a'; }, 2000);
   });
+  document.getElementById('gal-numbered-toggle').addEventListener('change', e => {
+    _applyGalleryNumbered(e.target.checked);
+  });
   document.getElementById('close-tiles').addEventListener('click', (e) => {
     e.stopPropagation();
     document.getElementById('tiles-modal').classList.add('hidden');
@@ -2084,6 +2087,14 @@ function populateTileGallery() {
   fill('gal-dragon', DRAGONS.map(d => mk(SUIT.DRAGON, d)));
   fill('gal-flower', Array.from({length:4}, (_,i) => mk(SUIT.FLOWER, i)));
   fill('gal-season', Array.from({length:4}, (_,i) => mk(SUIT.SEASON, i)));
+  const chk = document.getElementById('gal-numbered-toggle');
+  if (chk?.checked) _applyGalleryNumbered(true);
+}
+
+function _applyGalleryNumbered(on) {
+  document.querySelectorAll('#tiles-modal .gallery-row img').forEach(img => {
+    img.src = img.src.replace(/img\/tiles(-n)?\//, on ? 'img/tiles-n/' : 'img/tiles/');
+  });
 }
 
 // ---- Wall drawn as tile-backs around the perimeter ----

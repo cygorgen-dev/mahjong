@@ -23,3 +23,15 @@ for (let i = 0; i <= 3; i++) {
   _preload(`img/tiles/flower_${i}.png`);
   _preload(`img/tiles/season_${i}.png`);
 }
+
+['bamboo', 'circle', 'char'].forEach(s => {
+  for (let n = 1; n <= 9; n++) _preload(`img/tiles-n/${s}_${n}.png`);
+});
+
+['East', 'South', 'West', 'North'].forEach(w => _preload(`img/tiles-n/wind_${w}.png`));
+['red', 'green', 'white'].forEach(d => _preload(`img/tiles-n/dragon_${d}.png`));
+
+for (let i = 0; i <= 3; i++) {
+  _preload(`img/tiles-n/flower_${i}.png`);
+  _preload(`img/tiles-n/season_${i}.png`);
+}
