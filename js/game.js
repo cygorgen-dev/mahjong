@@ -83,6 +83,7 @@ class Game {
     this._captureMoves = [];
     this._captureWall = null;
     this._captureDice = null;
+    this._undoSnapshots = [];
 
     this._initLog('New Game');
     this.deal();
@@ -1065,6 +1066,7 @@ class Game {
       }
       return;
     }
+    if (!window.REPLAY_MODE && action !== 'pass') this._pushUndoSnapshot();
     if (window.REPLAY_MODE && this.phase === PHASE.CLAIM) {
       const queue = window._moveQueue;
       const replayCode = { pung: 'P', chow: 'C', kong: 'KO', win: 'W' }[action];
@@ -1311,6 +1313,7 @@ class Game {
     this._replayResumeNotice = false;
     const tile = this.players[0].hand.find(t => t.id === tileId);
     if (!tile) return;
+    if (!window.REPLAY_MODE) this._pushUndoSnapshot();
     this.doDiscard(0, tile);
   }
 
@@ -1758,7 +1761,12 @@ class Game {
     // Queue exhausted — UI will exit replay mode; human resumes control
     if (!queue.length) return;
     const m = queue[0];
-    if (m.s !== 0) return;
+    if (m.s !== 0) {
+      // CPU discard entries are never consumed by processClaims (only P/C/KO/W are).
+      // In sprint mode (undo), shift them off so the while-loop drains without stalling.
+      if (window.AUTO_MODE === 'sprint' || window.AUTO_MODE === 'sprint_slow') queue.shift();
+      return;
+    }
 
     if (m.a === 'D') {
       queue.shift();
@@ -1931,6 +1939,7 @@ class Game {
     this.firstDraw = true; this.dealerFirstDiscard = false; this.handActionCount = 0; this.lastResult = null;
     this.lastCheckFaan = 0;
     this.phase = PHASE.IDLE;
+    this._undoSnapshots = [];
     const label = this._replayLabel ?? 'New Hand';
     this._replayLabel = null;
     this._initLog(label);
@@ -1960,5 +1969,91 @@ class Game {
       });
       this.log.push(`⚙ ${parts.join(' · ')}`);
     }
+  }
+
+  // ── Undo snapshot: deep-copy all mutable game state before a human action ──
+
+  _pushUndoSnapshot() {
+    if (!this._undoSnapshots) this._undoSnapshots = [];
+    const wallById = new Map(this.wall.map(t => [t.id, t]));
+    this._undoSnapshots.push({
+      players: this.players.map(p => ({
+        hand: p.hand.map(t => t.id),
+        melds: p.melds.map(m => ({
+          type: m.type,
+          tiles: m.tiles.map(t => t.id),
+          claimed: !!m.claimed,
+          concealed: !!m.concealed,
+        })),
+        bonus: p.bonus.map(t => t.id),
+        lastDiscard: p.lastDiscard?.id ?? null,
+      })),
+      wallIdx: this.wallIdx,
+      tailCol: this.tailCol,
+      tailPhase: this.tailPhase,
+      phase: this.phase,
+      currentSeat: this.currentSeat,
+      discard: this.discard?.id ?? null,
+      discardSeat: this.discardSeat,
+      discardPile: this.discardPile.map(t => t.id),
+      claimOptions: this.claimOptions ? JSON.parse(JSON.stringify(this.claimOptions)) : null,
+      pendingClaims: [...(this.pendingClaims ?? [])],
+      claimSeat: this.claimSeat,
+      handActionCount: this.handActionCount,
+      dealerFirstDiscard: this.dealerFirstDiscard,
+      firstDraw: this.firstDraw,
+      _isFirstDealerDraw: !!this._isFirstDealerDraw,
+      _drewLastTile: !!this._drewLastTile,
+      robbingKongSeat: this.robbingKongSeat,
+      robbingKongTile: this.robbingKongTile?.id ?? null,
+      captureMoves: [...(this._captureMoves ?? [])],
+      justDrawnIds: this.wall.filter(t => t._justDrawn).map(t => t.id),
+    });
+  }
+
+  undoLastHumanAction() {
+    if (!this._undoSnapshots?.length) return false;
+    this._cancelScheduledActions();
+    const snap = this._undoSnapshots.pop();
+    const wallById = new Map(this.wall.map(t => [t.id, t]));
+
+    this.wall.forEach(t => { t._justDrawn = false; });
+    snap.justDrawnIds.forEach(id => { const t = wallById.get(id); if (t) t._justDrawn = true; });
+
+    this.players.forEach((p, i) => {
+      const sp = snap.players[i];
+      p.hand       = sp.hand.map(id => wallById.get(id)).filter(Boolean);
+      p.melds      = sp.melds.map(m => ({
+        type: m.type, tiles: m.tiles.map(id => wallById.get(id)).filter(Boolean),
+        claimed: m.claimed, concealed: m.concealed,
+      }));
+      p.bonus      = sp.bonus.map(id => wallById.get(id)).filter(Boolean);
+      p.lastDiscard = sp.lastDiscard ? (wallById.get(sp.lastDiscard) ?? null) : null;
+    });
+
+    this.wallIdx           = snap.wallIdx;
+    this.tailCol           = snap.tailCol;
+    this.tailPhase         = snap.tailPhase;
+    this.phase             = snap.phase;
+    this.currentSeat       = snap.currentSeat;
+    this.discard           = snap.discard ? (wallById.get(snap.discard) ?? null) : null;
+    this.discardSeat       = snap.discardSeat;
+    this.discardPile       = snap.discardPile.map(id => wallById.get(id)).filter(Boolean);
+    this.claimOptions      = snap.claimOptions ? JSON.parse(JSON.stringify(snap.claimOptions)) : null;
+    this.pendingClaims     = [...snap.pendingClaims];
+    this.claimSeat         = snap.claimSeat;
+    this.handActionCount   = snap.handActionCount;
+    this.dealerFirstDiscard = snap.dealerFirstDiscard;
+    this.firstDraw         = snap.firstDraw;
+    this._isFirstDealerDraw = snap._isFirstDealerDraw;
+    this._drewLastTile     = snap._drewLastTile;
+    this.robbingKongSeat   = snap.robbingKongSeat;
+    this.robbingKongTile   = snap.robbingKongTile ? (wallById.get(snap.robbingKongTile) ?? null) : null;
+    this.robbingKongTiles  = null;
+    this.robbingKongPungIdx = null;
+    this._captureMoves     = [...snap.captureMoves];
+    this.lastResult        = null;
+    this._replayResumeNotice = false;
+    return true;
   }
 }

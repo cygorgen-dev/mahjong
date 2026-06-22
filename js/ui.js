@@ -595,32 +595,10 @@ function initUI(game) {
 
   document.getElementById('undo-last-move-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (!_game?._captureWall || !_game?._captureDice || window.REPLAY_MODE) return;
-    const moves = _game._captureMoves;
-    if (!moves?.length) { alert('No move to undo.'); return; }
-    const trimmed = moves.slice(0, -1);
-    const data = {
-      wall:       _game._captureWall,
-      dice:       _game._captureDice,
-      moves:      trimmed,
-      players:    _game.players.map(p => ({ seat: p.seat, name: p.name, isHuman: p.isHuman })),
-      dealerSeat: _game.dealerSeat,
-      roundWind:  _game.roundWind,
-    };
-    window.REPLAY_MODE = true;
-    window._replayData = data;
-    _game.applyReplayContext(data);
+    if (window.REPLAY_MODE || !_game) return;
+    if (!_game._undoSnapshots?.length) { alert('No human move to undo.'); return; }
+    _game.undoLastHumanAction();
     _tileElCache.clear();
-    _game.redeal();
-    // Instant replay: sprint mode makes _scheduleOrStep synchronous
-    const savedAutoMode = window.AUTO_MODE;
-    window.AUTO_MODE = 'sprint';
-    let safety = 1000;
-    while (window._moveQueue?.length && _game.phase !== PHASE.END && safety-- > 0) {
-      _game.replayStep();
-    }
-    window.AUTO_MODE = savedAutoMode;
-    _exitReplayMode();
     renderAll();
   });
 
@@ -2488,34 +2466,50 @@ async function _runSlowDeal() {
   const MS = 320;
   function sdFly(indices, seat) {
     return new Promise(resolve => {
+      const showFace = (seat === 0) || !!window.OPEN_HANDS;
       const tgt = sdTarget(seat);
       const entries = indices.map(gi => {
         const el = sdEl(gi); if (!el) return null;
         const r = el.getBoundingClientRect();
-        const c = document.createElement('div');
-        c.className = 'fly-tile';
-        c.style.cssText = `position:absolute;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+        const wallTile = _game.wall[gi];
+        let c;
+        if (showFace && wallTile) {
+          c = makeTileEl(wallTile, { skipCache: true, back: false });
+          c.style.position = 'absolute';
+          c.style.left = (r.left + r.width  / 2 - 23) + 'px';
+          c.style.top  = (r.top  + r.height / 2 - 33) + 'px';
+          c.style.pointerEvents = 'none';
+          c.style.zIndex = '100';
+        } else {
+          c = document.createElement('div');
+          c.className = 'fly-tile';
+          c.style.cssText = `position:absolute;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+        }
         flyOverlay.appendChild(c);
-        return { c, el };
+        return { c, el, wallTile };
       }).filter(Boolean);
       requestAnimationFrame(() => requestAnimationFrame(() => {
         entries.forEach(({ c }) => {
-          const w = parseFloat(c.style.width), h = parseFloat(c.style.height);
+          const cr = c.getBoundingClientRect();
           c.style.transition = `left ${MS}ms ease-in,top ${MS}ms ease-in,opacity ${MS*.3}ms ${MS*.7}ms`;
-          c.style.left = (tgt.x - w / 2) + 'px';
-          c.style.top  = (tgt.y - h / 2) + 'px';
+          c.style.left = (tgt.x - cr.width  / 2) + 'px';
+          c.style.top  = (tgt.y - cr.height / 2) + 'px';
           c.style.opacity = '0';
         });
       }));
       setTimeout(() => {
         entries.forEach(({ c, el }) => { c.remove(); el.classList.remove('face-down'); el.classList.add('used'); });
-        // Materialize face-down placeholders with correct seat rotation
+        // Materialize placeholders with correct face/back and seat rotation
         const handEl = document.querySelector(`.seat[data-seat="${seat}"] .hand`);
         if (handEl) {
-          entries.forEach(() => {
+          entries.forEach(({ wallTile }) => {
             const ghost = handEl.querySelector('.tile-ghost,.tile-ghost-rot');
             if (ghost) ghost.remove();
-            handEl.appendChild(_sdPlaceholder(seat));
+            handEl.appendChild(
+              showFace && wallTile
+                ? makeTileEl(wallTile, { skipCache: true, seatRotation: seat })
+                : _sdPlaceholder(seat)
+            );
           });
         }
         resolve();
@@ -2726,10 +2720,11 @@ async function _runSingleStepDeal() {
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
 
-  // ── 5. Fly tiles face-down, land face-down (same as slow deal) ──────────
+  // ── 5. Fly tiles; face-up for human + open-hand CPU, face-down otherwise ─
   const SSD_MS = 280;
   function ssdFly(indices, seat) {
     return new Promise(resolve => {
+      const showFace = (seat === 0) || !!window.OPEN_HANDS;
       const tgt = ssdTarget(seat);
       const entries = indices.map(gi => {
         const el = ssdEl(gi); if (!el) return null;
@@ -2737,7 +2732,7 @@ async function _runSingleStepDeal() {
         const wallTile = _game.wall[gi];
         let c;
         if (wallTile) {
-          c = makeTileEl(wallTile, { skipCache: true, back: true });
+          c = makeTileEl(wallTile, { skipCache: true, back: !showFace });
           c.style.position = 'absolute';
           c.style.left = (r.left + r.width  / 2 - 23) + 'px'; // center 46px tile over ring slot
           c.style.top  = (r.top  + r.height / 2 - 33) + 'px'; // center 66px tile over ring slot
@@ -2749,7 +2744,7 @@ async function _runSingleStepDeal() {
           c.style.cssText = `position:absolute;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
         }
         flyOverlay2.appendChild(c);
-        return { c, el, gi };
+        return { c, el, gi, wallTile };
       }).filter(Boolean);
       requestAnimationFrame(() => requestAnimationFrame(() => {
         entries.forEach(({ c }) => {
@@ -2764,10 +2759,14 @@ async function _runSingleStepDeal() {
         entries.forEach(({ c, el }) => { c.remove(); el.classList.remove('face-down'); el.classList.add('used'); });
         const handEl = document.querySelector(`.seat[data-seat="${seat}"] .hand`);
         if (handEl) {
-          entries.forEach(({ gi }) => {
+          entries.forEach(({ wallTile }) => {
             const ghost = handEl.querySelector('.tile-ghost,.tile-ghost-rot');
             if (ghost) ghost.remove();
-            handEl.appendChild(_sdPlaceholder(seat));
+            handEl.appendChild(
+              showFace && wallTile
+                ? makeTileEl(wallTile, { skipCache: true, seatRotation: seat })
+                : _sdPlaceholder(seat)
+            );
           });
         }
         resolve();
