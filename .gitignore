@@ -1,6 +1,7 @@
 *.jpg
 *.gif
 *.png
+!img/tiles-n/*.png
 *.log
 *.1001
 ok1.txt
