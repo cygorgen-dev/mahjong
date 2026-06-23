@@ -398,8 +398,8 @@ function sub(t){
   if([SUIT.B,SUIT.C,SUIT.K].includes(t.suit))return t.value;
   if(t.suit===SUIT.W)return t.value.slice(0,1);
   if(t.suit===SUIT.D)return['R','G','W'][DRAGONS.indexOf(t.value)];
-  if(t.suit===SUIT.F)return'F'+(t.value+1);
-  if(t.suit===SUIT.S)return'S'+(t.value+1);
+  if(t.suit===SUIT.F)return'F'+t.value;
+  if(t.suit===SUIT.S)return'S'+t.value;
   return'';
 }
 function tileCode(t){
