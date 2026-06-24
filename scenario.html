@@ -358,6 +358,7 @@ select.ctx-sel{background:#0b3d1f;color:#fff;border:1px solid var(--gm);border-r
     </div>
     <div class="btn-row">
       <button class="btn btn-blue btn-sm" id="export-handstxt-btn">📄 Save hands.txt</button>
+      <button class="btn btn-blue btn-sm" id="export-json-btn">💾 Save as JSON</button>
     </div>
   </div>
 
@@ -1214,6 +1215,18 @@ document.getElementById('export-handstxt-btn').addEventListener('click',()=>{
   a.download='hands.txt';
   a.click();
   log('Exported hands.txt (4 hands)','ok');
+});
+document.getElementById('export-json-btn').addEventListener('click',()=>{
+  let state;
+  try{state=buildState();}catch(e){log('❌ Build failed: '+e.message,'err');return;}
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  state._presetName='saved-'+stamp;
+  const blob=new Blob([JSON.stringify([state],null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='scenario-'+stamp+'.json';
+  a.click();
+  log('Exported scenario-'+stamp+'.json','ok');
 });
 document.getElementById('run-regression-btn').addEventListener('click', runRegression);
 document.getElementById('export-btn').addEventListener('click',()=>{
