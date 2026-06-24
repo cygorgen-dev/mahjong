@@ -1139,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
-  // ---- Demo Overflow 溢: extreme side-player layouts to verify claim-column capping ----
+  // ---- Demo Meld Ovf: extreme side-player layouts to verify claim-column capping ----
   document.getElementById('demo-overflow-btn')?.addEventListener('click', (e) => { e.stopPropagation();
     let _ovId = 6000;
     const T = (suit, value) => ({ id: _ovId++, suit, value, _justDrawn: false });
