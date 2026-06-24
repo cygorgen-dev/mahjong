@@ -1221,6 +1221,16 @@ document.getElementById('export-json-btn').addEventListener('click',()=>{
   try{state=buildState();}catch(e){log('❌ Build failed: '+e.message,'err');return;}
   const stamp=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
   state._presetName='saved-'+stamp;
+  state.text=players.map(p=>{
+    const meld=p.melds.flatMap(m=>m.tiles).map(tileCode);
+    const hand=p.hand.map(tileCode);
+    const bonus=p.bonus.map(tileCode);
+    return[
+      meld.length?' '+meld.join(' ')+' ':' ',
+      hand.length?' '+hand.join(' ')+' ':' ',
+      bonus.length?' '+bonus.join(' ')+' ':' ',
+    ];
+  });
   const blob=new Blob([JSON.stringify([state],null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
