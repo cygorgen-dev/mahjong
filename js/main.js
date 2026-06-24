@@ -1275,10 +1275,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
-  // ---- Demo Discard T+B Ovf: Top and Bottom overflow only; Left and Right sit tight ----
-  // Shows the round-robin scan in isolation: only seats 0 (bottom/bamboo) and 2 (top/char)
-  // discard. 7 normal tiles each fill their zones, then 4 overflow tiles each exercise all
-  // 7 center slots — no Left/Right interference to cloud the picture.
+  // ---- Demo Discard T+B Ovf: Top and Bottom 24 discards each; Left and Right empty ----
+  // Isolates the T/B overflow layout: seats 0 and 2 each get 24 tiles (indices 0–23),
+  // interleaved in time order — no Left/Right interference to cloud the picture.
   document.getElementById('demo-discard-tb-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     let _id = 9000;
@@ -1295,15 +1294,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tileVal = (suit, n) => suit === SUIT.WIND ? ['East','South','West','North'][n % 4] : (n % 9) + 1;
 
-    // 7 normal tiles per seat, interleaved Bottom then Top
-    for (let idx = 0; idx < 7; idx++) {
+    for (let idx = 0; idx < 24; idx++) {
       game.discardPile.push(T(SUIT.BAMBOO, tileVal(SUIT.BAMBOO, idx), 0, idx)); // Bottom
       game.discardPile.push(T(SUIT.CHAR,   tileVal(SUIT.CHAR,   idx), 2, idx)); // Top
-    }
-    // 4 overflow tiles each — enough to exhaust one side's primary range and trigger fallback
-    for (let oi = 0; oi < 4; oi++) {
-      game.discardPile.push(T(SUIT.BAMBOO, tileVal(SUIT.BAMBOO, oi), 0, 21 + oi)); // Bottom
-      game.discardPile.push(T(SUIT.CHAR,   tileVal(SUIT.CHAR,   oi), 2, 21 + oi)); // Top
     }
     renderAll();
   });

@@ -1422,7 +1422,7 @@ function renderDiscard() {
         x = BOT_OX + col * TB_CW;
         y = BOT_OY + (2 - row) * TB_CH;
       } else {
-        x = BOT_OX + ((idx - 21) % 7) * TB_CW;
+        x = BOT_OX + (6 - (idx - 21) % 7) * TB_CW;
         y = BOT_OY - TB_CH;
       }
     } else if (seat === 2) {
