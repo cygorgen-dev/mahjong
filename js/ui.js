@@ -1362,26 +1362,46 @@ function renderDiscard() {
   const el = document.getElementById('discard-pile');
   el.innerHTML = '';
 
-  // Unified 7-row × 13-col grid  (GAP=1 → 610×468 inside the 620×508 area)
-  // Non-overlapping zones (0-based gc=col, gr=row):
-  //   Seat 3 (left):   gc 0-2,   gr 0-6  — 3 cols × 7 rows = 21, stacks rightward
-  //   Seat 1 (right):  gc 10-12, gr 0-6  — 3 cols × 7 rows = 21, stacks leftward
-  //   Seat 2 (top):    gc 3-9,   gr 0-2  — 7 cols × 3 rows = 21, stacks downward
-  //   Seat 0 (bottom): gc 3-9,   gr 4-6  — 7 cols × 3 rows = 21, stacks upward
-  //   gr=3 center row (gc 3-9): 7-cell shared overflow pool for any seat exceeding 21
-  const W = 620, H = 468;
-  const TW = 46, TH = 66;
-  const GAP = 1;
-  const COLS = 13, ROWS = 7;
-  const gridW = COLS * TW + (COLS - 1) * GAP;  // 610
-  const gridH = ROWS * TH + (ROWS - 1) * GAP;  // 468
-  const ox = Math.floor((W - gridW) / 2);       // 5
-  const oy = Math.floor((H - gridH) / 2);       // 20
+  // Per-seat zones inside #discard-pile (730×468px = 7 tile-rows tall).
+  // Seats 3/1 (left/right): rotated 90°, cells are TH×TW = 66×46 visual.
+  // Seats 0/2 (bottom/top): upright / 180°, cells are TW×TH = 46×66 visual.
+  const TW = 46, TH = 66, GAP = 1;
+  const LR_CW = TH + GAP, LR_CH = TW + GAP;   // 67, 47 — rotated-tile cell stride
+  const TB_CW = TW + GAP, TB_CH = TH + GAP;   // 47, 67 — standard-tile cell stride
+  const LR_W = 3 * LR_CW - GAP;               // 200 — left/right zone width
+  const LR_H = 8 * LR_CH - GAP;               // 375 — left/right zone height (24 slots)
+  const TB_W = 7 * TB_CW - GAP;               // 328 — top/bottom zone width
+  const TB_H = 3 * TB_CH - GAP;               // 200 — top/bottom zone height (3 rows)
+  const PILE_W = 730, PILE_H = 468;           // 7 tile-rows tall (same as original)
+  const LEFT_OX  = 0,  LEFT_OY  = Math.round((PILE_H - LR_H) / 2);  // 0, 47
+  const RIGHT_OX = PILE_W - LR_W, RIGHT_OY = LEFT_OY;               // 530, 47
+  const TOP_OX   = Math.round((PILE_W - TB_W) / 2), TOP_OY = 0;     // 201, 0
+  const BOT_OX   = TOP_OX, BOT_OY = PILE_H - TB_H;                  // 201, 268
+
+  // Fill order [col, row] for 21 discard slots per seat (3 rows × 7 cols).
+  // Tile #1 = idx 0 crowds the player's edge first, expanding toward the center.
+  // Row 0 = closest to player edge; col 0 = leftward (or player-side for left/right).
+  const FILL_TB = [                        // seats 0 and 2 share this table
+    [2,0],[3,0],[4,0],[5,0],               // 1-4:  inner 4 of bottom row
+    [1,0],                                 // 5:    expand left in row 0
+    [1,1],[2,1],[3,1],[4,1],[5,1],         // 6-10: row 1, cols 1-5
+    [0,0],[0,1],[0,2],                     // 11-13: left column
+    [1,2],[2,2],[3,2],[4,2],[5,2],         // 14-18: row 2, cols 1-5
+    [6,0],[6,1],[6,2],                     // 19-21: right column
+  ];
+  const FILL_S3 = [                        // seat 3 (left): col 0 = player edge
+    [0,3],[0,4],[0,5],[0,6],               // 1-4:  inner 4 of left column
+    [0,2],                                 // 5:    expand up in col 0
+    [1,2],[1,3],[1,4],[1,5],[1,6],         // 6-10: col 1, same range
+    [0,1],[1,1],[2,1],                     // 11-13: row 1
+    [2,2],[2,3],[2,4],[2,5],[2,6],         // 14-18: col 2 (center-side)
+    [0,7],[1,7],[2,7],                     // 19-21: bottom row (closest to center)
+    [0,0],[1,0],[2,0],                     // 22-24: top row (toward wall)
+  ];
+  // Seat 1 (right) mirrors seat 3 horizontally: col → (2 - col)
+  const FILL_S1 = FILL_S3.map(([c, r]) => [2 - c, r]);
+
   // Highlight the last discard tile with the discarder's seat colour.
-  // Primary path: _game.discard is set while a discard is active (claim or discard-win state).
-  // Fallback: for a discard win in PHASE.END, use lastResult.winTileId in case _game.discard
-  // was cleared before this render (e.g. timing edge in human manual mode).
-  // Self-draw wins intentionally show no highlight (selfDraw=true skips the fallback).
   const _pile = _game.discardPile;
   let highlightId = null;
   if (_game.discard !== null && _pile.length > 0) {
@@ -1389,62 +1409,60 @@ function renderDiscard() {
   } else if (_game.phase === PHASE.END && _game.lastResult && !_game.lastResult.selfDraw) {
     highlightId = _game.lastResult.winTileId ?? null;
   }
-  // Overflow scan: each seat has a preferred start and direction in the 7-cell center row (gc 3-9).
-  // Primary scan walks toward the far edge; fallback reverses so all 7 slots are tried before overlap.
-  //   Left  (seat 3): start gc=3, scan →   Top    (seat 2): start gc=5, scan →
-  //   Right (seat 1): start gc=9, scan ←   Bottom (seat 0): start gc=7, scan ←
-  const OVF_START = [7, 9, 5, 3]; // indexed by seat
-  const OVF_DIR   = [-1, -1, 1, 1];
-  const centerOccupied = new Set();
 
   for (const t of _game.discardPile) {
     const seat = t._discardSeat ?? 0;
     const idx  = t._discardIdxBySeat ?? 0;
 
-    let gc, gr;
+    let x, y, rot = '';
 
-    if (idx >= 21) {
-      // Overflow into center row gr=3: scan from seat's preferred start, skip occupied slots.
-      // Each seat scans from its preferred start in its preferred direction, then falls
-      // back in the opposite direction so all 7 slots are checked before any overlap.
-      //   Left  gc=3→9, fallback none needed (full range)
-      //   Top   gc=5→9, fallback gc=4→3
-      //   Bottom gc=7→3, fallback gc=8→9
-      //   Right  gc=9→3, fallback none needed (full range)
-      const start = OVF_START[seat], dir = OVF_DIR[seat];
-      let found = -1;
-      for (let c = start; c >= 3 && c <= 9; c += dir)
-        if (!centerOccupied.has(c)) { found = c; break; }
-      if (found === -1)
-        for (let c = start - dir; c >= 3 && c <= 9; c -= dir)
-          if (!centerOccupied.has(c)) { found = c; break; }
-      gc = found !== -1 ? found : start; // all 7 slots taken — overlap at start (extremely rare)
-      gr = 3;
-      centerOccupied.add(gc);
-    } else if (seat === 0) {
-      // Bottom: cols 3-9, rows 6→4 (row 6 outermost, row 4 closest to center)
-      gc = 3 + (idx % 7);
-      gr = 6 - Math.floor(idx / 7);
+    if (seat === 0) {
+      if (idx < 21) {
+        const [col, row] = FILL_TB[idx];
+        x = BOT_OX + col * TB_CW;
+        y = BOT_OY + (2 - row) * TB_CH;
+      } else {
+        x = BOT_OX + ((idx - 21) % 7) * TB_CW;
+        y = BOT_OY - TB_CH;
+      }
     } else if (seat === 2) {
-      // Top: cols 3-9, rows 0→2 (row 0 outermost, row 2 closest to center)
-      gc = 3 + (idx % 7);
-      gr = Math.floor(idx / 7);
+      if (idx < 21) {
+        const [col, row] = FILL_TB[idx];
+        x = TOP_OX + col * TB_CW;
+        y = TOP_OY + row * TB_CH;
+      } else {
+        x = TOP_OX + ((idx - 21) % 7) * TB_CW;
+        y = TOP_OY + TB_H;
+      }
+      rot = 'rotate(180deg)';
     } else if (seat === 3) {
-      // Left: cols 0→2, rows 0-6 (col 0 outermost, col 2 closest to center)
-      gc = Math.floor(idx / 7);
-      gr = idx % 7;
-    } else {
-      // Right (seat 1): cols 12→10, rows 0-6 (col 12 outermost, col 10 closest to center)
-      gc = 12 - Math.floor(idx / 7);
-      gr = idx % 7;
+      if (idx < 24) {
+        const [col, row] = FILL_S3[idx];
+        // Rotate 90deg: visual cell is LR_CW × LR_CH (66×46).
+        // DOM element (46×66) positioned so rotated visual aligns to cell origin.
+        x = LEFT_OX + col * LR_CW + 10;
+        y = LEFT_OY + row * LR_CH - 10;
+      } else {
+        x = LEFT_OX + 10;
+        y = LEFT_OY + (idx - 24) * LR_CH - 10;
+      }
+      rot = 'rotate(90deg)';
+    } else {  // seat 1
+      if (idx < 24) {
+        const [col, row] = FILL_S1[idx];
+        x = RIGHT_OX + col * LR_CW + 10;
+        y = RIGHT_OY + row * LR_CH - 10;
+      } else {
+        x = RIGHT_OX + 2 * LR_CW + 10;
+        y = RIGHT_OY + (idx - 24) * LR_CH - 10;
+      }
+      rot = 'rotate(-90deg)';
     }
-
-    const x = ox + gc * (TW + GAP);
-    const y = oy + gr * (TH + GAP);
 
     const te = makeTileEl(t, { small: true });
     te.style.left = x + 'px';
     te.style.top  = y + 'px';
+    if (rot) te.style.transform = rot;
     if (highlightId && t.id === highlightId) {
       te.classList.add('last-discard', `last-discard-s${seat}`);
     }
@@ -2132,7 +2150,7 @@ function _updateRingBtn() {
 }
 
 function _buildRingTiles() {
-  const W = 800, H = 688, TWH = _RING_TWH, TWV = _RING_TWV, TH = _RING_H, G = _RING_GAP, M = _RING_M;
+  const W = 910, H = 688, TWH = _RING_TWH, TWV = _RING_TWV, TH = _RING_H, G = _RING_GAP, M = _RING_M;
   const wrap = document.getElementById('wall-ring-wrap');
   wrap.querySelectorAll('.ring-tile').forEach(e => e.remove());
   _ringOuter = new Array(72).fill(null);
