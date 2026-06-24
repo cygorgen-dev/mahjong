@@ -1229,10 +1229,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const WINDS     = ['East','South','West','North'];
     const tileVal   = (suit, n) => suit === SUIT.WIND ? WINDS[n % 4] : (n % 9) + 1;
 
-    // 12 tiles per seat interleaved in deal order
-    for (let idx = 0; idx < 12; idx++)
+    // Left/right (seats 1 & 3) fill to 24; top/bottom (seats 0 & 2) fill to 21.
+    const MAX = [21, 24, 21, 24];
+    const total = Math.max(...MAX);
+    for (let idx = 0; idx < total; idx++)
       for (let seat = 0; seat < 4; seat++)
-        game.discardPile.push(T(SEAT_SUIT[seat], tileVal(SEAT_SUIT[seat], idx), seat, idx));
+        if (idx < MAX[seat])
+          game.discardPile.push(T(SEAT_SUIT[seat], tileVal(SEAT_SUIT[seat], idx), seat, idx));
 
     renderAll();
   });
