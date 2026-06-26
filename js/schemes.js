@@ -23,6 +23,9 @@
 // claim.protectSevenPairs : skip all claims (except win/kong) if 4+ pairs, no melds
 // claim.noSameChowDiscard : skip chow if remaining hand has a clone of the claimed tile
 //                           that doesn't form its own group (would be discarded right back)
+// claim.noNearSuitDiscard : N — skip claim if remaining hand has a same-suit tile within
+//                           N values of the claimed tile that isn't part of a complete group
+//                           (e.g. N=3 blocks claim B9 → discard B6/B7/B8)
 // ============================================================
 
 const SCHEMES = [
@@ -34,7 +37,8 @@ const SCHEMES = [
     desc: 'Speed to tenpai, claim freely, no faan goal — mirrors Beginner AI',
     discard: { pursue: 'speed',  suitLock: null, honorPenalty: 1, terminalPenalty: 0.5, safetyLevel: 0.0 },
     claim:   { pung: 'if-useful', chow: 'if-useful', kong: true, winMinFaan: 0,
-               protectConcealed: false, protectSevenPairs: false, noSameChowDiscard: true }
+               protectConcealed: false, protectSevenPairs: false, noSameChowDiscard: true,
+               noNearSuitDiscard: 3 }
   },
 
   // ---- 2. Own-flower chow: chow only when flower conditions are met ----

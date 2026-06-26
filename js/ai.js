@@ -87,9 +87,11 @@ function aiClaimDecision(hand, melds, discard, seatDiff, ctx) {
     const withoutTwo = removeFromHandN(hand, discard, 2);
     const totalMelds = melds.length + 1;
     // Claim pung if: already tenpai after, or have 3+ melds (close to winning), or good hand score
-    const waits = getTenpaiTiles(withoutTwo, [...melds, newMeld]);
-    const handScore = evalHand(withoutTwo, [...melds, newMeld]);
-    if (waits.length > 0 || totalMelds >= 3 || handScore > 10) return 'pung';
+    const pungMelds = [...melds, newMeld];
+    const waits = getTenpaiTiles(withoutTwo, pungMelds);
+    const handScore = evalHand(withoutTwo, pungMelds);
+    if ((waits.length > 0 || totalMelds >= 3 || handScore > 10) &&
+        !_hasNearbyWasteTile(withoutTwo, pungMelds, discard, 3)) return 'pung';
   }
 
   // Chow check (only next player in sequence can chow)
@@ -102,7 +104,8 @@ function aiClaimDecision(hand, melds, discard, seatDiff, ctx) {
       const waits = getTenpaiTiles(remaining, newMelds);
       const handScore = evalHand(remaining, newMelds);
       // Claim chow if it leads to tenpai, or if we have 2+ melds already, or decent score
-      if (waits.length > 0 || melds.length >= 2 || handScore > 15) return 'chow';
+      if ((waits.length > 0 || melds.length >= 2 || handScore > 15) &&
+          !_hasNearbyWasteTile(remaining, newMelds, discard, 3)) return 'chow';
     }
   }
 
@@ -306,8 +309,10 @@ function aiClaimDecisionIntermediate(hand, melds, discard, seatDiff, ctx) {
   if (hand.filter(t => sameType(t, discard)).length >= 2) {
     const newMeld = { type:'pung', tiles:[discard,discard,discard] };
     const without = removeFromHandN(hand, discard, 2);
-    const waits = getTenpaiTiles(without, [...melds, newMeld]);
-    if (waits.length > 0 || melds.length >= 2) return 'pung';
+    const pungMelds = [...melds, newMeld];
+    const waits = getTenpaiTiles(without, pungMelds);
+    if ((waits.length > 0 || melds.length >= 2) &&
+        !_hasNearbyWasteTile(without, pungMelds, discard, 3)) return 'pung';
   }
 
   // Chow: only if leads to tenpai
@@ -318,7 +323,8 @@ function aiClaimDecisionIntermediate(hand, melds, discard, seatDiff, ctx) {
       const remaining = removeFromHandList(hand, fromHand);
       const newMelds = [...melds, { type:'chow', tiles:chowMeld }];
       const waits = getTenpaiTiles(remaining, newMelds);
-      if (waits.length > 0 && melds.length >= 1) return 'chow';
+      if (waits.length > 0 && melds.length >= 1 &&
+          !_hasNearbyWasteTile(remaining, newMelds, discard, 3)) return 'chow';
     }
   }
   return null;
@@ -365,8 +371,10 @@ function aiClaimDecisionExpert(hand, melds, discard, seatDiff, ctx, discardPile)
   if (hand.filter(t => sameType(t, discard)).length >= 2) {
     const newMeld = { type:'pung', tiles:[discard,discard,discard] };
     const without = removeFromHandN(hand, discard, 2);
-    const waits = getTenpaiTiles(without, [...melds, newMeld]);
-    if (waits.length > 0) return 'pung';
+    const pungMelds = [...melds, newMeld];
+    const waits = getTenpaiTiles(without, pungMelds);
+    if (waits.length > 0 &&
+        !_hasNearbyWasteTile(without, pungMelds, discard, 3)) return 'pung';
   }
 
   // Chow: only if immediately tenpai AND we have 2+ melds already
@@ -377,7 +385,8 @@ function aiClaimDecisionExpert(hand, melds, discard, seatDiff, ctx, discardPile)
       const remaining = removeFromHandList(hand, fromHand);
       const newMelds = [...melds, { type:'chow', tiles:chowMeld }];
       const waits = getTenpaiTiles(remaining, newMelds);
-      if (waits.length > 0 && melds.length >= 2) return 'chow';
+      if (waits.length > 0 && melds.length >= 2 &&
+          !_hasNearbyWasteTile(remaining, newMelds, discard, 3)) return 'chow';
     }
   }
   return null;
@@ -406,6 +415,21 @@ function _cloneFormsGroup(remaining, discard) {
     if (n <= 7 && has(n+1) && has(n+2)) return true;   // clone is low end
   }
   return false;
+}
+
+// Returns true if the remaining hand contains a same-suit tile within `range` values
+// of the claimed tile that is NOT part of any complete group — indicating the AI would
+// likely discard it right after claiming, which reveals a wasteful claim.
+// The tenpai guard short-circuits when the claim leads to tenpai (all tiles serve a wait).
+function _hasNearbyWasteTile(remaining, newMelds, discard, range) {
+  if (getTenpaiTiles(remaining, newMelds).length > 0) return false;
+  if (![SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR].includes(discard.suit)) return false;
+  const s = discard.suit, n = discard.value;
+  return remaining.some(t =>
+    !isBonus(t) && t.suit === s &&
+    Math.abs(t.value - n) <= range &&
+    !_cloneFormsGroup(remaining, t)
+  );
 }
 
 // ============================================================
@@ -514,15 +538,21 @@ function aiClaimDecisionScheme(seat, hand, melds, discard, seatDiff, ctx, scheme
 
   // Pung
   if (s.pung !== 'never' && hand.filter(t => sameType(t, discard)).length >= 2) {
-    if (s.pung === 'always') return 'pung';
     const newMeld = { type: 'pung', tiles: [discard, discard, discard] };
     const without = removeFromHandN(hand, discard, 2);
-    const waits = getTenpaiTiles(without, [...melds, newMeld]);
-    if (s.pung === 'if-tenpai' && waits.length > 0) return 'pung';
-    if (s.pung === 'if-useful') {
-      const handScore = evalHand(without, [...melds, newMeld]);
-      if (waits.length > 0 || melds.length >= 2 || handScore > 10) return 'pung';
+    const pungMelds = [...melds, newMeld];
+    const waits = getTenpaiTiles(without, pungMelds);
+    let doPung = false;
+    if (s.pung === 'always') doPung = true;
+    else if (s.pung === 'if-tenpai') doPung = waits.length > 0;
+    else if (s.pung === 'if-useful') {
+      const handScore = evalHand(without, pungMelds);
+      doPung = waits.length > 0 || melds.length >= 2 || handScore > 10;
     }
+    if (doPung) {
+      if (s.noNearSuitDiscard && _hasNearbyWasteTile(without, pungMelds, discard, s.noNearSuitDiscard)) doPung = false;
+    }
+    if (doPung) return 'pung';
   }
 
   // Chow
@@ -530,40 +560,49 @@ function aiClaimDecisionScheme(seat, hand, melds, discard, seatDiff, ctx, scheme
       [SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR].includes(discard.suit)) {
     const chowMeld = findChowWith(hand, discard);
     if (chowMeld) {
-      if (s.chow === 'always') return 'chow';
       const fromHand = chowMeld.filter(t => t !== discard);
       const remaining = removeFromHandList(hand, fromHand);
       const newMelds = [...melds, { type: 'chow', tiles: chowMeld }];
       const waits = getTenpaiTiles(remaining, newMelds);
-      if (s.chow === 'if-tenpai' && waits.length > 0) return 'chow';
-      if (s.chow === 'if-useful') {
+      let doChow = false;
+      if (s.chow === 'always') {
+        doChow = true;
+      } else if (s.chow === 'if-tenpai') {
+        doChow = waits.length > 0;
+      } else if (s.chow === 'if-useful') {
         const handScore = evalHand(remaining, newMelds);
         if (waits.length > 0 || melds.length >= 2 || handScore > 15) {
           if (s.noSameChowDiscard) {
             const cloneInRemaining = remaining.some(t => !isBonus(t) && sameType(t, discard));
-            if (cloneInRemaining && !_cloneFormsGroup(remaining, discard)) return null;
+            if (cloneInRemaining && !_cloneFormsGroup(remaining, discard)) {
+              doChow = false;
+            } else {
+              doChow = true;
+            }
+          } else {
+            doChow = true;
           }
-          return 'chow';
         }
-      }
-      if (s.chow === 'if-own-flower') {
+      } else if (s.chow === 'if-own-flower') {
         // Condition 1: no bonus tiles at all, OR player holds their seat's own flower/season
         const seatIdx = WINDS.indexOf(ctx.seatWind);
         const bonus = ctx.bonusTiles || [];
         const hasOwnBonus = bonus.length === 0 ||
           bonus.some(b => b.value === seatIdx);
-        if (!hasOwnBonus) return null;
-        // Condition 2: if the remaining hand contains a clone of the claimed tile,
-        // the internal sequence already existed — claiming is pointless UNLESS
-        // the clone itself forms a new complete group in the remaining hand.
-        // e.g. 234455 + claim 2 → remaining 2455: clone 2 has no group → SKIP
-        // e.g. 12345  + claim 3 → remaining 345:  clone 3 forms [3,4,5] → OK
-        const cloneInRemaining = remaining.some(
-          t => !isBonus(t) && sameType(t, discard)
-        );
-        if (cloneInRemaining && !_cloneFormsGroup(remaining, discard)) return null;
-        return 'chow';
+        if (hasOwnBonus) {
+          // Condition 2: if the remaining hand contains a clone of the claimed tile,
+          // the internal sequence already existed — claiming is pointless UNLESS
+          // the clone itself forms a new complete group in the remaining hand.
+          // e.g. 234455 + claim 2 → remaining 2455: clone 2 has no group → SKIP
+          // e.g. 12345  + claim 3 → remaining 345:  clone 3 forms [3,4,5] → OK
+          const cloneInRemaining = remaining.some(
+            t => !isBonus(t) && sameType(t, discard)
+          );
+          if (!cloneInRemaining || _cloneFormsGroup(remaining, discard)) doChow = true;
+        }
       }
+      if (doChow && s.noNearSuitDiscard && _hasNearbyWasteTile(remaining, newMelds, discard, s.noNearSuitDiscard)) doChow = false;
+      if (doChow) return 'chow';
     }
   }
 
@@ -985,10 +1024,11 @@ function aiClaimDecisionLevel4(seat, hand, melds, discard, seatDiff, ctx, discar
   if (hand.filter(t => sameType(t, discard)).length >= 2) {
     const newMeld = { type:'pung', tiles:[discard,discard,discard] };
     const without = removeFromHandN(hand, discard, 2);
-    const waits   = getTenpaiTiles(without, [...melds, newMeld]);
-    if (waits.length > 0) return 'pung';
+    const pungMelds = [...melds, newMeld];
+    const waits   = getTenpaiTiles(without, pungMelds);
     // Also pung if we have 3 melds already — one more and we win
-    if (melds.length >= 3) return 'pung';
+    if ((waits.length > 0 || melds.length >= 3) &&
+        !_hasNearbyWasteTile(without, pungMelds, discard, 3)) return 'pung';
   }
 
   // Chow: only if immediately tenpai AND safe to reveal hand direction
@@ -999,7 +1039,8 @@ function aiClaimDecisionLevel4(seat, hand, melds, discard, seatDiff, ctx, discar
       const remaining = removeFromHandList(hand, fromHand);
       const newMelds  = [...melds, { type:'chow', tiles:chowMeld }];
       const waits     = getTenpaiTiles(remaining, newMelds);
-      if (waits.length > 0 && melds.length >= 2) return 'chow';
+      if (waits.length > 0 && melds.length >= 2 &&
+          !_hasNearbyWasteTile(remaining, newMelds, discard, 3)) return 'chow';
     }
   }
 
