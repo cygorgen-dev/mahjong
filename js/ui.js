@@ -1369,12 +1369,12 @@ function renderDiscard() {
   const LR_CW = TH + GAP, LR_CH = TW + GAP;   // 67, 47 — rotated-tile cell stride
   const TB_CW = TW + GAP, TB_CH = TH + GAP;   // 47, 67 — standard-tile cell stride
   const LR_W = 3 * LR_CW - GAP;               // 200 — left/right zone width
-  const LR_H = 8 * LR_CH - GAP;               // 375 — left/right zone height (24 slots)
+  const LR_H = 9 * LR_CH - GAP;               // 422 — left/right zone height (27 slots)
   const TB_W = 7 * TB_CW - GAP;               // 328 — top/bottom zone width
   const TB_H = 3 * TB_CH - GAP;               // 200 — top/bottom zone height (3 rows)
   const PILE_W = 730, PILE_H = 468;           // 7 tile-rows tall (same as original)
-  const LEFT_OX  = 0,  LEFT_OY  = Math.round((PILE_H - LR_H) / 2);  // 0, 47
-  const RIGHT_OX = PILE_W - LR_W, RIGHT_OY = LEFT_OY;               // 530, 47
+  const LEFT_OX  = 0,  LEFT_OY  = Math.round((PILE_H - LR_H) / 2);  // 0, 23
+  const RIGHT_OX = PILE_W - LR_W, RIGHT_OY = LEFT_OY;               // 530, 23
   const TOP_OX   = Math.round((PILE_W - TB_W) / 2), TOP_OY = 0;     // 201, 0
   const BOT_OX   = TOP_OX, BOT_OY = PILE_H - TB_H;                  // 201, 268
 
@@ -1397,6 +1397,7 @@ function renderDiscard() {
     [2,2],[2,3],[2,4],[2,5],[2,6],         // 14-18: col 2 (center-side)
     [0,7],[1,7],[2,7],                     // 19-21: bottom row (closest to center)
     [0,0],[1,0],[2,0],                     // 22-24: top row (toward wall)
+    [0,8],[1,8],[2,8],                     // 25-27: extra row beyond bottom
   ];
   // Seat 1 (right) mirrors seat 3 horizontally: col → (2 - col)
   const FILL_S1 = FILL_S3.map(([c, r]) => [2 - c, r]);
@@ -1436,7 +1437,7 @@ function renderDiscard() {
       }
       rot = 'rotate(180deg)';
     } else if (seat === 3) {
-      if (idx < 24) {
+      if (idx < 27) {
         const [col, row] = FILL_S3[idx];
         // Rotate 90deg: visual cell is LR_CW × LR_CH (66×46).
         // DOM element (46×66) positioned so rotated visual aligns to cell origin.
@@ -1444,17 +1445,17 @@ function renderDiscard() {
         y = LEFT_OY + row * LR_CH - 10;
       } else {
         x = LEFT_OX + 10;
-        y = LEFT_OY + (idx - 24) * LR_CH - 10;
+        y = LEFT_OY + (idx - 27) * LR_CH - 10;
       }
       rot = 'rotate(90deg)';
     } else {  // seat 1
-      if (idx < 24) {
+      if (idx < 27) {
         const [col, row] = FILL_S1[idx];
         x = RIGHT_OX + col * LR_CW + 10;
         y = RIGHT_OY + row * LR_CH - 10;
       } else {
         x = RIGHT_OX + 2 * LR_CW + 10;
-        y = RIGHT_OY + (idx - 24) * LR_CH - 10;
+        y = RIGHT_OY + (idx - 27) * LR_CH - 10;
       }
       rot = 'rotate(-90deg)';
     }
