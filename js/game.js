@@ -54,6 +54,7 @@ class Game {
       bonus: [],
       score: startPts,
       isHuman: i === 0,
+      isRemote: false,
       name: i === 0 ? 'You' : `CPU${i}`,
       lastDiscard: null,
     }));
@@ -69,6 +70,10 @@ class Game {
     this.claimOptions = null;   // { win, pung, kong, chow } for human
     this.claimSeat = null;
     this.pendingClaims = [];    // [{seat, action}] AI claims waiting
+    this._remoteSeat = -1;      // seat controlled by remote guest (-1 = none)
+    this._remoteName = null;    // name of remote player (survives seat shuffle)
+    this.remoteClaimOptions = null;
+    this._pendingRemoteCtx = null;
     this.firstDraw = true;
     this.dealerFirstDiscard = false; // true after dealer's very first discard (for Earthly Hand)
     this.handActionCount = 0;        // counts any claim/kong action (for Heavenly/Earthly detection)
@@ -823,7 +828,7 @@ class Game {
       for (let i = 1; i <= 3; i++) {
         const seat = (fromSeat + i) % 4;
         const p = this.players[seat];
-        if (p.isHuman && !window.AUTO_MODE) continue;
+        if ((p.isHuman || p.isRemote) && !window.AUTO_MODE) continue;
         const level = (p.isHuman && window.AUTO_MODE)
           ? (window.AUTO_USER_LEVEL ?? 1)
           : undefined;
@@ -871,6 +876,20 @@ class Game {
     this.claimOptions = humanOptions;
     this.pendingClaims = claims;
 
+    // Compute remote claim options
+    const rs = this._remoteSeat;
+    if (rs >= 0 && !window.AUTO_MODE && !window.REPLAY_MODE) {
+      const remoteDiff = (rs - fromSeat + 4) % 4;
+      this.remoteClaimOptions = this.getRemoteClaimOptions(rs, tile, remoteDiff);
+      // Suppress remote win if a closer AI already wins
+      if (this.remoteClaimOptions?.win) {
+        const closer = claims.find(c => c.action === 'win' && (c.seat - fromSeat + 4) % 4 < remoteDiff);
+        if (closer) this.remoteClaimOptions.win = false;
+      }
+    } else {
+      this.remoteClaimOptions = null;
+    }
+
     // Queue exhausted after the last scripted discard: exit replay so claims evaluate
     // with natural AI/human logic. AI seats decide autonomously; human gets claim buttons.
     // After all claims resolve, the next draw goes to (discardSeat+1)%4 as normal.
@@ -900,7 +919,13 @@ class Game {
       // Seat 0 (human or CPU-You) just discarded
       this.onUpdate('claim-prompt');
       if (!freezeAtQueueEnd && !replayQueued) {
-        if (claims.length === 0) {
+        if (this._hasAnyRemoteClaim()) {
+          // Let remote decide before AI claims
+          this._scheduleOrStep(() => {
+            this._pendingRemoteCtx = { fromSeat, tile, claims };
+            this.onUpdate('remote-claim-prompt');
+          });
+        } else if (claims.length === 0) {
           const next = (fromSeat + 1) % 4;
           this._scheduleOrStep(() => this.startTurn(next));
         } else {
@@ -1054,11 +1079,17 @@ class Game {
       this.discard     = null;
       this.discardSeat = null;
       this.pendingClaims = [];
+      if (this._hasAnyRemoteClaim()) {
+        this._pendingRemoteCtx = { fromSeat, tile, claims };
+        this.onUpdate('remote-claim-prompt');
+        return;
+      }
       this.resolveAIClaims(fromSeat, tile, claims);
     }
   }
 
   humanClaim(action, chowTiles) {
+    if (action !== 'pass') { this.remoteClaimOptions = null; this._pendingRemoteCtx = null; }
     if (!this.claimOptions) {
       // In auto mode, claimOptions may have been cleared already (race); recover gracefully
       if (window.AUTO_MODE && action === 'pass' && this.phase === PHASE.DISCARD && this.currentSeat === 0) {
@@ -1837,11 +1868,11 @@ class Game {
     const startPts = (typeof START_POINTS !== 'undefined') ? START_POINTS : 2000;
     this.players = [
       { seat: 0, hand: [], melds: [], bonus: [], score: scoreByName['You'] ?? startPts,
-        isHuman: true, name: 'You', lastDiscard: null },
+        isHuman: true, isRemote: false, name: 'You', lastDiscard: null },
       ...newOrder.map((name, i) => ({
         seat: i + 1, hand: [], melds: [], bonus: [],
         score: scoreByName[name] ?? startPts,
-        isHuman: false, name, lastDiscard: null,
+        isHuman: false, isRemote: false, name, lastDiscard: null,
       }))
     ];
 
@@ -1861,8 +1892,14 @@ class Game {
     this.tailPhase  = 0;
     this.discard    = null; this.discardSeat = null; this.discardPile = [];
     this.claimOptions = null; this.claimSeat = null; this.pendingClaims = [];
+    this.remoteClaimOptions = null; this._pendingRemoteCtx = null;
     this.firstDraw  = true; this.dealerFirstDiscard = false; this.handActionCount = 0; this.lastResult = null;
     this.phase      = PHASE.IDLE;
+    // Re-apply remote flag after seat shuffle (track by name)
+    if (this._remoteName) {
+      const rp = this.players.find(p => p.name === this._remoteName);
+      if (rp) { rp.isRemote = true; this._remoteSeat = rp.seat; }
+    }
     this.deal();
 
     return this.players.map(p => ({ seat: p.seat, name: p.name }));
@@ -1897,7 +1934,7 @@ class Game {
       }
     }
     // Preserve scores and names across deals
-    const savedPlayers = this.players.map(p => ({ score: p.score, name: p.name, isHuman: p.isHuman }));
+    const savedPlayers = this.players.map(p => ({ score: p.score, name: p.name, isHuman: p.isHuman, isRemote: p.isRemote ?? false }));
     this.wall = buildWall();
     this.wallIdx   = 0;
     this.tailCol   = 71;
@@ -1907,10 +1944,12 @@ class Game {
       score: savedPlayers[i].score,
       name: savedPlayers[i].name,
       isHuman: savedPlayers[i].isHuman,
+      isRemote: savedPlayers[i].isRemote,
       lastDiscard: null,
     }));
     this.discard = null; this.discardSeat = null; this.discardPile = [];
     this.claimOptions = null; this.claimSeat = null; this.pendingClaims = [];
+    this.remoteClaimOptions = null; this._pendingRemoteCtx = null;
     this.firstDraw = true; this.dealerFirstDiscard = false; this.handActionCount = 0; this.lastResult = null;
     this.phase = PHASE.IDLE;
     this._initLog('Next Hand');
@@ -1920,7 +1959,7 @@ class Game {
   redeal() {
     this._cancelScheduledActions();
     try { localStorage.removeItem('mahjongPrevScores'); } catch(e) {}
-    const savedPlayers = this.players.map(p => ({ score: p.score, name: p.name, isHuman: p.isHuman }));
+    const savedPlayers = this.players.map(p => ({ score: p.score, name: p.name, isHuman: p.isHuman, isRemote: p.isRemote ?? false }));
     this.wall = buildWall();
     this.wallIdx = 0;
     this.tailCol = 71;
@@ -1930,10 +1969,12 @@ class Game {
       score: savedPlayers[i].score,
       name: savedPlayers[i].name,
       isHuman: savedPlayers[i].isHuman,
+      isRemote: savedPlayers[i].isRemote,
       lastDiscard: null,
     }));
     this.discard = null; this.discardSeat = null; this.discardPile = [];
     this.claimOptions = null; this.claimSeat = null; this.pendingClaims = [];
+    this.remoteClaimOptions = null; this._pendingRemoteCtx = null;
     this.robbingKongSeat = null; this.robbingKongTile = null;
     this.robbingKongTiles = null; this.robbingKongPungIdx = null;
     this.firstDraw = true; this.dealerFirstDiscard = false; this.handActionCount = 0; this.lastResult = null;
@@ -2056,4 +2097,66 @@ class Game {
     this._replayResumeNotice = false;
     return true;
   }
+
+  // ── Remote-seat API ────────────────────────────────────────────────────────
+
+  getRemoteClaimOptions(seat, tile, diff) {
+    const p = this.players[seat];
+    const handWith = [...p.hand, tile];
+    const ctx = this.makeCtx(seat, false);
+    const winResult = canWin(handWith, p.melds, ctx);
+    const minFClaim = (typeof MIN_FAAN !== 'undefined') ? MIN_FAAN : 3;
+    const effectiveWin = winResult.win && winResult.faan >= minFClaim ? winResult : false;
+    const canPung = p.hand.filter(t => sameType(t, tile)).length >= 2;
+    const handMatchCount = p.hand.filter(t => sameType(t, tile)).length;
+    const hasPungMeld = p.melds.some(m => m.type === 'pung' && sameType(m.tiles[0], tile));
+    const canKong = handMatchCount === 3 || hasPungMeld;
+    const canChow = diff === 1 && [SUIT.BAMBOO, SUIT.CIRCLE, SUIT.CHAR].includes(tile.suit)
+      && !!findChowWith(p.hand, tile);
+    return { win: effectiveWin, pung: canPung, kong: canKong, chow: canChow };
+  }
+
+  _hasAnyRemoteClaim() {
+    const o = this.remoteClaimOptions;
+    return !!(o && (o.win || o.pung || o.kong || o.chow));
+  }
+
+  remoteDiscard(tileId) {
+    const seat = this._remoteSeat;
+    if (seat < 0 || this.phase !== PHASE.DISCARD || this.currentSeat !== seat) return;
+    const tile = this.players[seat].hand.find(t => t.id === tileId);
+    if (!tile) return;
+    this.doDiscard(seat, tile);
+  }
+
+  remoteClaim(action, chowTiles) {
+    const seat = this._remoteSeat;
+    if (seat < 0) return;
+    const ctx = this._pendingRemoteCtx ?? {};
+    const fromSeat = ctx.fromSeat ?? this.discardSeat;
+    const tile     = ctx.tile     ?? this.discard;
+    const claims   = ctx.claims   ?? [];
+    this.remoteClaimOptions  = null;
+    this._pendingRemoteCtx   = null;
+    if (action === 'pass') {
+      this.claimOptions = null;
+      this.resolveAIClaims(fromSeat, tile, claims);
+      return;
+    }
+    if (action === 'win') {
+      const p = this.players[seat];
+      const result = canWin([...p.hand, tile], p.melds, this.makeCtx(seat, false));
+      this.claimOptions = null;
+      this.resolveWin(seat, fromSeat, result, tile);
+      return;
+    }
+    // pung / kong / chow — chowTiles includes the discard tile (same as humanClaim)
+    const resolvedChow = chowTiles
+      ? chowTiles.map(ct => ct.id === tile.id ? tile : (this.players[seat].hand.find(t => t.id === ct.id) ?? ct))
+      : null;
+    this.claimOptions = null;
+    this.doClaim(seat, tile, action, resolvedChow);
+  }
+
+  remotePass() { this.remoteClaim('pass', null); }
 }

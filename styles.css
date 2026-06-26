@@ -510,6 +510,12 @@ main#table { position: relative; }
 .player-score { font-size: 12px; color: #ffd34d; font-weight: 700; min-width: 38px; text-align: right; flex-shrink: 0; }
 .sb-btn:hover { filter: brightness(1.15); }
 
+/* Multiplayer status */
+.mp-status { font-size: 11px; padding: 3px 6px; border-radius: 3px; background: #1a1a1a; color: #888; }
+.mp-status.waiting { background: #2a2a1a; color: #ffd34d; }
+.mp-status.ok  { background: #1a2a1a; color: #4d9; }
+.mp-status.err { background: #2a1a1a; color: #f77; }
+
 /* Auto mode big buttons */
 .auto-mode-btn {
   flex: 1; border: 2px solid transparent; border-radius: 6px;

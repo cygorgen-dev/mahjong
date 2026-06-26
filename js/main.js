@@ -1742,3 +1742,210 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 1500);
 });
+
+// ═══════════════════════════════════════════════════════════
+// MULTIPLAYER — host / guest logic
+// ═══════════════════════════════════════════════════════════
+
+function _mpSetStatus(text, cls) {
+  const el = document.getElementById('mp-status');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'mp-status ' + (cls || '');
+}
+
+function mpSerializeState() {
+  return {
+    players: game.players.map(p => ({
+      seat: p.seat, name: p.name, isHuman: p.isHuman, isRemote: p.isRemote,
+      score: p.score,
+      hand:  p.hand.map(t => ({ id: t.id, suit: t.suit, value: t.value, _justDrawn: t._justDrawn })),
+      melds: p.melds.map(m => ({ type: m.type, claimed: m.claimed, tiles: m.tiles.map(t => ({ id: t.id, suit: t.suit, value: t.value })) })),
+      bonus: p.bonus.map(t => ({ id: t.id, suit: t.suit, value: t.value })),
+      lastDiscard: p.lastDiscard ? { id: p.lastDiscard.id, suit: p.lastDiscard.suit, value: p.lastDiscard.value } : null,
+    })),
+    wallIdx: game.wallIdx, tailCol: game.tailCol, tailPhase: game.tailPhase,
+    wallLen: game.wall.length,
+    discardPile: game.discardPile.map(t => ({
+      id: t.id, suit: t.suit, value: t.value,
+      _discardSeat: t._discardSeat, _discardIdxBySeat: t._discardIdxBySeat,
+    })),
+    discard: game.discard ? { id: game.discard.id, suit: game.discard.suit, value: game.discard.value } : null,
+    discardSeat: game.discardSeat,
+    phase: game.phase, currentSeat: game.currentSeat,
+    roundWind: game.roundWind, dealerSeat: game.dealerSeat,
+    remoteClaimOptions: game.remoteClaimOptions,
+    remoteSeat: game._remoteSeat,
+    lastResult: game.lastResult,
+  };
+}
+
+function mpSendState() {
+  if (!MP.connected || MP.role !== 'host') return;
+  MP.send({ type: 'state', state: mpSerializeState() });
+}
+
+function applyRemoteState(msg) {
+  const s   = msg.state;
+  const rs  = s.remoteSeat;   // host seat that maps to guest seat 0
+
+  // Rotate: host seat hs → guest seat (hs - rs + 4) % 4
+  const rot = hs => (hs - rs + 4) % 4;
+
+  const rotPlayers = [0, 1, 2, 3].map(gs => {
+    const hs = (gs + rs) % 4;
+    const p  = s.players[hs];
+    return {
+      seat: gs, name: p.name, score: p.score,
+      isHuman: gs === 0, isRemote: false,
+      hand:  p.hand,
+      melds: p.melds,
+      bonus: p.bonus,
+      lastDiscard: p.lastDiscard,
+    };
+  });
+
+  const rotPile = s.discardPile.map(t => ({
+    ...t, _discardSeat: rot(t._discardSeat ?? 0),
+  }));
+
+  game.players      = rotPlayers;
+  game.wall         = new Array(s.wallLen).fill(null);  // placeholder — not rendered per-tile
+  game.wallIdx      = s.wallIdx;
+  game.tailCol      = s.tailCol;
+  game.tailPhase    = s.tailPhase;
+  game.discardPile  = rotPile;
+  game.discard      = s.discard;
+  game.discardSeat  = s.discardSeat !== null ? rot(s.discardSeat) : null;
+  game.phase        = s.phase;
+  game.currentSeat  = s.currentSeat !== null ? rot(s.currentSeat) : null;
+  game.roundWind    = s.roundWind;
+  game.dealerSeat   = rot(s.dealerSeat);
+  game.claimOptions = s.remoteClaimOptions ?? null;  // remote's options become guest's
+  game.pendingClaims = [];
+  game.claimSeat    = null;
+  game.robbingKongSeat = null; game.robbingKongTile = null;
+  game.firstDraw    = false;
+
+  const lr = s.lastResult;
+  if (lr) {
+    game.lastResult = {
+      ...lr,
+      winnerSeat: lr.winnerSeat !== undefined ? rot(lr.winnerSeat) : undefined,
+      loserSeat:  lr.loserSeat  !== null && lr.loserSeat !== undefined ? rot(lr.loserSeat) : lr.loserSeat,
+    };
+  } else {
+    game.lastResult = null;
+  }
+
+  window.MP_WAITING = false;
+  renderAll();
+}
+
+// ── Host setup ─────────────────────────────────────────────
+
+function mpHostInit(remoteSeat) {
+  const wsUrl = MP.wsUrl();
+  MP.connect(wsUrl, 'host').then(() => {
+    _mpSetStatus('Waiting for friend…', 'waiting');
+
+    // Tag the chosen seat as remote
+    game._remoteSeat = remoteSeat;
+    game._remoteName = game.players[remoteSeat]?.name ?? null;
+    game.players[remoteSeat].isRemote = true;
+
+    // Override aiPlay so remote player's discard turn waits for guest
+    const _origAiPlay = game.aiPlay.bind(game);
+    game.aiPlay = function(seat) {
+      if (seat === game._remoteSeat && !window.AUTO_MODE && game.phase === PHASE.DISCARD) {
+        mpSendState();
+        return;
+      }
+      _origAiPlay(seat);
+    };
+
+    MP.on('guest-joined', () => {
+      _mpSetStatus('Friend connected ✓', 'ok');
+      mpSendState();
+    });
+    MP.on('action', msg => {
+      if (!game) return;
+      if (msg.action === 'discard') {
+        game.remoteDiscard(msg.tileId);
+      } else if (msg.action === 'pass') {
+        game.remotePass();
+      } else {
+        game.remoteClaim(msg.action, msg.chowTiles ?? null);
+      }
+    });
+    MP.on('disconnected', () => _mpSetStatus('Friend disconnected', 'err'));
+    MP.on('close',        () => _mpSetStatus('Disconnected', 'err'));
+
+  }).catch(() => _mpSetStatus('Cannot connect — run server.js first', 'err'));
+}
+
+// ── Guest setup ────────────────────────────────────────────
+
+function mpGuestInit() {
+  const wsUrl = MP.wsUrl();
+  MP.connect(wsUrl, 'guest').then(() => {
+    _mpSetStatus('Connected — waiting for host…', 'waiting');
+    window.MP_GUEST = true;
+
+    // Override humanDiscard / humanClaim / humanPass to relay via WS
+    game.humanDiscard = (tileId) => {
+      if (window.MP_WAITING) return;
+      window.MP_WAITING = true;
+      MP.send({ type: 'action', action: 'discard', tileId });
+    };
+    game.humanClaim = (action, chowTiles) => {
+      if (action !== 'pass' && window.MP_WAITING) return;
+      window.MP_WAITING = true;
+      MP.send({ type: 'action', action, chowTiles: chowTiles ?? null });
+    };
+    game.humanPass = () => {
+      if (window.MP_WAITING) return;
+      window.MP_WAITING = true;
+      MP.send({ type: 'action', action: 'pass' });
+    };
+
+    MP.on('state', msg => {
+      _mpSetStatus(`Playing as ${msg.state.players[msg.state.remoteSeat]?.name ?? 'Guest'}`, 'ok');
+      applyRemoteState(msg);
+    });
+    MP.on('disconnected', () => _mpSetStatus('Host disconnected', 'err'));
+    MP.on('close',        () => _mpSetStatus('Disconnected', 'err'));
+
+  }).catch(() => _mpSetStatus('Cannot connect to server', 'err'));
+}
+
+// ── Sidebar buttons + onGameUpdate patch (runs after game is created) ──────
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Patch game.onUpdate so host sends state to guest on every update
+  if (game) {
+    const _origCb = game.onUpdate;
+    game.onUpdate = function(event) {
+      _origCb(event);
+      if (MP.role === 'host') {
+        mpSendState();
+        if (event === 'remote-claim-prompt') {
+          const name = game.players[game._remoteSeat]?.name || 'Remote';
+          addMsg(`Waiting for ${name} to decide…`);
+        }
+      }
+    };
+  }
+
+  const btnHost  = document.getElementById('mp-btn-host');
+  const btnGuest = document.getElementById('mp-btn-guest');
+  const selSeat  = document.getElementById('mp-seat-select');
+
+  if (btnHost) btnHost.addEventListener('click', () => {
+    const seat = parseInt(selSeat?.value ?? '1', 10);
+    mpHostInit(seat);
+  });
+  if (btnGuest) btnGuest.addEventListener('click', () => {
+    mpGuestInit();
+  });
+});

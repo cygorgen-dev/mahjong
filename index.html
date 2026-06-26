@@ -285,6 +285,23 @@
           <option value="run-all-tests-btn">🧪 Run All Tests</option>
         </select>
       </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">🌐 Multiplayer</div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:6px;">Run <code>node server.js</code> first, then open this page via the server URL.</div>
+        <div id="mp-status" class="mp-status">Not connected</div>
+        <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+          <label style="font-size:11px;color:#ccc;">Friend seat:</label>
+          <select id="mp-seat-select" style="background:#1a2a3a;color:#ffd34d;border:1px solid #555;border-radius:3px;padding:2px 4px;font-size:11px;">
+            <option value="1">CPU1 (Right)</option>
+            <option value="2">CPU2 (Top)</option>
+            <option value="3">CPU3 (Left)</option>
+          </select>
+        </div>
+        <div style="margin-top:6px;display:flex;gap:6px;">
+          <button id="mp-btn-host" class="sb-btn" style="background:#1a4a2a;border:1px solid #4d9;color:#4d9;">Host Game</button>
+          <button id="mp-btn-guest" class="sb-btn" style="background:#1a2a4a;border:1px solid #49d;color:#49d;">Join Game</button>
+        </div>
+      </div>
     </aside>
     <!-- Hidden trigger elements for More tools dropdown — IDs wired by ui.js/main.js -->
     <div style="display:none;">
@@ -400,6 +417,7 @@
   <script src="js/handlog.js?v=0603-409"></script>
   <script src="js/game.js?v=0603-409"></script>
   <script src="js/ui.js?v=0603-409"></script>
+  <script src="js/mp.js?v=0625-521"></script>
   <script src="js/main.js?v=0603-409"></script>
   <script>
     document.getElementById('more-tools-select').addEventListener('change', function() {
